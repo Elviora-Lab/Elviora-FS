@@ -3,7 +3,10 @@
     "allow": [
       "Bash(npm ls *)",
       "Bash(node -e ' *)",
-      "Bash(NODE_OPTIONS='--max-old-space-size=4096' npx next build --no-mangling)"
+      "Bash(NODE_OPTIONS='--max-old-space-size=4096' npx next build --no-mangling)",
+      "Bash(npx prisma *)",
+      "Bash(DATABASE_URL='postgresql://postgres:postgres@localhost:5432/elviora?schema=public' npx prisma validate)",
+      "Bash(npm pkg *)"
     ]
   }
 }
