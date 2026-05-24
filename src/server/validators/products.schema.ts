@@ -1,0 +1,20 @@
+import 'server-only';
+
+import { z } from 'zod';
+
+import { paginationQuerySchema } from '@/server/http/pagination';
+
+export const productListQuery = paginationQuerySchema.extend({
+  category: z.string().optional(),
+  q: z.string().optional(),
+  sort: z.enum(['newest', 'price-asc', 'price-desc', 'popular', 'rating']).default('newest'),
+  priceMin: z.coerce.number().min(0).optional(),
+  priceMax: z.coerce.number().min(0).optional(),
+  skinType: z.string().optional(),
+  concern: z.string().optional(),
+  tag: z.string().optional(),
+});
+
+export const productSlugParams = z.object({ slug: z.string().min(1) });
+
+export type ProductListQuery = z.infer<typeof productListQuery>;

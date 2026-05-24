@@ -6,7 +6,9 @@
       "Bash(NODE_OPTIONS='--max-old-space-size=4096' npx next build --no-mangling)",
       "Bash(npx prisma *)",
       "Bash(DATABASE_URL='postgresql://postgres:postgres@localhost:5432/elviora?schema=public' npx prisma validate)",
-      "Bash(npm pkg *)"
-    ]
+      "Bash(npm pkg *)",
+      "Bash(mkdir -p \\\\ *)"
+    ],
+    "additionalDirectories": ["/Users/hshahir/Desktop/Elviora/Elviora-FS/src/app/api/v1/products"]
   }
 }

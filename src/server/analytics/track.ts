@@ -1,0 +1,37 @@
+import 'server-only';
+
+import { prisma } from '@/lib/db';
+
+/**
+ * Server-side analytics — writes to the analytics tables in the DB.
+ * Fire-and-forget from services; never block the request on these writes.
+ */
+export const analyticsServer = {
+  async productView(productId: string, userId: string | null) {
+    try {
+      await prisma.productViewLog.create({ data: { productId, userId } });
+    } catch {
+      /* best-effort */
+    }
+  },
+
+  async search(keyword: string, resultCount: number, userId: string | null) {
+    try {
+      await prisma.searchLog.create({ data: { keyword, resultCount, userId } });
+    } catch {
+      /* best-effort */
+    }
+  },
+
+  async recordRecentlyViewed(userId: string, productId: string) {
+    try {
+      await prisma.recentlyViewedProduct.upsert({
+        where: { userId_productId: { userId, productId } },
+        update: { viewedAt: new Date() },
+        create: { userId, productId },
+      });
+    } catch {
+      /* best-effort */
+    }
+  },
+};

@@ -1,0 +1,56 @@
+import 'server-only';
+
+import { Resend } from 'resend';
+
+import { serverEnv } from '@/config/env';
+import { isDev } from '@/config/env';
+import { siteConfig } from '@/config/site';
+
+let cached: Resend | null = null;
+
+function client(): Resend | null {
+  if (!serverEnv.RESEND_API_KEY) return null;
+  if (cached) return cached;
+  cached = new Resend(serverEnv.RESEND_API_KEY);
+  return cached;
+}
+
+const DEFAULT_FROM = `${siteConfig.name} <no-reply@elviora.com>`;
+
+export type SendEmailInput = {
+  to: string | string[];
+  subject: string;
+  html: string;
+  text?: string;
+  from?: string;
+  replyTo?: string;
+};
+
+/**
+ * Send an email via Resend.
+ * In development (or when Resend is not configured), the email is logged to
+ * the console — never silently swallowed.
+ */
+export async function sendEmail(input: SendEmailInput): Promise<{ id: string | null }> {
+  const resend = client();
+  if (!resend) {
+    if (isDev) {
+      // eslint-disable-next-line no-console
+      console.log('[email:dev]', input.subject, '→', input.to);
+    }
+    return { id: null };
+  }
+  const result = await resend.emails.send({
+    from: input.from ?? DEFAULT_FROM,
+    to: input.to,
+    subject: input.subject,
+    html: input.html,
+    text: input.text,
+    replyTo: input.replyTo,
+  });
+  return { id: result.data?.id ?? null };
+}
+
+export function isEmailConfigured(): boolean {
+  return Boolean(serverEnv.RESEND_API_KEY);
+}

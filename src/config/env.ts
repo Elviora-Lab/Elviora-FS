@@ -22,9 +22,20 @@ const publicEnvSchema = z.object({
 const serverEnvSchema = z.object({
   API_URL: optionalUrl,
   JWT_SECRET: optionalStr,
+  JWT_REFRESH_SECRET: optionalStr,
   NEXTAUTH_SECRET: optionalStr,
   GOOGLE_CLIENT_SECRET: optionalStr,
   SENTRY_AUTH_TOKEN: optionalStr,
+  RESEND_API_KEY: optionalStr,
+  STRIPE_SECRET_KEY: optionalStr,
+  STRIPE_WEBHOOK_SECRET: optionalStr,
+  REDIS_URL: optionalStr,
+  S3_REGION: optionalStr,
+  S3_BUCKET: optionalStr,
+  S3_ACCESS_KEY_ID: optionalStr,
+  S3_SECRET_ACCESS_KEY: optionalStr,
+  S3_PUBLIC_URL: optionalUrl,
+  OPENAI_API_KEY: optionalStr,
   // postgresql:// URLs are not valid http(s) URLs, so use a plain string check
   // and require the protocol prefix when set.
   DATABASE_URL: z.preprocess(
@@ -73,11 +84,22 @@ export const serverEnv = (() => {
   const parsed = serverEnvSchema.safeParse({
     API_URL: process.env.API_URL,
     JWT_SECRET: process.env.JWT_SECRET,
+    JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET,
     NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
     GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
     SENTRY_AUTH_TOKEN: process.env.SENTRY_AUTH_TOKEN,
     DATABASE_URL: process.env.DATABASE_URL,
     DIRECT_URL: process.env.DIRECT_URL,
+    RESEND_API_KEY: process.env.RESEND_API_KEY,
+    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+    STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
+    REDIS_URL: process.env.REDIS_URL,
+    S3_REGION: process.env.S3_REGION,
+    S3_BUCKET: process.env.S3_BUCKET,
+    S3_ACCESS_KEY_ID: process.env.S3_ACCESS_KEY_ID,
+    S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY,
+    S3_PUBLIC_URL: process.env.S3_PUBLIC_URL,
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
   });
   if (!parsed.success) {
     console.error('Invalid server environment variables:', parsed.error.flatten().fieldErrors);
