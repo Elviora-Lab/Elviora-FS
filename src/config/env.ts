@@ -6,11 +6,12 @@ import { z } from 'zod';
 const emptyToUndef = (v: unknown) => (v === '' ? undefined : v);
 const optionalUrl = z.preprocess(emptyToUndef, z.string().url().optional());
 const optionalStr = z.preprocess(emptyToUndef, z.string().optional());
+const apiUrl = z.preprocess(emptyToUndef, z.string().default('/api/v1'));
 
 const publicEnvSchema = z.object({
   NEXT_PUBLIC_SITE_URL: z.string().url().default('http://localhost:3000'),
   NEXT_PUBLIC_SITE_NAME: z.string().default('Elviora'),
-  NEXT_PUBLIC_API_URL: z.string().url(),
+  NEXT_PUBLIC_API_URL: apiUrl,
   NEXT_PUBLIC_CDN_URL: optionalUrl,
   NEXT_PUBLIC_ENVIRONMENT: z.enum(['development', 'staging', 'production']).default('development'),
   NEXT_PUBLIC_GTM_ID: optionalStr,

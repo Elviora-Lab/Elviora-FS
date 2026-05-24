@@ -5,8 +5,8 @@
   "description": "Elviora — luxury cosmetics & skincare e-commerce frontend.",
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
-    "start": "prisma migrate deploy && next start",
+    "build": "prisma generate && prisma migrate deploy && next build",
+    "start": "next start",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,css,md,json}\"",

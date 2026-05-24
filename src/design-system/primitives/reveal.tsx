@@ -33,9 +33,9 @@ export function Reveal({ inView = false, delay = 0, y = 14, className, children,
 
   if (prefersReduced) {
     return (
-      <div className={className} {...(rest as React.HTMLAttributes<HTMLDivElement>)}>
+      <motion.div className={cn(className)} {...rest}>
         {children}
-      </div>
+      </motion.div>
     );
   }
 
