@@ -109,6 +109,17 @@
       'rlig' 1,
       'calt' 1,
       'ss01' 1;
+    /* Prevent stray horizontal scroll caused by oversized images, decorative
+     * blurs, or hero elements that briefly overflow before media queries kick
+     * in. Vertical scroll is unaffected. */
+    overflow-x: hidden;
+  }
+
+  /* Long words / monospace tokens (order numbers, SKUs) should wrap rather
+   * than push the layout sideways on narrow viewports. */
+  .container,
+  main {
+    overflow-wrap: anywhere;
   }
 
   h1,

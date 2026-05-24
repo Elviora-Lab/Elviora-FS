@@ -1,3 +1,4 @@
+import { MobileNav } from '@/components/layout/mobile-nav';
 import { SiteFooter } from '@/components/layout/site-footer';
 import { SiteHeader } from '@/components/layout/site-header';
 
@@ -12,6 +13,7 @@ export default function ShopLayout({ children }: { children: React.ReactNode }) 
       <main className="flex-1">{children}</main>
       <SiteFooter />
       <CartDrawer />
+      <MobileNav />
       {/* Hydrators sync Redux with server-side carts/wishlists on mount + invalidation. */}
       <CartHydrator />
       <WishlistHydrator />

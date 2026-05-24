@@ -9,22 +9,25 @@ export const mainNav: NavItem[] = [
   {
     label: 'Skincare',
     href: '/categories/skincare',
+    // Sub-categories use FLAT slugs that match the actual `categories.slug`
+    // values in the DB (the route is `/categories/[slug]` — single segment).
+    // Parent/child grouping is purely visual via the nav config.
     children: [
-      { label: 'Cleansers', href: '/categories/skincare/cleansers' },
-      { label: 'Serums', href: '/categories/skincare/serums' },
-      { label: 'Moisturizers', href: '/categories/skincare/moisturizers' },
-      { label: 'Sunscreens', href: '/categories/skincare/sunscreens' },
-      { label: 'Masks', href: '/categories/skincare/masks' },
+      { label: 'Cleansers', href: '/categories/cleansers' },
+      { label: 'Serums', href: '/categories/serums' },
+      { label: 'Moisturizers', href: '/categories/moisturizers' },
+      { label: 'Sunscreens', href: '/categories/sunscreens' },
+      { label: 'Masks', href: '/categories/masks' },
     ],
   },
   {
     label: 'Makeup',
     href: '/categories/makeup',
     children: [
-      { label: 'Lip', href: '/categories/makeup/lip' },
-      { label: 'Eye', href: '/categories/makeup/eye' },
-      { label: 'Face', href: '/categories/makeup/face' },
-      { label: 'Brushes', href: '/categories/makeup/brushes' },
+      { label: 'Lip', href: '/categories/lip' },
+      { label: 'Eye', href: '/categories/eye' },
+      { label: 'Face', href: '/categories/face' },
+      { label: 'Nail', href: '/categories/nail' },
     ],
   },
   { label: 'Body', href: '/categories/body' },

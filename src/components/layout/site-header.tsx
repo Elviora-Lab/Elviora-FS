@@ -11,7 +11,8 @@ import { openMobileNav, openSearch } from '@/store/slices/ui-slice';
 
 import { cn } from '@/lib/cn';
 
-import { BrandLockup } from '@/components/brand/brand-logo';
+import { BrandLockup, BrandLogo } from '@/components/brand/brand-logo';
+import { NavItem } from '@/components/layout/nav-item';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 
@@ -38,19 +39,20 @@ export function SiteHeader({ className }: { className?: string }) {
           <Menu className="size-5" />
         </button>
 
-        <Link href="/" aria-label={`${siteConfig.name} home`}>
-          <BrandLockup size={36} priority />
+        <Link href="/" aria-label={`${siteConfig.name} home`} className="inline-flex items-center">
+          {/* Mark only on mobile (save space next to the icon row);
+              full mark + wordmark on lg+ where there's room. */}
+          <span className="lg:hidden">
+            <BrandLogo variant="mark" size={36} priority />
+          </span>
+          <span className="hidden lg:inline">
+            <BrandLockup size={36} priority />
+          </span>
         </Link>
 
         <nav className="ml-8 hidden items-center gap-7 lg:flex">
           {mainNav.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="rounded text-xs uppercase tracking-[0.14em] text-foreground/90 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            >
-              {item.label}
-            </Link>
+            <NavItem key={item.href} item={item} />
           ))}
         </nav>
 
