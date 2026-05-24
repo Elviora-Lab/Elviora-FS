@@ -3,41 +3,64 @@
  *
  * Uses upserts so it can be safely re-run against any environment.
  * Populates the catalog with a minimal set of brand-defining records:
- *  • admin & one customer account
+ *  • admin + demo customer accounts (real bcrypt-hashed passwords)
  *  • core categories (Skincare / Makeup / Fragrance)
  *  • skincare concerns vocabulary
  *  • a handful of hero ingredients
- *  • one sample brand + product with variants
+ *  • one sample brand + product with variants + images
  *  • initial system settings
  */
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
+// Default credentials seeded into a fresh database.
+// CHANGE THESE for any non-dev environment.
+const DEMO_CREDENTIALS = {
+  admin: { email: 'admin@elviora.com', password: 'Admin123!' },
+  customer: { email: 'demo@elviora.com', password: 'Demo123!' },
+};
+
 async function main() {
-  // — Admin operator —
+  // — Admin user (lives in the User table so the regular /login flow works) —
+  const adminHash = await bcrypt.hash(DEMO_CREDENTIALS.admin.password, 12);
+  await prisma.user.upsert({
+    where: { email: DEMO_CREDENTIALS.admin.email },
+    update: { role: 'SUPER_ADMIN', passwordHash: adminHash, isVerified: true },
+    create: {
+      email: DEMO_CREDENTIALS.admin.email,
+      firstName: 'Elviora',
+      lastName: 'Concierge',
+      passwordHash: adminHash,
+      role: 'SUPER_ADMIN',
+      isVerified: true,
+    },
+  });
+
+  // — Mirror entry in AdminUser for future ops-only UIs (audit log, etc.) —
   await prisma.adminUser.upsert({
-    where: { email: 'admin@elviora.com' },
-    update: {},
+    where: { email: DEMO_CREDENTIALS.admin.email },
+    update: { passwordHash: adminHash, isActive: true },
     create: {
       name: 'Elviora Concierge',
-      email: 'admin@elviora.com',
-      // bcrypt hash of "ChangeMe!123" — replace in production seed.
-      passwordHash: '$2b$10$D5PqGmZGzg.SkjjLN6gC/uYxRJ.l0w0t6oJxxxxxxxxxxxxxxxxxx',
+      email: DEMO_CREDENTIALS.admin.email,
+      passwordHash: adminHash,
       role: 'SUPER_ADMIN',
       isActive: true,
     },
   });
 
   // — Demo customer —
+  const customerHash = await bcrypt.hash(DEMO_CREDENTIALS.customer.password, 12);
   await prisma.user.upsert({
-    where: { email: 'demo@elviora.com' },
-    update: {},
+    where: { email: DEMO_CREDENTIALS.customer.email },
+    update: { passwordHash: customerHash, isVerified: true },
     create: {
       firstName: 'Demo',
       lastName: 'Customer',
-      email: 'demo@elviora.com',
-      passwordHash: '$2b$10$D5PqGmZGzg.SkjjLN6gC/uYxRJ.l0w0t6oJxxxxxxxxxxxxxxxxxx',
+      email: DEMO_CREDENTIALS.customer.email,
+      passwordHash: customerHash,
       role: 'CUSTOMER',
       isVerified: true,
     },
@@ -155,6 +178,33 @@ async function main() {
       weight: 0.18,
     },
   });
+
+  // — Product gallery —
+  // Upsert isn't trivial without a unique key on (productId, sortOrder), so we
+  // count first and only seed images for products that have none.
+  const existingImages = await prisma.productImage.count({ where: { productId: product.id } });
+  if (existingImages === 0) {
+    await prisma.productImage.createMany({
+      data: [
+        {
+          productId: product.id,
+          imageUrl:
+            'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&w=1200&q=80',
+          altText: 'Lumière Vitamin C Serum — bottle',
+          isPrimary: true,
+          sortOrder: 0,
+        },
+        {
+          productId: product.id,
+          imageUrl:
+            'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=1200&q=80',
+          altText: 'Lumière Vitamin C Serum — editorial',
+          isPrimary: false,
+          sortOrder: 1,
+        },
+      ],
+    });
+  }
 
   // — System settings —
   const settings = [

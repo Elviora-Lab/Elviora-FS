@@ -32,14 +32,23 @@ export function CartPageClient() {
       <ul className="flex flex-col divide-y divide-border">
         {cart.lines.map((line) => (
           <li key={`${line.productId}-${line.variantId}`} className="flex gap-6 py-6">
-            <div className="relative size-28 shrink-0 overflow-hidden rounded-md bg-muted">
-              <Image
-                src={line.imageUrl}
-                alt={line.name}
-                fill
-                sizes="112px"
-                className="object-cover"
-              />
+            <div className="relative size-28 shrink-0 overflow-hidden rounded-md bg-gradient-pearl">
+              {line.imageUrl ? (
+                <Image
+                  src={line.imageUrl}
+                  alt={line.name}
+                  fill
+                  sizes="112px"
+                  className="object-cover"
+                />
+              ) : (
+                <span
+                  aria-hidden
+                  className="absolute inset-0 grid place-items-center font-serif text-[10px] uppercase tracking-[0.2em] text-brand-charcoal/30"
+                >
+                  Elviora
+                </span>
+              )}
             </div>
             <div className="flex flex-1 flex-col gap-2">
               <Link

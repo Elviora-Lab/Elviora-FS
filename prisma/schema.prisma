@@ -32,6 +32,8 @@ enum UserRole {
   CUSTOMER
   VIP
   STAFF
+  ADMIN
+  SUPER_ADMIN
 
   @@map("user_role")
 }

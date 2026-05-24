@@ -80,14 +80,23 @@ export function CartDrawer() {
             <ul className="flex flex-col gap-5">
               {cart.lines.map((line) => (
                 <li key={`${line.productId}-${line.variantId}`} className="flex gap-4">
-                  <div className="relative size-24 shrink-0 overflow-hidden rounded-md bg-muted">
-                    <Image
-                      src={line.imageUrl}
-                      alt={line.name}
-                      fill
-                      sizes="96px"
-                      className="object-cover"
-                    />
+                  <div className="relative size-24 shrink-0 overflow-hidden rounded-md bg-gradient-pearl">
+                    {line.imageUrl ? (
+                      <Image
+                        src={line.imageUrl}
+                        alt={line.name}
+                        fill
+                        sizes="96px"
+                        className="object-cover"
+                      />
+                    ) : (
+                      <span
+                        aria-hidden
+                        className="absolute inset-0 grid place-items-center font-serif text-[9px] uppercase tracking-[0.2em] text-brand-charcoal/30"
+                      >
+                        Elviora
+                      </span>
+                    )}
                   </div>
                   <div className="flex flex-1 flex-col gap-1.5">
                     <Link

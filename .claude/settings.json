@@ -7,7 +7,13 @@
       "Bash(npx prisma *)",
       "Bash(DATABASE_URL='postgresql://postgres:postgres@localhost:5432/elviora?schema=public' npx prisma validate)",
       "Bash(npm pkg *)",
-      "Bash(mkdir -p \\\\ *)"
+      "Bash(mkdir -p \\\\ *)",
+      "Bash(read d *)",
+      "Bash([ ! -f \"$d/page.tsx\" ])",
+      "Bash([ ! -f \"$d/route.ts\" ])",
+      "Bash([ ! -f \"$d/layout.tsx\" ])",
+      "Bash(ls -la /Users/hshahir/Desktop/Elviora/Elviora-FS/src/server/services/_mappers/ 2>&1 *)",
+      "Read(//Users/hshahir/Desktop/**)"
     ],
     "additionalDirectories": ["/Users/hshahir/Desktop/Elviora/Elviora-FS/src/app/api/v1/products"]
   }

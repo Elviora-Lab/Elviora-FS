@@ -47,16 +47,27 @@ export function ProductCard({
     <article className={cn('group relative flex flex-col gap-3', className)}>
       <Link
         href={routes.productDetail(product.slug)}
-        className="relative block aspect-[3/4] overflow-hidden rounded-md bg-muted"
+        className="relative block aspect-[3/4] overflow-hidden rounded-md bg-gradient-pearl"
       >
-        <Image
-          src={product.imageUrl}
-          alt={product.name}
-          fill
-          priority={priority}
-          sizes="(min-width:1280px) 25vw, (min-width:768px) 33vw, 50vw"
-          className="object-cover transition-transform duration-700 ease-editorial group-hover:scale-[1.03]"
-        />
+        {product.imageUrl ? (
+          <Image
+            src={product.imageUrl}
+            alt={product.name}
+            fill
+            priority={priority}
+            sizes="(min-width:1280px) 25vw, (min-width:768px) 33vw, 50vw"
+            className="object-cover transition-transform duration-700 ease-editorial group-hover:scale-[1.03]"
+          />
+        ) : (
+          // Placeholder when no image is attached — keeps the editorial layout
+          // intact and avoids `<Image src="">` warnings.
+          <span
+            aria-hidden
+            className="absolute inset-0 grid place-items-center font-serif text-3xl font-light uppercase tracking-[0.2em] text-brand-charcoal/30"
+          >
+            Elviora
+          </span>
+        )}
         {product.hoverImageUrl ? (
           <Image
             src={product.hoverImageUrl}
