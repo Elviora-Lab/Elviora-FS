@@ -67,7 +67,9 @@ export const accountNav: NavItem[] = [
 export const adminNav: NavItem[] = [
   { label: 'Dashboard', href: '/admin' },
   { label: 'Products', href: '/admin/products' },
+  { label: 'Categories', href: '/admin/categories' },
   { label: 'Orders', href: '/admin/orders' },
+  { label: 'Reviews', href: '/admin/reviews' },
   { label: 'Users', href: '/admin/users' },
   { label: 'Coupons', href: '/admin/coupons' },
   { label: 'Analytics', href: '/admin/analytics' },

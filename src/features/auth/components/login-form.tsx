@@ -23,10 +23,12 @@ import { useLoginMutation } from '../api/auth-api';
 import { useAuth } from '../hooks/use-auth';
 import { type LoginInput, loginSchema } from '../schemas/auth-schemas';
 
+const ADMIN_ROLES = new Set(['ADMIN', 'SUPER_ADMIN', 'STAFF']);
+
 export function LoginForm() {
   const router = useRouter();
   const search = useSearchParams();
-  const redirect = search.get('redirect') ?? '/account';
+  const redirectParam = search.get('redirect');
   const { signIn } = useAuth();
   const [login, { isLoading }] = useLoginMutation();
 
@@ -40,7 +42,12 @@ export function LoginForm() {
       const session = await login({ email: values.email, password: values.password }).unwrap();
       signIn(session);
       toast.success('Welcome back');
-      router.push(redirect);
+      // If we have an explicit redirect (gated route), honor it.
+      // Otherwise send admins to /admin and customers to /account.
+      const destination =
+        redirectParam ?? (ADMIN_ROLES.has(session.user.role) ? '/admin' : '/account');
+      router.push(destination);
+      router.refresh(); // refresh RSC trees so they pick up the new session cookie
     } catch (err) {
       const e = normalizeError(err);
       toast.error(e.message);
