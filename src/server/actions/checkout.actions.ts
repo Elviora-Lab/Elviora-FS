@@ -57,8 +57,17 @@ export const placeOrder = withAction(async (raw: unknown) => {
   const order = await ordersService.createFromCart({
     userId: session.sub,
     cartId: cart.id,
-    shippingAddressId: shippingAddress.id,
     notes: input.notes,
+    shippingAddress: {
+      fullName: shippingAddress.fullName,
+      phone: shippingAddress.phone ?? null,
+      country: shippingAddress.country,
+      city: shippingAddress.city,
+      area: shippingAddress.area ?? null,
+      addressLine1: shippingAddress.addressLine1,
+      addressLine2: shippingAddress.addressLine2 ?? null,
+      postalCode: shippingAddress.postalCode ?? null,
+    },
   });
 
   // Record the chosen payment method. The actual amount is captured/cleared

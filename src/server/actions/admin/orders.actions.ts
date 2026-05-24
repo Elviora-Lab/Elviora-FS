@@ -25,3 +25,33 @@ export const updateOrderStatus = withAction(async (input: z.infer<typeof updateS
   revalidatePath(`/admin/orders/${orderId}`);
   return { orderId, status };
 });
+
+const bulkBody = z.object({
+  orderIds: z.array(z.string().uuid()).min(1).max(200),
+  status: z.enum(statusValues),
+  note: z.string().max(500).optional(),
+});
+
+/**
+ * Apply the same status transition to many orders at once. Runs each
+ * `setStatus` (order update + statusHistory insert) serially so each one
+ * gets its own audit row with the correct actor.
+ */
+export const bulkUpdateOrderStatus = withAction(async (input: z.infer<typeof bulkBody>) => {
+  const session = await requireAdmin();
+  const { orderIds, status, note } = bulkBody.parse(input);
+
+  let updated = 0;
+  for (const orderId of orderIds) {
+    try {
+      await ordersRepo.setStatus(orderId, status, note, session.sub);
+      updated += 1;
+    } catch {
+      // Skip individual failures (e.g. order deleted between selection
+      // and submit) so one bad row doesn't abort the rest of the batch.
+    }
+  }
+
+  revalidatePath('/admin/orders');
+  return { updated, requested: orderIds.length, status };
+});

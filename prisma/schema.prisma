@@ -515,9 +515,23 @@ model Order {
   shippingFee    Decimal       @default(0) @map("shipping_fee") @db.Decimal(12, 2)
   discountAmount Decimal       @default(0) @map("discount_amount") @db.Decimal(12, 2)
   totalAmount    Decimal       @map("total_amount") @db.Decimal(12, 2)
-  currency       String        @default("USD") @db.VarChar(3)
+  currency       String        @default("PKR") @db.VarChar(3)
   notes          String?       @db.Text
   createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz
+
+  // ---- Shipping address snapshot ----------------------------------------
+  // Denormalized inline so the order stays immutable even if the customer
+  // later edits or deletes the source UserAddress. All fields are nullable
+  // for backward-compat with historic test orders placed before this column
+  // set existed; new orders populate them via `placeOrder`.
+  shippingFullName     String? @map("shipping_full_name") @db.VarChar(160)
+  shippingPhone        String? @map("shipping_phone") @db.VarChar(32)
+  shippingCountry      String? @map("shipping_country") @db.VarChar(2)
+  shippingCity         String? @map("shipping_city") @db.VarChar(120)
+  shippingArea         String? @map("shipping_area") @db.VarChar(160)
+  shippingAddressLine1 String? @map("shipping_address_line_1") @db.VarChar(255)
+  shippingAddressLine2 String? @map("shipping_address_line_2") @db.VarChar(255)
+  shippingPostalCode   String? @map("shipping_postal_code") @db.VarChar(20)
 
   user          User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
   items         OrderItem[]

@@ -26,6 +26,20 @@ export const siteConfig = {
     email: 'concierge@elviora.com',
     phone: '+92 (300) 0001234',
   },
+  /**
+   * Return / sender address printed on every shipping label.
+   * Change this when the warehouse moves.
+   */
+  shippingFrom: {
+    name: 'Elviora HQ',
+    addressLine1: '12 Khayaban-e-Iqbal, F-7',
+    addressLine2: '',
+    city: 'Islamabad',
+    area: 'F-7',
+    postalCode: '44000',
+    country: 'PK',
+    phone: '+92 (51) 111 0001',
+  },
   keywords: [
     'luxury skincare Pakistan',
     'luxury cosmetics Pakistan',

@@ -28,11 +28,22 @@ export const ordersService = {
   /**
    * Create an order from a cart. Runs inside a single transaction so the cart
    * is cleared atomically with order creation — no risk of double-charge.
+   * The shipping address is denormalized onto the order so the order remains
+   * printable even if the customer later edits the source UserAddress.
    */
   async createFromCart(opts: {
     userId: string;
     cartId: string;
-    shippingAddressId: string;
+    shippingAddress: {
+      fullName: string;
+      phone: string | null;
+      country: string;
+      city: string;
+      area: string | null;
+      addressLine1: string;
+      addressLine2: string | null;
+      postalCode: string | null;
+    };
     currency?: string;
     notes?: string;
   }) {
@@ -60,6 +71,14 @@ export const ordersService = {
             totalAmount: new Prisma.Decimal(subtotal),
             currency,
             notes: opts.notes,
+            shippingFullName: opts.shippingAddress.fullName,
+            shippingPhone: opts.shippingAddress.phone,
+            shippingCountry: opts.shippingAddress.country,
+            shippingCity: opts.shippingAddress.city,
+            shippingArea: opts.shippingAddress.area,
+            shippingAddressLine1: opts.shippingAddress.addressLine1,
+            shippingAddressLine2: opts.shippingAddress.addressLine2,
+            shippingPostalCode: opts.shippingAddress.postalCode,
             items: {
               create: cart.items.map((item) => ({
                 productId: item.productId,
