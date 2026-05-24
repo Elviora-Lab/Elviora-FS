@@ -1,16 +1,16 @@
 'use client';
 
-import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { useAppSelector } from '@/store/hooks';
 
 import { useListProductsQuery } from '@/features/products/api/products-api';
 import { ProductFilters } from '@/features/products/components/product-filters';
 import { ProductGrid } from '@/features/products/components/product-grid';
-import { wishlistActions } from '@/features/wishlist/wishlist-slice';
+import { useWishlistToggle } from '@/features/wishlist/use-wishlist-toggle';
 
 export function CategoryProducts({ slug }: { slug: string }) {
   const { data, isLoading, isError } = useListProductsQuery({ category: slug });
-  const dispatch = useAppDispatch();
   const wishlistedIds = useAppSelector((s) => s.wishlist.productIds);
+  const toggleWishlistItem = useWishlistToggle();
 
   return (
     <div className="flex flex-col gap-6">
@@ -22,7 +22,7 @@ export function CategoryProducts({ slug }: { slug: string }) {
           products={data?.items}
           loading={isLoading}
           wishlistedIds={wishlistedIds}
-          onWishlistToggle={(id) => dispatch(wishlistActions.toggle(id))}
+          onWishlistToggle={toggleWishlistItem}
         />
       )}
     </div>

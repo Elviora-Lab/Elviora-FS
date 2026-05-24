@@ -8,10 +8,29 @@ import { Price } from '@/design-system/primitives/price';
 import { QuantitySelector } from '@/design-system/primitives/quantity-selector';
 import { Button } from '@/components/ui/button';
 
+import { useRemoveCartLineMutation, useUpdateCartLineMutation } from '@/features/cart/api/cart-api';
 import { useCart } from '@/features/cart/hooks/use-cart';
 
 export function CartPageClient() {
   const { cart, subtotal, count, updateQty, remove } = useCart();
+  const [updateLine] = useUpdateCartLineMutation();
+  const [removeLineMutation] = useRemoveCartLineMutation();
+
+  function handleUpdateQty(line: { id?: string; productId: string; variantId: string }, q: number) {
+    updateQty(line.productId, line.variantId, q);
+    if (line.id)
+      updateLine({ lineId: line.id, quantity: q })
+        .unwrap()
+        .catch(() => undefined);
+  }
+
+  function handleRemove(line: { id?: string; productId: string; variantId: string }) {
+    remove(line.productId, line.variantId);
+    if (line.id)
+      removeLineMutation({ lineId: line.id })
+        .unwrap()
+        .catch(() => undefined);
+  }
 
   if (count === 0) {
     return (
@@ -61,11 +80,11 @@ export function CartPageClient() {
               <div className="mt-auto flex items-center justify-between">
                 <QuantitySelector
                   value={line.quantity}
-                  onChange={(q) => updateQty(line.productId, line.variantId, q)}
+                  onChange={(q) => handleUpdateQty(line, q)}
                 />
                 <button
                   type="button"
-                  onClick={() => remove(line.productId, line.variantId)}
+                  onClick={() => handleRemove(line)}
                   className="text-xs uppercase tracking-[0.12em] text-muted-foreground hover:text-foreground"
                 >
                   Remove

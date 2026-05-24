@@ -1,0 +1,99 @@
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { Check } from 'lucide-react';
+
+import { buildMetadata } from '@/lib/seo/metadata';
+import { formatDate } from '@/utils/format';
+
+import { Price } from '@/design-system/primitives/price';
+import { Section } from '@/design-system/primitives/section';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+
+import { requireUser } from '@/server/auth/guards';
+import { ordersService } from '@/server/services/orders.service';
+
+export const metadata = buildMetadata({
+  title: 'Order placed',
+  noIndex: true,
+});
+
+export const dynamic = 'force-dynamic';
+
+type Params = Promise<{ orderId: string }>;
+
+export default async function OrderSuccessPage({ params }: { params: Params }) {
+  const session = await requireUser();
+  const { orderId } = await params;
+
+  let order;
+  try {
+    order = await ordersService.getDetail(orderId, session.sub);
+  } catch {
+    notFound();
+  }
+
+  return (
+    <Section>
+      <div className="container flex max-w-2xl flex-col items-center gap-6 text-center">
+        <span className="grid size-14 place-items-center rounded-full bg-success/15 text-success">
+          <Check className="size-7" />
+        </span>
+        <span className="eyebrow">Order confirmed</span>
+        <h1 className="editorial-heading text-display-lg">Thank you for your order.</h1>
+        <p className="text-pretty leading-relaxed text-muted-foreground">
+          We&apos;ve received your order and a confirmation has been sent to your inbox. You can
+          track its progress from your account at any time.
+        </p>
+
+        <Card className="w-full text-left">
+          <CardContent className="flex flex-col gap-4 p-6">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                  Order number
+                </div>
+                <div className="font-mono text-lg">{order.orderNumber}</div>
+              </div>
+              <Badge variant="muted">{order.orderStatus}</Badge>
+            </div>
+
+            <div className="luxe-divider" />
+
+            <ul className="flex flex-col gap-2 text-sm">
+              {order.items.map((item) => (
+                <li key={item.id} className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">
+                    {item.productName}
+                    {item.variantName ? ` — ${item.variantName}` : ''} × {item.quantity}
+                  </span>
+                  <Price amount={Number(item.totalPrice)} currency={order.currency} size="sm" />
+                </li>
+              ))}
+            </ul>
+
+            <div className="luxe-divider" />
+
+            <div className="flex items-center justify-between text-sm">
+              <span className="eyebrow">Total</span>
+              <Price amount={Number(order.totalAmount)} currency={order.currency} size="lg" />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Placed {formatDate(order.createdAt, { dateStyle: 'long', timeStyle: 'short' })}
+            </p>
+          </CardContent>
+        </Card>
+
+        <div className="flex flex-wrap justify-center gap-3">
+          <Button asChild>
+            <Link href={`/account/orders`}>View my orders</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/products">Continue shopping</Link>
+          </Button>
+        </div>
+      </div>
+    </Section>
+  );
+}

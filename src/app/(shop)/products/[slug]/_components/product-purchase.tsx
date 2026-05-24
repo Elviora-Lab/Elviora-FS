@@ -14,6 +14,7 @@ import { QuantitySelector } from '@/design-system/primitives/quantity-selector';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 
+import { cartApi } from '@/features/cart/api/cart-api';
 import { useCart } from '@/features/cart/hooks/use-cart';
 
 import { addToCart } from '@/server/actions/cart.actions';
@@ -80,11 +81,12 @@ export function ProductPurchase({
       if (result.success) {
         toast.success('Added to bag');
         dispatch(openCart());
+        // Invalidate RTK Query's Cart cache → useGetCartQuery refetches →
+        // CartHydrator syncs Redux with the server's canonical state.
+        dispatch(cartApi.util.invalidateTags(['Cart']));
         router.refresh();
       } else {
         toast.error(result.message);
-        // Roll back the optimistic write — easiest is a refresh from the server cart.
-        // For now we just remove the line we added.
         cart.remove(productId, selected.id);
       }
     });

@@ -7,6 +7,11 @@ import { siteConfig } from '@/config/site';
 
 import { cn } from '@/lib/cn';
 
+// Static import — co-located with the component. Next.js fingerprints,
+// optimizes, and serves it through its image pipeline automatically.
+// To swap the logo, replace `src/components/brand/logo.png` with a new file.
+import logoSrc from './logo.png';
+
 /**
  * Brand mark.
  *
@@ -60,7 +65,7 @@ export function BrandLogo({
     return (
       <div className={cn('flex flex-col items-center gap-3', className)}>
         <Image
-          src="/logo.png"
+          src={logoSrc}
           alt={siteConfig.name}
           width={size}
           height={size}
@@ -78,7 +83,7 @@ export function BrandLogo({
   // mark
   return (
     <Image
-      src="/logo.png"
+      src={logoSrc}
       alt={siteConfig.name}
       width={size}
       height={size}

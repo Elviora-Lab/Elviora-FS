@@ -1,14 +1,17 @@
+import { requireUser } from '@/server/auth/guards';
 import { createHandler } from '@/server/http/handler';
 import { apiSuccess } from '@/server/http/response';
+import { addressesService } from '@/server/services/addresses.service';
 
 export const runtime = 'nodejs';
 
 /**
- * Checkout orchestration — quote, address, payment intent.
- *
- * Scaffold — wire the service + repository following the patterns in
- * /api/v1/products and /api/v1/cart.
+ * Checkout context — returns the data the checkout page needs in one shot.
+ * The actual `placeOrder` mutation runs through the Server Action at
+ * `@/server/actions/checkout.actions`, not through this REST endpoint.
  */
-export const GET = createHandler(async () => {
-  return apiSuccess({ items: [] }, { message: 'Not yet implemented' });
+export const GET = createHandler(async (req) => {
+  const session = await requireUser(req);
+  const addresses = await addressesService.list(session.sub);
+  return apiSuccess({ addresses });
 });

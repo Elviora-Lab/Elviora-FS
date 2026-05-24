@@ -21,6 +21,7 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 
+import { useRemoveCartLineMutation, useUpdateCartLineMutation } from '../api/cart-api';
 import { useCart } from '../hooks/use-cart';
 
 export function CartDrawerTrigger() {
@@ -47,6 +48,32 @@ export function CartDrawer() {
   const open = useAppSelector((s) => s.ui.cartOpen);
   const dispatch = useAppDispatch();
   const { cart, subtotal, count, updateQty, remove } = useCart();
+  const [updateLine] = useUpdateCartLineMutation();
+  const [removeLineMutation] = useRemoveCartLineMutation();
+
+  function handleUpdateQty(line: { id?: string; productId: string; variantId: string }, q: number) {
+    // Optimistic Redux update for instant feedback.
+    updateQty(line.productId, line.variantId, q);
+    // Persist server-side. Skip if we don't yet have a DB id (line was just
+    // added optimistically — CartHydrator will catch up on the next refetch).
+    if (line.id) {
+      updateLine({ lineId: line.id, quantity: q })
+        .unwrap()
+        .catch(() => {
+          // Mutation invalidates Cart tag on failure too; the next refetch
+          // re-hydrates Redux to the server's truth.
+        });
+    }
+  }
+
+  function handleRemove(line: { id?: string; productId: string; variantId: string }) {
+    remove(line.productId, line.variantId);
+    if (line.id) {
+      removeLineMutation({ lineId: line.id })
+        .unwrap()
+        .catch(() => undefined);
+    }
+  }
 
   return (
     <Sheet open={open} onOpenChange={(o) => (o ? null : dispatch(closeCart()))}>
@@ -110,11 +137,11 @@ export function CartDrawer() {
                     <div className="mt-auto flex items-center justify-between">
                       <QuantitySelector
                         value={line.quantity}
-                        onChange={(q) => updateQty(line.productId, line.variantId, q)}
+                        onChange={(q) => handleUpdateQty(line, q)}
                       />
                       <button
                         type="button"
-                        onClick={() => remove(line.productId, line.variantId)}
+                        onClick={() => handleRemove(line)}
                         className="text-xs uppercase tracking-[0.12em] text-muted-foreground hover:text-foreground"
                       >
                         Remove

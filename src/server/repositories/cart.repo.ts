@@ -3,16 +3,67 @@ import 'server-only';
 import { prisma } from '@/lib/db';
 
 export const cartRepo = {
+  /**
+   * Resolve the current shopper's cart, creating one if needed.
+   *
+   * The carts table has unique constraints on BOTH `user_id` and `session_id`.
+   * That means a logged-in user with a lingering guest cart (same session
+   * cookie from before sign-in) would hit a P2002 on insert if we naively
+   * created `(userId, sessionId)`.
+   *
+   * Resolution order, wrapped in a transaction:
+   *   1. Logged in → look for the user's existing cart, return it.
+   *   2. Logged in + no user cart yet → look for a guest cart on this session
+   *      and CLAIM it (assign userId, null out sessionId). Items carry over.
+   *   3. Logged in + no carts at all → create a fresh user cart.
+   *   4. Guest → look up by sessionId, create if missing.
+   */
   async findOrCreate(opts: { userId?: string; sessionId?: string }) {
     if (!opts.userId && !opts.sessionId) {
       throw new Error('cartRepo.findOrCreate requires userId or sessionId');
     }
-    const where = opts.userId ? { userId: opts.userId } : { sessionId: opts.sessionId! };
-    const existing = await prisma.cart.findFirst({ where, include: cartInclude });
-    if (existing) return existing;
-    return prisma.cart.create({
-      data: { userId: opts.userId, sessionId: opts.sessionId },
-      include: cartInclude,
+
+    return prisma.$transaction(async (tx) => {
+      if (opts.userId) {
+        const userCart = await tx.cart.findFirst({
+          where: { userId: opts.userId },
+          include: cartInclude,
+        });
+        if (userCart) return userCart;
+
+        // Claim a pre-login guest cart, if any.
+        if (opts.sessionId) {
+          const guestCart = await tx.cart.findFirst({
+            where: { sessionId: opts.sessionId, userId: null },
+          });
+          if (guestCart) {
+            return tx.cart.update({
+              where: { id: guestCart.id },
+              data: { userId: opts.userId, sessionId: null },
+              include: cartInclude,
+            });
+          }
+        }
+
+        // Brand-new user. Create a cart keyed by userId only — leave
+        // sessionId null to avoid future collisions with this browser.
+        return tx.cart.create({
+          data: { userId: opts.userId },
+          include: cartInclude,
+        });
+      }
+
+      // Guest flow — keyed by sessionId only.
+      const guestCart = await tx.cart.findFirst({
+        where: { sessionId: opts.sessionId },
+        include: cartInclude,
+      });
+      if (guestCart) return guestCart;
+
+      return tx.cart.create({
+        data: { sessionId: opts.sessionId },
+        include: cartInclude,
+      });
     });
   },
 

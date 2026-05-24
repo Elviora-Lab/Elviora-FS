@@ -1,16 +1,16 @@
 'use client';
 
-import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { useAppSelector } from '@/store/hooks';
 
 import { ProductFilters } from '@/features/products/components/product-filters';
 import { ProductGrid } from '@/features/products/components/product-grid';
 import { useProductList } from '@/features/products/hooks/use-product-list';
-import { wishlistActions } from '@/features/wishlist/wishlist-slice';
+import { useWishlistToggle } from '@/features/wishlist/use-wishlist-toggle';
 
 export function ProductsClient() {
   const { data, isLoading, isError } = useProductList();
-  const dispatch = useAppDispatch();
   const wishlistedIds = useAppSelector((s) => s.wishlist.productIds);
+  const toggleWishlistItem = useWishlistToggle();
 
   return (
     <>
@@ -22,7 +22,7 @@ export function ProductsClient() {
           products={data?.items}
           loading={isLoading}
           wishlistedIds={wishlistedIds}
-          onWishlistToggle={(id) => dispatch(wishlistActions.toggle(id))}
+          onWishlistToggle={toggleWishlistItem}
         />
       )}
     </>

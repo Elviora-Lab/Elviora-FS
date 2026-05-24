@@ -17,6 +17,7 @@ const publicEnvSchema = z.object({
   NEXT_PUBLIC_GA_ID: optionalStr,
   NEXT_PUBLIC_SENTRY_DSN: optionalStr,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: optionalStr,
+  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: optionalStr,
 });
 
 const serverEnvSchema = z.object({
@@ -66,6 +67,7 @@ const publicEnvSource = {
   NEXT_PUBLIC_GA_ID: process.env.NEXT_PUBLIC_GA_ID,
   NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
 };
 
 const publicParsed = publicEnvSchema.safeParse(publicEnvSource);

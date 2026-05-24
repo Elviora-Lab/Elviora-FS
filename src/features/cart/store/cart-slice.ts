@@ -3,6 +3,9 @@ import { createSelector, createSlice, type PayloadAction } from '@reduxjs/toolki
 import type { RootState } from '@/store';
 
 export type CartLine = {
+  /** Server-side cart_items.id — present when the line came from the DB.
+   *  Optimistically-added lines (before server confirmation) won't have one. */
+  id?: string;
   productId: string;
   variantId: string;
   slug: string;
