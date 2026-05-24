@@ -11,6 +11,7 @@ import { openMobileNav, openSearch } from '@/store/slices/ui-slice';
 
 import { cn } from '@/lib/cn';
 
+import { BrandLockup } from '@/components/brand/brand-logo';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 
@@ -37,8 +38,8 @@ export function SiteHeader({ className }: { className?: string }) {
           <Menu className="size-5" />
         </button>
 
-        <Link href="/" className="font-serif text-2xl font-light uppercase tracking-[0.2em]">
-          {siteConfig.name}
+        <Link href="/" aria-label={`${siteConfig.name} home`}>
+          <BrandLockup size={36} priority />
         </Link>
 
         <nav className="ml-8 hidden items-center gap-7 lg:flex">

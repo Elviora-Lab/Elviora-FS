@@ -3,15 +3,15 @@ import Link from 'next/link';
 import { footerNav } from '@/config/navigation';
 import { siteConfig } from '@/config/site';
 
+import { BrandLockup } from '@/components/brand/brand-logo';
+
 export function SiteFooter() {
   return (
     <footer className="border-t border-border/60 bg-gradient-pearl">
       <div className="container py-16">
         <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-5">
           <div className="flex max-w-md flex-col gap-4 lg:col-span-2">
-            <span className="font-serif text-3xl font-light uppercase tracking-[0.2em]">
-              {siteConfig.name}
-            </span>
+            <BrandLockup size={48} />
             <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
               {siteConfig.description}
             </p>

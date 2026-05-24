@@ -2,9 +2,10 @@ import Link from 'next/link';
 import { LogOut } from 'lucide-react';
 
 import { adminNav } from '@/config/navigation';
-import { siteConfig } from '@/config/site';
 
 import { cn } from '@/lib/cn';
+
+import { BrandLogo } from '@/components/brand/brand-logo';
 
 import { logoutAction } from '@/server/actions/auth.actions';
 import { requireAdmin } from '@/server/auth/guards';
@@ -22,11 +23,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className="grid min-h-screen bg-muted/30 lg:grid-cols-[260px_1fr]">
       <aside className="sticky top-0 hidden h-screen flex-col gap-2 border-r border-border bg-card p-6 lg:flex">
-        <Link
-          href="/admin"
-          className="mb-2 font-serif text-xl font-light uppercase tracking-[0.18em]"
-        >
-          {siteConfig.name} <span className="text-xs text-muted-foreground">/ admin</span>
+        <Link href="/admin" className="mb-2 inline-flex items-center gap-3" aria-label="Admin home">
+          <BrandLogo variant="mark" size={40} />
+          <span className="font-serif text-sm font-light uppercase tracking-[0.18em] text-muted-foreground">
+            / admin
+          </span>
         </Link>
 
         <div className="mb-4 rounded-md border border-border bg-muted/40 px-3 py-2">
