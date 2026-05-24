@@ -46,7 +46,7 @@ export const ordersService = {
         if (cart.userId !== opts.userId) throw new NotFoundError('Cart not found');
         if (cart.items.length === 0) throw new BadRequestError('Cart is empty');
 
-        const currency = opts.currency ?? 'USD';
+        const currency = opts.currency ?? 'PKR';
         const subtotal = cart.items.reduce(
           (sum, item) => sum + Number(item.price) * item.quantity,
           0,

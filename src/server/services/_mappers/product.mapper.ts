@@ -31,7 +31,7 @@ export function toProductCard(p: PrismaProductForCard): ProductCardData {
     imageUrl: p.images?.[0]?.imageUrl ?? '',
     price: toNumber(p.price),
     compareAt: p.comparePrice != null ? toNumber(p.comparePrice) : undefined,
-    currency: 'USD',
+    currency: 'PKR',
     isNew: false,
     isBestseller: Boolean(p.isFeatured),
   };

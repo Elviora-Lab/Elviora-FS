@@ -99,7 +99,7 @@ export function CartPageClient() {
         <h2 className="font-serif text-2xl font-light">Order summary</h2>
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Subtotal</span>
-          <Price amount={subtotal} currency={cart.lines[0]?.currency ?? 'USD'} />
+          <Price amount={subtotal} currency={cart.lines[0]?.currency ?? 'PKR'} />
         </div>
         <p className="text-xs text-muted-foreground">
           Shipping, taxes and discounts calculated at checkout.

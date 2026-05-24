@@ -40,7 +40,7 @@ export function ProductPurchase({
   productId,
   variants,
   comparePrice,
-  currency = 'USD',
+  currency = 'PKR',
   fallbackPrice,
   outOfStock,
 }: Props) {
@@ -159,7 +159,7 @@ export function ProductPurchase({
       </Button>
 
       <p className="text-xs text-muted-foreground">
-        Free shipping on orders over $75 · 30-day returns
+        Free shipping on orders over Rs 15,000 · 30-day returns
       </p>
     </div>
   );

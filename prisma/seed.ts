@@ -1,18 +1,21 @@
 /**
  * Seed script — idempotent. Run with `npm run db:seed`.
  *
- * Builds a full luxury-cosmetics demo catalog:
+ * Builds a Pakistan-market luxury cosmetics + skincare demo catalog:
  *  • admin + demo customer (real bcrypt hashes)
  *  • 4 brands
- *  • category tree (Skincare → Cleansers/Serums/... · Makeup → Lip/Eye/Face/Nail · Fragrance · Body)
+ *  • category tree (Skincare → Cleansers/Serums/Moisturizers/Sunscreens/Masks
+ *    · Makeup → Lip/Eye/Face/Nail · Body)
  *  • skincare concerns vocabulary
  *  • hero ingredients
- *  • ~18 products with variants + primary/hover images + ingredient + concern mappings
- *  • initial system settings
+ *  • ~17 products with variants + primary/hover images + ingredient + concern mappings
+ *  • initial system settings (PKR currency, PKR thresholds)
  *
- * Catalog inspired by typical beauty-store taxonomy (Face / Eye / Lip / Nail /
- * Skincare / Fragrance) — all product names, descriptions, and copy are
- * original to the Elviora house.
+ * All prices are in Pakistani Rupees. Fragrance is intentionally NOT part of
+ * the house — Elviora is skincare + cosmetics only.
+ *
+ * Cleans up any pre-existing Fragrance category + its products from earlier
+ * seed runs so the catalog stays consistent across resets.
  */
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
@@ -259,13 +262,13 @@ const PRODUCTS: ProductSeed[] = [
     shortDescription: 'Editorial-grade brightening serum with 15% stabilized Vitamin C.',
     fullDescription:
       'A daily ritual that revives radiance — 15% L-Ascorbic Acid, ferulic acid, and bakuchiol in a silken, fast-absorbing emulsion. Use AM under sunscreen.',
-    price: 89,
-    comparePrice: 110,
+    price: 23500,
+    comparePrice: 28900,
     isFeatured: true,
     images: [IMG.serum1, IMG.serum2],
     variants: [
-      { sku: 'ELV-SER-VC-001-30', size: '30ml', price: 89, stockQuantity: 120 },
-      { sku: 'ELV-SER-VC-001-50', size: '50ml', price: 130, stockQuantity: 80 },
+      { sku: 'ELV-SER-VC-001-30', size: '30ml', price: 23500, stockQuantity: 120 },
+      { sku: 'ELV-SER-VC-001-50', size: '50ml', price: 33900, stockQuantity: 80 },
     ],
     ingredientSlugs: ['vitamin-c', 'bakuchiol'],
     concernSlugs: ['brightening', 'anti-aging', 'hyperpigmentation'],
@@ -279,12 +282,12 @@ const PRODUCTS: ProductSeed[] = [
     shortDescription: 'Five-weight hyaluronic acid complex for plush, dewy skin.',
     fullDescription:
       'Marine-derived hyaluronic acid in five molecular weights delivers hydration from surface to deeper layers. Layer under any cream.',
-    price: 72,
+    price: 18900,
     isFeatured: true,
     images: [IMG.serum2, IMG.serum1],
     variants: [
-      { sku: 'ELV-SER-HA-002-30', size: '30ml', price: 72, stockQuantity: 95 },
-      { sku: 'ELV-SER-HA-002-50', size: '50ml', price: 108, stockQuantity: 60 },
+      { sku: 'ELV-SER-HA-002-30', size: '30ml', price: 18900, stockQuantity: 95 },
+      { sku: 'ELV-SER-HA-002-50', size: '50ml', price: 28500, stockQuantity: 60 },
     ],
     ingredientSlugs: ['hyaluronic-acid', 'niacinamide'],
     concernSlugs: ['hydration', 'sensitivity'],
@@ -299,9 +302,9 @@ const PRODUCTS: ProductSeed[] = [
       'Encapsulated retinol with squalane buffer — clinical results, gentle finish.',
     fullDescription:
       'Time-release encapsulated retinol at 0.3% paired with squalane and centella for a smoother retexturing experience. Begin 2–3 nights a week.',
-    price: 96,
+    price: 25500,
     images: [IMG.serum3, IMG.serum1],
-    variants: [{ sku: 'ELV-SER-RT-003-30', size: '30ml', price: 96, stockQuantity: 70 }],
+    variants: [{ sku: 'ELV-SER-RT-003-30', size: '30ml', price: 25500, stockQuantity: 70 }],
     ingredientSlugs: ['retinol'],
     concernSlugs: ['anti-aging', 'pores-texture'],
   },
@@ -316,9 +319,9 @@ const PRODUCTS: ProductSeed[] = [
     shortDescription: 'A silken milk cleanser that dissolves makeup and respects the barrier.',
     fullDescription:
       'Sweet-almond milk and pre-biotic oat lipids dissolve sunscreen and mascara without stripping. Massage onto dry skin, emulsify with water.',
-    price: 38,
+    price: 9900,
     images: [IMG.cleanser],
-    variants: [{ sku: 'ELV-CLN-CR-004-150', size: '150ml', price: 38, stockQuantity: 140 }],
+    variants: [{ sku: 'ELV-CLN-CR-004-150', size: '150ml', price: 9900, stockQuantity: 140 }],
     concernSlugs: ['sensitivity', 'hydration'],
   },
 
@@ -332,10 +335,10 @@ const PRODUCTS: ProductSeed[] = [
     shortDescription: 'Plant-based retinol alternative in a weightless cream.',
     fullDescription:
       'Bakuchiol, ceramides and rose oil in a feather-light cream. Suitable for sensitive, pregnant and post-procedure skin.',
-    price: 78,
+    price: 20500,
     isFeatured: true,
     images: [IMG.cream],
-    variants: [{ sku: 'ELV-MST-BC-005-50', size: '50ml', price: 78, stockQuantity: 90 }],
+    variants: [{ sku: 'ELV-MST-BC-005-50', size: '50ml', price: 20500, stockQuantity: 90 }],
     ingredientSlugs: ['bakuchiol'],
     concernSlugs: ['anti-aging', 'sensitivity'],
   },
@@ -350,9 +353,9 @@ const PRODUCTS: ProductSeed[] = [
     shortDescription: 'Invisible, fluid SPF 50 PA++++ — primes makeup, protects skin.',
     fullDescription:
       'A truly invisible chemical-mineral hybrid sunscreen with broad-spectrum SPF 50. No white cast, no pilling. Reapply every two hours.',
-    price: 52,
+    price: 13800,
     images: [IMG.sunscreen],
-    variants: [{ sku: 'ELV-SUN-SD-006-50', size: '50ml', price: 52, stockQuantity: 200 }],
+    variants: [{ sku: 'ELV-SUN-SD-006-50', size: '50ml', price: 13800, stockQuantity: 200 }],
     concernSlugs: ['anti-aging', 'hyperpigmentation'],
   },
 
@@ -366,9 +369,9 @@ const PRODUCTS: ProductSeed[] = [
     shortDescription: 'Overnight ceramide mask — wake to softer, lit-from-within skin.',
     fullDescription:
       'A gel-cream overnight mask with ceramides, panthenol and a touch of poppy extract. Apply as the last step of your evening ritual.',
-    price: 64,
+    price: 16800,
     images: [IMG.mask],
-    variants: [{ sku: 'ELV-MSK-NM-007-75', size: '75ml', price: 64, stockQuantity: 75 }],
+    variants: [{ sku: 'ELV-MSK-NM-007-75', size: '75ml', price: 16800, stockQuantity: 75 }],
     concernSlugs: ['hydration', 'anti-aging'],
   },
 
@@ -382,16 +385,16 @@ const PRODUCTS: ProductSeed[] = [
     shortDescription: 'Eight-hour velvet matte that wears like a stain.',
     fullDescription:
       'A bullet lipstick with cushioned jojoba esters and saturated, weightless colour. Six house shades, all buildable.',
-    price: 32,
+    price: 8500,
     isFeatured: true,
     images: [IMG.lipstick, IMG.lipstick2],
     variants: [
-      { sku: 'ELV-LIP-VM-008-NOIR', shade: 'Noir Brûlé', price: 32, stockQuantity: 60 },
-      { sku: 'ELV-LIP-VM-008-ROSE', shade: 'Rose Atelier', price: 32, stockQuantity: 75 },
-      { sku: 'ELV-LIP-VM-008-RED', shade: 'Rouge Couture', price: 32, stockQuantity: 90 },
-      { sku: 'ELV-LIP-VM-008-NUDE', shade: 'Nu Champagne', price: 32, stockQuantity: 110 },
-      { sku: 'ELV-LIP-VM-008-PLUM', shade: 'Plum Velour', price: 32, stockQuantity: 45 },
-      { sku: 'ELV-LIP-VM-008-MAUVE', shade: 'Mauve Studio', price: 32, stockQuantity: 55 },
+      { sku: 'ELV-LIP-VM-008-NOIR', shade: 'Noir Brûlé', price: 8500, stockQuantity: 60 },
+      { sku: 'ELV-LIP-VM-008-ROSE', shade: 'Rose Atelier', price: 8500, stockQuantity: 75 },
+      { sku: 'ELV-LIP-VM-008-RED', shade: 'Rouge Couture', price: 8500, stockQuantity: 90 },
+      { sku: 'ELV-LIP-VM-008-NUDE', shade: 'Nu Champagne', price: 8500, stockQuantity: 110 },
+      { sku: 'ELV-LIP-VM-008-PLUM', shade: 'Plum Velour', price: 8500, stockQuantity: 45 },
+      { sku: 'ELV-LIP-VM-008-MAUVE', shade: 'Mauve Studio', price: 8500, stockQuantity: 55 },
     ],
   },
   {
@@ -403,13 +406,13 @@ const PRODUCTS: ProductSeed[] = [
     shortDescription: 'High-shine liquid lacquer — colour with a wet-look finish.',
     fullDescription:
       'A featherweight liquid lipstick with a glassy, dimensional finish. Glides on, sets to a comfortable second-skin film.',
-    price: 28,
+    price: 7500,
     images: [IMG.liplacquer],
     variants: [
-      { sku: 'ELV-LIP-LL-009-CORAL', shade: 'Coral Lumière', price: 28, stockQuantity: 80 },
-      { sku: 'ELV-LIP-LL-009-WINE', shade: 'Vin Vieux', price: 28, stockQuantity: 60 },
-      { sku: 'ELV-LIP-LL-009-PINK', shade: 'Pink Cordée', price: 28, stockQuantity: 70 },
-      { sku: 'ELV-LIP-LL-009-BERRY', shade: 'Berry Editoriale', price: 28, stockQuantity: 50 },
+      { sku: 'ELV-LIP-LL-009-CORAL', shade: 'Coral Lumière', price: 7500, stockQuantity: 80 },
+      { sku: 'ELV-LIP-LL-009-WINE', shade: 'Vin Vieux', price: 7500, stockQuantity: 60 },
+      { sku: 'ELV-LIP-LL-009-PINK', shade: 'Pink Cordée', price: 7500, stockQuantity: 70 },
+      { sku: 'ELV-LIP-LL-009-BERRY', shade: 'Berry Editoriale', price: 7500, stockQuantity: 50 },
     ],
   },
   {
@@ -421,12 +424,12 @@ const PRODUCTS: ProductSeed[] = [
     shortDescription: 'Tinted balm with shea butter and a hint of editorial colour.',
     fullDescription:
       'Whipped shea and cupuaçu butter with a sheer wash of pigment. The everyday lip you reach for blind.',
-    price: 22,
+    price: 5800,
     images: [IMG.lipbalm],
     variants: [
-      { sku: 'ELV-LIP-TB-010-PETAL', shade: 'Petale', price: 22, stockQuantity: 130 },
-      { sku: 'ELV-LIP-TB-010-PEACH', shade: 'Peach Lumière', price: 22, stockQuantity: 100 },
-      { sku: 'ELV-LIP-TB-010-RUBY', shade: 'Ruby Tender', price: 22, stockQuantity: 85 },
+      { sku: 'ELV-LIP-TB-010-PETAL', shade: 'Petale', price: 5800, stockQuantity: 130 },
+      { sku: 'ELV-LIP-TB-010-PEACH', shade: 'Peach Lumière', price: 5800, stockQuantity: 100 },
+      { sku: 'ELV-LIP-TB-010-RUBY', shade: 'Ruby Tender', price: 5800, stockQuantity: 85 },
     ],
   },
 
@@ -440,11 +443,11 @@ const PRODUCTS: ProductSeed[] = [
     shortDescription: 'A buildable volumising mascara — no clumps, no flakes.',
     fullDescription:
       'A polymer brush, deeply pigmented black formula and a 16-hour wear. Builds from natural to sculpted in three coats.',
-    price: 30,
+    price: 7900,
     images: [IMG.mascara],
     variants: [
-      { sku: 'ELV-EYE-MS-011-NOIR', shade: 'Noir Profond', price: 30, stockQuantity: 150 },
-      { sku: 'ELV-EYE-MS-011-BRUN', shade: 'Brun Editorial', price: 30, stockQuantity: 80 },
+      { sku: 'ELV-EYE-MS-011-NOIR', shade: 'Noir Profond', price: 7900, stockQuantity: 150 },
+      { sku: 'ELV-EYE-MS-011-BRUN', shade: 'Brun Editorial', price: 7900, stockQuantity: 80 },
     ],
   },
   {
@@ -456,9 +459,9 @@ const PRODUCTS: ProductSeed[] = [
     shortDescription: 'Felt-tip precision, intense pigment, all-day wear.',
     fullDescription:
       'A flexible felt tip lays down a sharp graphic line or a soft tightline. Smudge-proof for hours.',
-    price: 26,
+    price: 6800,
     images: [IMG.eyeliner],
-    variants: [{ sku: 'ELV-EYE-LE-012-NOIR', shade: 'Noir', price: 26, stockQuantity: 110 }],
+    variants: [{ sku: 'ELV-EYE-LE-012-NOIR', shade: 'Noir', price: 6800, stockQuantity: 110 }],
   },
   {
     slug: 'editorial-nine-pan-palette',
@@ -469,11 +472,11 @@ const PRODUCTS: ProductSeed[] = [
     shortDescription: 'Nine couture shadows, hand-pressed in small batches.',
     fullDescription:
       'Three mattes, three satins, three foiled — curated for an entire wardrobe of looks in one editorial case.',
-    price: 64,
+    price: 16800,
     images: [IMG.palette],
     variants: [
-      { sku: 'ELV-EYE-PL-013-WARM', shade: 'Atelier Warm', price: 64, stockQuantity: 40 },
-      { sku: 'ELV-EYE-PL-013-COOL', shade: 'Studio Cool', price: 64, stockQuantity: 35 },
+      { sku: 'ELV-EYE-PL-013-WARM', shade: 'Atelier Warm', price: 16800, stockQuantity: 40 },
+      { sku: 'ELV-EYE-PL-013-COOL', shade: 'Studio Cool', price: 16800, stockQuantity: 35 },
     ],
   },
 
@@ -487,18 +490,18 @@ const PRODUCTS: ProductSeed[] = [
     shortDescription: 'A skin-like satin foundation in eight house shades.',
     fullDescription:
       'A buildable medium-coverage foundation that finishes like a second skin. Eight shades that span warm, cool and neutral undertones.',
-    price: 56,
+    price: 14800,
     isFeatured: true,
     images: [IMG.foundation],
     variants: [
-      { sku: 'ELV-FCE-FD-014-01', shade: '01 Ivoire', price: 56, stockQuantity: 60 },
-      { sku: 'ELV-FCE-FD-014-02', shade: '02 Albâtre', price: 56, stockQuantity: 70 },
-      { sku: 'ELV-FCE-FD-014-03', shade: '03 Sable', price: 56, stockQuantity: 65 },
-      { sku: 'ELV-FCE-FD-014-04', shade: '04 Beige Doré', price: 56, stockQuantity: 50 },
-      { sku: 'ELV-FCE-FD-014-05', shade: '05 Caramel', price: 56, stockQuantity: 45 },
-      { sku: 'ELV-FCE-FD-014-06', shade: '06 Bronze', price: 56, stockQuantity: 40 },
-      { sku: 'ELV-FCE-FD-014-07', shade: '07 Acajou', price: 56, stockQuantity: 30 },
-      { sku: 'ELV-FCE-FD-014-08', shade: '08 Ébène', price: 56, stockQuantity: 25 },
+      { sku: 'ELV-FCE-FD-014-01', shade: '01 Ivoire', price: 14800, stockQuantity: 60 },
+      { sku: 'ELV-FCE-FD-014-02', shade: '02 Albâtre', price: 14800, stockQuantity: 70 },
+      { sku: 'ELV-FCE-FD-014-03', shade: '03 Sable', price: 14800, stockQuantity: 65 },
+      { sku: 'ELV-FCE-FD-014-04', shade: '04 Beige Doré', price: 14800, stockQuantity: 50 },
+      { sku: 'ELV-FCE-FD-014-05', shade: '05 Caramel', price: 14800, stockQuantity: 45 },
+      { sku: 'ELV-FCE-FD-014-06', shade: '06 Bronze', price: 14800, stockQuantity: 40 },
+      { sku: 'ELV-FCE-FD-014-07', shade: '07 Acajou', price: 14800, stockQuantity: 30 },
+      { sku: 'ELV-FCE-FD-014-08', shade: '08 Ébène', price: 14800, stockQuantity: 25 },
     ],
   },
   {
@@ -510,12 +513,12 @@ const PRODUCTS: ProductSeed[] = [
     shortDescription: 'Silky, talc-free blush in three editorial shades.',
     fullDescription:
       'Finely milled, talc-free pigment with a soft-focus finish. Wear sheer for a flush, layer for sculpt.',
-    price: 36,
+    price: 9500,
     images: [IMG.blush],
     variants: [
-      { sku: 'ELV-FCE-BL-015-PETAL', shade: 'Pétale', price: 36, stockQuantity: 70 },
-      { sku: 'ELV-FCE-BL-015-TERRA', shade: 'Terracotta', price: 36, stockQuantity: 55 },
-      { sku: 'ELV-FCE-BL-015-ROSE', shade: 'Rose Lumière', price: 36, stockQuantity: 65 },
+      { sku: 'ELV-FCE-BL-015-PETAL', shade: 'Pétale', price: 9500, stockQuantity: 70 },
+      { sku: 'ELV-FCE-BL-015-TERRA', shade: 'Terracotta', price: 9500, stockQuantity: 55 },
+      { sku: 'ELV-FCE-BL-015-ROSE', shade: 'Rose Lumière', price: 9500, stockQuantity: 65 },
     ],
   },
   {
@@ -527,11 +530,11 @@ const PRODUCTS: ProductSeed[] = [
     shortDescription: 'A wet-look highlighter — strobe or veil, never glittery.',
     fullDescription:
       'Liquid-pressed champagne pearls deliver a wet-look glow. Tap onto cheekbones, brow bones and cupid’s bow.',
-    price: 38,
+    price: 9900,
     images: [IMG.highlighter],
     variants: [
-      { sku: 'ELV-FCE-HL-016-CHAMP', shade: 'Champagne', price: 38, stockQuantity: 90 },
-      { sku: 'ELV-FCE-HL-016-PEARL', shade: 'Pearl Ivory', price: 38, stockQuantity: 70 },
+      { sku: 'ELV-FCE-HL-016-CHAMP', shade: 'Champagne', price: 9900, stockQuantity: 90 },
+      { sku: 'ELV-FCE-HL-016-PEARL', shade: 'Pearl Ivory', price: 9900, stockQuantity: 70 },
     ],
   },
 
@@ -545,45 +548,14 @@ const PRODUCTS: ProductSeed[] = [
     shortDescription: 'Long-wear lacquer with a glassy salon finish.',
     fullDescription:
       'A 14-free formula, plant-based plasticizer, and a flat brush for streak-free application. Lasts 7+ days with base + top.',
-    price: 18,
+    price: 4800,
     images: [IMG.nail],
     variants: [
-      { sku: 'ELV-NL-LQ-017-NOIR', shade: 'Noir Atelier', price: 18, stockQuantity: 95 },
-      { sku: 'ELV-NL-LQ-017-RED', shade: 'Rouge Studio', price: 18, stockQuantity: 110 },
-      { sku: 'ELV-NL-LQ-017-NUDE', shade: 'Nu Editorial', price: 18, stockQuantity: 130 },
-      { sku: 'ELV-NL-LQ-017-PLUM', shade: 'Plum Sombre', price: 18, stockQuantity: 60 },
-      { sku: 'ELV-NL-LQ-017-PEARL', shade: 'Pearl Maison', price: 18, stockQuantity: 75 },
-    ],
-  },
-
-  // ---------------- FRAGRANCE ----------------
-  {
-    slug: 'lumiere-eau-de-parfum',
-    sku: 'ELV-FRG-LM-018',
-    name: 'Lumière Eau de Parfum',
-    brandSlug: 'elviora',
-    categorySlug: 'fragrance',
-    shortDescription: 'House signature — neroli, fig, vetiver, soft musk.',
-    fullDescription:
-      'The Elviora signature. Neroli and orange blossom at the top, fig leaf at the heart, vetiver and clean musk at the base. Eight-hour wear.',
-    price: 120,
-    isFeatured: true,
-    images: [IMG.fragrance, IMG.fragrance2],
-    variants: [
-      {
-        sku: 'ELV-FRG-LM-018-30',
-        size: '30ml',
-        fragrance: 'Lumière',
-        price: 120,
-        stockQuantity: 60,
-      },
-      {
-        sku: 'ELV-FRG-LM-018-50',
-        size: '50ml',
-        fragrance: 'Lumière',
-        price: 165,
-        stockQuantity: 40,
-      },
+      { sku: 'ELV-NL-LQ-017-NOIR', shade: 'Noir Atelier', price: 4800, stockQuantity: 95 },
+      { sku: 'ELV-NL-LQ-017-RED', shade: 'Rouge Studio', price: 4800, stockQuantity: 110 },
+      { sku: 'ELV-NL-LQ-017-NUDE', shade: 'Nu Editorial', price: 4800, stockQuantity: 130 },
+      { sku: 'ELV-NL-LQ-017-PLUM', shade: 'Plum Sombre', price: 4800, stockQuantity: 60 },
+      { sku: 'ELV-NL-LQ-017-PEARL', shade: 'Pearl Maison', price: 4800, stockQuantity: 75 },
     ],
   },
 ];
@@ -593,6 +565,14 @@ const PRODUCTS: ProductSeed[] = [
 // ---------------------------------------------------------------
 
 async function main() {
+  // — Legacy cleanup: previous seed runs created a Fragrance category +
+  //   "Lumière Eau de Parfum" product. The house is now skincare + cosmetics
+  //   only; remove any straggler rows so the catalog stays consistent.
+  await prisma.product.deleteMany({
+    where: { OR: [{ slug: 'lumiere-eau-de-parfum' }, { category: { slug: 'fragrance' } }] },
+  });
+  await prisma.category.deleteMany({ where: { slug: 'fragrance' } });
+
   // — Users
   const adminHash = await bcrypt.hash(DEMO_CREDENTIALS.admin.password, 12);
   await prisma.user.upsert({
@@ -635,7 +615,7 @@ async function main() {
 
   // — Brands
   await Promise.all([
-    upsertBrand('Elviora', 'elviora', 'The house — quietly powerful skincare and fragrance.'),
+    upsertBrand('Elviora', 'elviora', 'The house — quietly powerful skincare and cosmetics.'),
     upsertBrand(
       'Maison Lumière',
       'maison-lumiere',
@@ -656,8 +636,7 @@ async function main() {
   // — Categories (parents first, then children)
   await upsertCategory({ name: 'Skincare', slug: 'skincare', sortOrder: 1 });
   await upsertCategory({ name: 'Makeup', slug: 'makeup', sortOrder: 2 });
-  await upsertCategory({ name: 'Fragrance', slug: 'fragrance', sortOrder: 3 });
-  await upsertCategory({ name: 'Body', slug: 'body', sortOrder: 4 });
+  await upsertCategory({ name: 'Body', slug: 'body', sortOrder: 3 });
 
   await upsertCategory({
     name: 'Cleansers',
@@ -713,11 +692,13 @@ async function main() {
     await upsertProduct(seed);
   }
 
-  // — System settings
+  // — System settings (PKR-denominated)
   const settings: Array<[string, object]> = [
-    ['site.currency.default', { value: 'USD' }],
-    ['shipping.free_threshold', { value: 75 }],
-    ['loyalty.points_per_dollar', { value: 5 }],
+    ['site.currency.default', { value: 'PKR' }],
+    // Complimentary shipping over PKR 15,000.
+    ['shipping.free_threshold', { value: 15000 }],
+    // 1 loyalty point per PKR 100 spent.
+    ['loyalty.points_per_unit', { value: 1, per: 100, currency: 'PKR' }],
   ];
   for (const [key, value] of settings) {
     await prisma.setting.upsert({

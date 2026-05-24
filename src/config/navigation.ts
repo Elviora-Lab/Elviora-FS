@@ -27,7 +27,6 @@ export const mainNav: NavItem[] = [
       { label: 'Brushes', href: '/categories/makeup/brushes' },
     ],
   },
-  { label: 'Fragrance', href: '/categories/fragrance' },
   { label: 'Body', href: '/categories/body' },
   { label: 'The Journal', href: '/blog' },
 ];

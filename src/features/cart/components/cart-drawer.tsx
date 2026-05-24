@@ -158,7 +158,7 @@ export function CartDrawer() {
           <SheetFooter className="flex-col gap-4 sm:flex-col sm:items-stretch">
             <div className="flex items-center justify-between text-sm">
               <span className="eyebrow">Subtotal</span>
-              <Price amount={subtotal} currency={cart.lines[0]?.currency ?? 'USD'} size="lg" />
+              <Price amount={subtotal} currency={cart.lines[0]?.currency ?? 'PKR'} size="lg" />
             </div>
             <p className="text-balance text-xs text-muted-foreground">
               Shipping, taxes and discounts calculated at checkout.

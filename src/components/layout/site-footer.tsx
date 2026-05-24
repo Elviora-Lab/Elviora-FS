@@ -7,7 +7,7 @@ import { BrandLockup } from '@/components/brand/brand-logo';
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-border/60 bg-gradient-pearl">
+    <footer className="surface-pearl border-t border-border/60">
       <div className="container py-16">
         <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-5">
           <div className="flex max-w-md flex-col gap-4 lg:col-span-2">

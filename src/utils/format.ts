@@ -1,20 +1,26 @@
-export function formatMoney(amount: number, currency = 'USD', locale = 'en-US'): string {
+/**
+ * Pakistani rupees are typically displayed without paisa (cents) in retail.
+ * Other currencies retain 2 decimal places by default.
+ */
+export function formatMoney(amount: number, currency = 'PKR', locale = 'en-PK'): string {
+  const isPkr = currency === 'PKR';
   return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: isPkr ? 0 : 2,
+    maximumFractionDigits: isPkr ? 0 : 2,
   }).format(amount);
 }
 
 export function formatDate(
   value: string | number | Date,
   opts: Intl.DateTimeFormatOptions = { dateStyle: 'medium' },
-  locale = 'en-US',
+  locale = 'en-PK',
 ): string {
   return new Intl.DateTimeFormat(locale, opts).format(new Date(value));
 }
 
-export function formatNumber(value: number, locale = 'en-US'): string {
+export function formatNumber(value: number, locale = 'en-PK'): string {
   return new Intl.NumberFormat(locale).format(value);
 }
 

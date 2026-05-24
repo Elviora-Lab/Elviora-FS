@@ -17,7 +17,7 @@ export default function HomePage() {
   return (
     <>
       {/* — Editorial hero — */}
-      <Section as="section" size="lg" className="relative overflow-hidden bg-gradient-pearl">
+      <Section as="section" size="lg" className="surface-pearl relative overflow-hidden">
         <div className="container relative grid items-center gap-12 lg:grid-cols-2">
           <Reveal className="flex max-w-xl flex-col gap-6">
             <span className="eyebrow">The Spring Edit · 2026</span>
@@ -58,10 +58,10 @@ export default function HomePage() {
         <div className="container">
           <SectionHeading
             eyebrow="Explore"
-            title="Three rituals, infinite expression"
-            description="From sun-warmed serums to weightless balms — each formula is a quiet promise of luminosity."
+            title="Two rituals, infinite expression"
+            description="From sun-warmed serums to editorial colour — each formula is a quiet promise of luminosity."
           />
-          <div className="mt-12 grid gap-6 md:grid-cols-3">
+          <div className="mt-12 grid gap-6 md:grid-cols-2">
             {[
               {
                 name: 'Skincare',
@@ -72,11 +72,6 @@ export default function HomePage() {
                 name: 'Makeup',
                 href: '/categories/makeup',
                 img: 'https://images.unsplash.com/photo-1522335789203-aaa2c4c80a90?auto=format&fit=crop&w=800&q=80',
-              },
-              {
-                name: 'Fragrance',
-                href: '/categories/fragrance',
-                img: 'https://images.unsplash.com/photo-1541643600914-78b084683601?auto=format&fit=crop&w=800&q=80',
               },
             ].map((c, i) => (
               <Reveal key={c.href} inView delay={i * 0.08}>
@@ -103,6 +98,25 @@ export default function HomePage() {
             ))}
           </div>
         </div>
+      </Section>
+
+      {/* — The name — */}
+      <Section size="sm" className="border-t border-border/60">
+        <Reveal inView className="container max-w-3xl text-center">
+          <span className="eyebrow">The name</span>
+          <p className="mt-4 text-balance font-serif text-2xl font-light leading-relaxed md:text-3xl">
+            <span className="text-foreground">Elviora</span>
+            <span className="text-muted-foreground">
+              {' '}
+              — from the Latin <em className="font-serif not-italic text-foreground">elvīra</em>,
+              “she who illuminates,” softened with the lyrical Italian ending{' '}
+              <em className="font-serif not-italic text-foreground">-iora</em>.
+            </span>
+          </p>
+          <p className="mt-6 text-xs uppercase tracking-[0.32em] text-muted-foreground">
+            The Art of Radiant Beauty
+          </p>
+        </Reveal>
       </Section>
     </>
   );

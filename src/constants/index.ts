@@ -19,8 +19,8 @@ export const PAGINATION = {
 } as const;
 
 export const CURRENCY = {
-  default: 'USD',
-  supported: ['USD', 'EUR', 'GBP', 'AED'] as const,
+  default: 'PKR',
+  supported: ['PKR'] as const,
 } as const;
 
 export const REVALIDATE = {

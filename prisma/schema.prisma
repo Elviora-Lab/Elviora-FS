@@ -156,21 +156,23 @@ model User {
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
-  addresses       UserAddress[]
-  carts           Cart[]
-  wishlists       Wishlist[]
-  orders          Order[]
-  reviews         Review[]
-  notifications   Notification[]
-  recentlyViewed  RecentlyViewedProduct[]
-  searchLogs      SearchLog[]
-  viewLogs        ProductViewLog[]
-  loyaltyPoints   LoyaltyPoint[]
-  couponUsages    CouponUsage[]
-  subscriptions   Subscription[]
-  aiAssessments   AiSkinAssessment[]
-  referralsMade   Referral[]              @relation("ReferrerRelation")
-  referralsGotten Referral[]              @relation("ReferredRelation")
+  addresses          UserAddress[]
+  carts              Cart[]
+  wishlists          Wishlist[]
+  orders             Order[]
+  reviews            Review[]
+  notifications      Notification[]
+  recentlyViewed     RecentlyViewedProduct[]
+  searchLogs         SearchLog[]
+  viewLogs           ProductViewLog[]
+  loyaltyPoints      LoyaltyPoint[]
+  couponUsages       CouponUsage[]
+  subscriptions      Subscription[]
+  aiAssessments      AiSkinAssessment[]
+  referralsMade      Referral[]              @relation("ReferrerRelation")
+  referralsGotten    Referral[]              @relation("ReferredRelation")
+  // Audit trail of order-status transitions this user triggered (admin actor).
+  orderStatusChanges OrderStatusHistory[]    @relation("OrderStatusChanger")
 
   @@index([role])
   @@index([createdAt])
@@ -212,8 +214,7 @@ model AdminUser {
   isActive     Boolean   @default(true) @map("is_active")
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
-  activityLogs       AdminActivityLog[]
-  orderStatusChanges OrderStatusHistory[]
+  activityLogs AdminActivityLog[]
 
   @@index([role])
   @@map("admin_users")
@@ -561,11 +562,14 @@ model OrderStatusHistory {
   orderId   String      @map("order_id") @db.Uuid
   status    OrderStatus
   note      String?     @db.Text
-  changedBy String?     @map("changed_by") @db.Uuid // FK → admin_users.id
+  /// Actor who triggered the change. Points to `users.id` (admins live in the
+  /// users table — `users.role` ∈ {ADMIN, SUPER_ADMIN, STAFF}). Nullable for
+  /// system / webhook-driven transitions (e.g. payment-succeeded → CONFIRMED).
+  changedBy String?     @map("changed_by") @db.Uuid
   createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz
 
-  order          Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  changedByAdmin AdminUser? @relation(fields: [changedBy], references: [id], onDelete: SetNull)
+  order         Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  changedByUser User? @relation("OrderStatusChanger", fields: [changedBy], references: [id], onDelete: SetNull)
 
   @@index([orderId, createdAt])
   @@map("order_status_history")

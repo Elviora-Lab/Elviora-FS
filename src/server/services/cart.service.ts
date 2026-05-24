@@ -74,7 +74,7 @@ function serializeCart(cart: Awaited<ReturnType<typeof cartRepo.findOrCreate>>) 
     imageUrl: item.product.images[0]?.imageUrl ?? '',
     unitPrice: Number(item.price),
     quantity: item.quantity,
-    currency: 'USD',
+    currency: 'PKR',
   }));
 
   const subtotal = lines.reduce((sum, l) => sum + l.unitPrice * l.quantity, 0);
@@ -87,7 +87,7 @@ function serializeCart(cart: Awaited<ReturnType<typeof cartRepo.findOrCreate>>) 
     shippingTotal: 0,
     taxTotal: 0,
     total: subtotal,
-    currency: 'USD',
+    currency: 'PKR',
     couponCode: null as string | null,
   };
 }

@@ -15,7 +15,7 @@ const sizeMap = {
   lg: 'text-xl',
 };
 
-export function Price({ amount, compareAt, currency = 'USD', size = 'md', className }: PriceProps) {
+export function Price({ amount, compareAt, currency = 'PKR', size = 'md', className }: PriceProps) {
   const onSale = typeof compareAt === 'number' && compareAt > amount;
   return (
     <span className={cn('inline-flex items-baseline gap-2', sizeMap[size], className)}>

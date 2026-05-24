@@ -17,7 +17,11 @@
       "WebFetch(domain:shebeauty.com.pk)",
       "Bash(file public/logo*)",
       "Bash(mkdir -p \"src/app/\\(shop\\)/checkout/success/[orderId]\")",
-      "Bash(mkdir -p \"src/app/\\(shop\\)/account/orders/[orderId]\")"
+      "Bash(mkdir -p \"src/app/\\(shop\\)/account/orders/[orderId]\")",
+      "Bash(python3 -)",
+      "Bash(grep -rln 'over [$]75' src/)",
+      "Bash(grep -n 'over \\\\$75' \"src/app/\\(shop\\)/products/[slug]/page.tsx\" \"src/app/\\(shop\\)/products/[slug]/_components/product-purchase.tsx\")",
+      "Bash(grep -rn '\\\\$75' src/)"
     ],
     "additionalDirectories": [
       "/Users/hshahir/Desktop/Elviora/Elviora-FS/src/app/api/v1/products",

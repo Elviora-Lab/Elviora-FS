@@ -113,7 +113,7 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
                 isActive: v.isActive,
               }))}
               comparePrice={product.comparePrice ? Number(product.comparePrice) : undefined}
-              currency="USD"
+              currency="PKR"
               fallbackPrice={startingPrice}
               outOfStock={totalStock === 0}
             />
@@ -159,8 +159,8 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
               <AccordionItem value="shipping">
                 <AccordionTrigger>Shipping &amp; returns</AccordionTrigger>
                 <AccordionContent>
-                  Complimentary shipping on orders over $75. Free 30-day returns on all unopened
-                  products.
+                  Complimentary shipping on orders over Rs 15,000. Free 30-day returns on all
+                  unopened products.
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
@@ -197,7 +197,7 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
             description: product.shortDescription ?? product.fullDescription ?? '',
             imageUrl: primaryImage ?? '',
             price: startingPrice,
-            currency: 'USD',
+            currency: 'PKR',
             inStock: totalStock > 0,
             brand: product.brand?.name,
           })}

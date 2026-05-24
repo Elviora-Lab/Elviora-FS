@@ -30,7 +30,7 @@ export default function CategoriesIndexPage() {
             <Link
               key={cat.href}
               href={cat.href}
-              className="group relative flex aspect-[4/5] flex-col justify-end overflow-hidden rounded-md bg-gradient-pearl p-6 transition-shadow hover:shadow-card"
+              className="surface-pearl group relative flex aspect-[4/5] flex-col justify-end overflow-hidden rounded-md p-6 transition-shadow hover:shadow-card"
             >
               <div className="absolute inset-0 bg-gradient-to-t from-foreground/15 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
               <div className="relative flex flex-col gap-1">
