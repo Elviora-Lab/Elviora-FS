@@ -47,7 +47,7 @@ export function SiteHeader({ className }: { className?: string }) {
             <Link
               key={item.href}
               href={item.href}
-              className="text-xs uppercase tracking-[0.14em] text-foreground/80 transition-colors hover:text-foreground"
+              className="rounded text-xs uppercase tracking-[0.14em] text-foreground/90 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               {item.label}
             </Link>

@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { motion, useReducedMotion } from 'framer-motion';
 import { Heart } from 'lucide-react';
 
 import { routes } from '@/config/routes';
@@ -85,22 +86,7 @@ export function ProductCard({
         </div>
 
         {onWishlistToggle ? (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              onWishlistToggle(product.id);
-            }}
-            className={cn(
-              'absolute right-3 top-3 grid size-9 place-items-center rounded-full',
-              'border border-border bg-background/80 backdrop-blur-md',
-              'opacity-0 transition-opacity duration-300 group-hover:opacity-100',
-              wishlisted && 'opacity-100',
-            )}
-            aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-          >
-            <Heart className={cn('size-4', wishlisted && 'fill-destructive text-destructive')} />
-          </button>
+          <WishlistButton wishlisted={wishlisted} onToggle={() => onWishlistToggle(product.id)} />
         ) : null}
       </Link>
 
@@ -123,6 +109,44 @@ export function ProductCard({
         />
       </div>
     </article>
+  );
+}
+
+/**
+ * Wishlist heart with three improvements over the previous CSS-only version:
+ *  - Visible at rest on touch devices (no hover state on phones).
+ *  - Subtle tap pulse for tactile feedback.
+ *  - Visible focus ring for keyboard users.
+ */
+function WishlistButton({ wishlisted, onToggle }: { wishlisted?: boolean; onToggle: () => void }) {
+  const prefersReduced = useReducedMotion();
+  return (
+    <motion.button
+      type="button"
+      onClick={(e) => {
+        e.preventDefault();
+        onToggle();
+      }}
+      whileTap={prefersReduced ? undefined : { scale: 0.88 }}
+      className={cn(
+        'absolute right-3 top-3 grid size-9 place-items-center rounded-full',
+        'border border-border bg-background/85 backdrop-blur-md',
+        // Always visible on touch; hover-revealed on lg+.
+        'opacity-100 lg:opacity-0 lg:group-hover:opacity-100',
+        'transition-opacity duration-300',
+        'focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+        wishlisted && 'lg:opacity-100',
+      )}
+      aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+      aria-pressed={!!wishlisted}
+    >
+      <Heart
+        className={cn(
+          'size-4 transition-colors',
+          wishlisted ? 'fill-destructive text-destructive' : 'text-foreground/70',
+        )}
+      />
+    </motion.button>
   );
 }
 

@@ -109,15 +109,26 @@ export function ProductPurchase({
                   type="button"
                   onClick={() => !disabled && setVariantId(v.id)}
                   disabled={disabled}
+                  aria-pressed={active}
+                  aria-label={disabled ? `${v.label} (out of stock)` : v.label}
                   className={cn(
-                    'rounded-md border px-3 py-1.5 text-xs uppercase tracking-[0.12em] transition-all',
+                    'inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs uppercase tracking-[0.12em] transition-all',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                     active
                       ? 'border-foreground bg-foreground text-background'
                       : 'border-border hover:border-foreground/40',
-                    disabled && 'cursor-not-allowed line-through opacity-40',
+                    disabled && 'cursor-not-allowed line-through opacity-50',
                   )}
                 >
-                  {v.label}
+                  <span>{v.label}</span>
+                  {disabled ? (
+                    <span
+                      aria-hidden
+                      className="rounded-sm bg-destructive/15 px-1 text-[9px] font-medium tracking-wider text-destructive no-underline"
+                    >
+                      OUT
+                    </span>
+                  ) : null}
                 </button>
               );
             })}

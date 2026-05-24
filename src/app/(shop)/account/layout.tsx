@@ -2,6 +2,8 @@ import Link from 'next/link';
 
 import { accountNav } from '@/config/navigation';
 
+import { LogoutButton } from '@/features/auth/components/logout-button';
+
 export default function AccountLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="container py-12 lg:py-16">
@@ -18,6 +20,7 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
                 {item.label}
               </Link>
             ))}
+            <LogoutButton className="mt-2 w-full px-3 text-muted-foreground hover:text-foreground" />
           </nav>
         </aside>
         <div>{children}</div>

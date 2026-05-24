@@ -1,5 +1,7 @@
 import { cn } from '@/lib/cn';
 
+import { Reveal } from './reveal';
+
 type SectionProps = React.HTMLAttributes<HTMLElement> & {
   as?: 'section' | 'div' | 'article';
   size?: 'sm' | 'md' | 'lg';
@@ -29,7 +31,8 @@ export function SectionHeading({
   className?: string;
 }) {
   return (
-    <div
+    <Reveal
+      inView
       className={cn(
         'flex max-w-3xl flex-col gap-3',
         align === 'center' && 'mx-auto items-center text-center',
@@ -41,6 +44,6 @@ export function SectionHeading({
       {description ? (
         <p className="text-pretty text-base leading-relaxed text-muted-foreground">{description}</p>
       ) : null}
-    </div>
+    </Reveal>
   );
 }

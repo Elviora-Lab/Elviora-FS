@@ -3,6 +3,7 @@ import Link from 'next/link';
 
 import { buildMetadata } from '@/lib/seo/metadata';
 
+import { Reveal } from '@/design-system/primitives/reveal';
 import { Section, SectionHeading } from '@/design-system/primitives/section';
 import { Button } from '@/components/ui/button';
 
@@ -18,7 +19,7 @@ export default function HomePage() {
       {/* — Editorial hero — */}
       <Section as="section" size="lg" className="relative overflow-hidden bg-gradient-pearl">
         <div className="container relative grid items-center gap-12 lg:grid-cols-2">
-          <div className="flex max-w-xl flex-col gap-6">
+          <Reveal className="flex max-w-xl flex-col gap-6">
             <span className="eyebrow">The Spring Edit · 2026</span>
             <h1 className="editorial-heading text-display-xl md:text-display-2xl">
               Quietly luminous skin, every morning.
@@ -35,8 +36,11 @@ export default function HomePage() {
                 <Link href="/ai-skincare-assistant">Speak with our concierge</Link>
               </Button>
             </div>
-          </div>
-          <div className="relative aspect-[4/5] overflow-hidden rounded-lg bg-brand-pearl shadow-elevated">
+          </Reveal>
+          <Reveal
+            delay={0.1}
+            className="relative aspect-[4/5] overflow-hidden rounded-lg bg-brand-pearl shadow-elevated"
+          >
             <Image
               src="https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=1200&q=80"
               alt="Elviora editorial campaign"
@@ -45,7 +49,7 @@ export default function HomePage() {
               sizes="(min-width:1024px) 50vw, 100vw"
               className="object-cover"
             />
-          </div>
+          </Reveal>
         </div>
       </Section>
 
@@ -74,27 +78,28 @@ export default function HomePage() {
                 href: '/categories/fragrance',
                 img: 'https://images.unsplash.com/photo-1541643600914-78b084683601?auto=format&fit=crop&w=800&q=80',
               },
-            ].map((c) => (
-              <Link
-                key={c.href}
-                href={c.href}
-                className="group relative block aspect-[4/5] overflow-hidden rounded-md bg-muted"
-              >
-                <Image
-                  src={c.img}
-                  alt={c.name}
-                  fill
-                  sizes="(min-width:768px) 33vw, 100vw"
-                  className="object-cover transition-transform duration-700 ease-editorial group-hover:scale-[1.04]"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                <div className="absolute bottom-6 left-6 right-6 flex items-end justify-between text-background">
-                  <span className="font-serif text-2xl font-light">{c.name}</span>
-                  <span className="text-xs uppercase tracking-[0.14em] opacity-90 group-hover:opacity-100">
-                    Discover →
-                  </span>
-                </div>
-              </Link>
+            ].map((c, i) => (
+              <Reveal key={c.href} inView delay={i * 0.08}>
+                <Link
+                  href={c.href}
+                  className="group relative block aspect-[4/5] overflow-hidden rounded-md bg-muted"
+                >
+                  <Image
+                    src={c.img}
+                    alt={c.name}
+                    fill
+                    sizes="(min-width:768px) 33vw, 100vw"
+                    className="object-cover transition-transform duration-700 ease-editorial group-hover:scale-[1.04]"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/15 to-transparent" />
+                  <div className="absolute inset-x-6 bottom-6 flex items-end justify-between text-background">
+                    <span className="font-serif text-2xl font-light">{c.name}</span>
+                    <span className="text-xs uppercase tracking-[0.14em] opacity-95 group-hover:opacity-100">
+                      Discover →
+                    </span>
+                  </div>
+                </Link>
+              </Reveal>
             ))}
           </div>
         </div>

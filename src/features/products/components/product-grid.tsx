@@ -1,5 +1,7 @@
 'use client';
 
+import { motion, useReducedMotion, type Variants } from 'framer-motion';
+
 import { cn } from '@/lib/cn';
 
 import { ProductCard, ProductCardSkeleton } from '@/design-system/patterns/product-card';
@@ -16,6 +18,16 @@ type ProductGridProps = {
   wishlistedIds?: string[];
 };
 
+const container: Variants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.05, delayChildren: 0.05 } },
+};
+
+const item: Variants = {
+  hidden: { opacity: 0, y: 14 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } },
+};
+
 export function ProductGrid({
   products,
   loading,
@@ -24,6 +36,8 @@ export function ProductGrid({
   onWishlistToggle,
   wishlistedIds = [],
 }: ProductGridProps) {
+  const prefersReduced = useReducedMotion();
+
   if (loading && !products) {
     return (
       <div
@@ -45,19 +59,45 @@ export function ProductGrid({
     );
   }
 
+  // Cap motion to the first 12 items so very long grids don't stagger painfully
+  // far down the page; the rest mount instantly.
+  const STAGGER_LIMIT = 12;
+
+  if (prefersReduced) {
+    return (
+      <div
+        className={cn('grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 lg:grid-cols-4', className)}
+      >
+        {products.map((p, i) => (
+          <ProductCard
+            key={p.id}
+            product={p}
+            priority={i < 4}
+            onWishlistToggle={onWishlistToggle}
+            wishlisted={wishlistedIds.includes(p.id)}
+          />
+        ))}
+      </div>
+    );
+  }
+
   return (
-    <div
+    <motion.div
       className={cn('grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 lg:grid-cols-4', className)}
+      variants={container}
+      initial="hidden"
+      animate="show"
     >
       {products.map((p, i) => (
-        <ProductCard
-          key={p.id}
-          product={p}
-          priority={i < 4}
-          onWishlistToggle={onWishlistToggle}
-          wishlisted={wishlistedIds.includes(p.id)}
-        />
+        <motion.div key={p.id} variants={i < STAGGER_LIMIT ? item : undefined}>
+          <ProductCard
+            product={p}
+            priority={i < 4}
+            onWishlistToggle={onWishlistToggle}
+            wishlisted={wishlistedIds.includes(p.id)}
+          />
+        </motion.div>
       ))}
-    </div>
+    </motion.div>
   );
 }

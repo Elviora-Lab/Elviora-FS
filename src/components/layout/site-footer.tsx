@@ -21,11 +21,11 @@ export function SiteFooter() {
                 name="email"
                 required
                 placeholder="Your email"
-                className="h-11 flex-1 rounded-md border border-border bg-transparent px-3.5 text-sm placeholder:text-muted-foreground/70 focus:border-foreground/40 focus:outline-none"
+                className="h-11 flex-1 rounded-md border border-border bg-background/60 px-3.5 text-sm placeholder:text-muted-foreground focus-visible:border-foreground/50 focus-visible:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               />
               <button
                 type="submit"
-                className="h-11 rounded-md bg-foreground px-5 text-xs uppercase tracking-[0.14em] text-background hover:opacity-90"
+                className="h-11 rounded-md bg-foreground px-5 text-xs uppercase tracking-[0.14em] text-background transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 Subscribe
               </button>

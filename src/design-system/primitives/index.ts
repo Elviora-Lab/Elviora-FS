@@ -5,4 +5,5 @@ export * from './pagination';
 export * from './price';
 export * from './quantity-selector';
 export * from './rating';
+export * from './reveal';
 export * from './section';
