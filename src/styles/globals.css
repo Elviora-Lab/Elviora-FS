@@ -1,0 +1,201 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------------------------------------------------------------
+   Elviora — Design Tokens (CSS variables)
+   ---------------------------------------------------------------
+   All values are HSL channels (no comma, no `hsl()`) so Tailwind can
+   apply opacity modifiers via `hsl(var(--token) / <alpha-value>)`.
+   --------------------------------------------------------------- */
+
+@layer base {
+  :root {
+    /* — Brand palette — */
+    --brand-ivory: 38 40% 96%;
+    --brand-pearl: 36 30% 92%;
+    --brand-champagne: 38 45% 80%;
+    --brand-gold: 36 55% 55%;
+    --brand-beige: 32 25% 78%;
+    --brand-charcoal: 220 12% 18%;
+    --brand-rose: 12 35% 78%;
+
+    /* — Semantic tokens (light) — */
+    --background: 38 40% 98%;
+    --foreground: 220 12% 14%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 12% 14%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 12% 14%;
+
+    --primary: 220 12% 18%;
+    --primary-foreground: 38 40% 96%;
+
+    --secondary: 36 30% 92%;
+    --secondary-foreground: 220 12% 18%;
+
+    --muted: 36 20% 94%;
+    --muted-foreground: 220 8% 42%;
+
+    --accent: 36 55% 55%;
+    --accent-foreground: 38 40% 98%;
+
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 152 50% 38%;
+    --success-foreground: 0 0% 100%;
+
+    --border: 32 20% 88%;
+    --input: 32 20% 88%;
+    --ring: 36 55% 55%;
+
+    --radius: 0.5rem;
+
+    /* — Typography — */
+    --font-serif: 'Cormorant Garamond', Georgia, serif;
+    --font-sans: 'Inter', system-ui, sans-serif;
+  }
+
+  .dark {
+    --background: 220 14% 8%;
+    --foreground: 38 30% 94%;
+
+    --card: 220 14% 10%;
+    --card-foreground: 38 30% 94%;
+
+    --popover: 220 14% 10%;
+    --popover-foreground: 38 30% 94%;
+
+    --primary: 38 40% 96%;
+    --primary-foreground: 220 12% 14%;
+
+    --secondary: 220 10% 16%;
+    --secondary-foreground: 38 30% 94%;
+
+    --muted: 220 10% 14%;
+    --muted-foreground: 38 15% 70%;
+
+    --accent: 36 55% 60%;
+    --accent-foreground: 220 14% 8%;
+
+    --destructive: 0 65% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 152 45% 45%;
+    --success-foreground: 0 0% 100%;
+
+    --border: 220 10% 18%;
+    --input: 220 10% 18%;
+    --ring: 36 55% 60%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply scroll-smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-background font-sans text-foreground;
+    font-feature-settings:
+      'rlig' 1,
+      'calt' 1,
+      'ss01' 1;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5 {
+    @apply font-serif tracking-tight;
+    font-feature-settings:
+      'liga' 1,
+      'dlig' 1;
+  }
+
+  ::selection {
+    @apply bg-brand-champagne/40 text-foreground;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  .container-luxe {
+    @apply container max-w-[var(--container-luxe,1440px)];
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .text-pretty {
+    text-wrap: pretty;
+  }
+
+  .editorial-heading {
+    @apply text-balance font-serif font-light tracking-tight;
+  }
+
+  .eyebrow {
+    @apply text-xs uppercase tracking-[0.18em] text-muted-foreground;
+  }
+
+  .surface-glass {
+    @apply border border-border/60 bg-background/70 backdrop-blur-xl backdrop-saturate-150;
+  }
+
+  .luxe-divider {
+    @apply h-px w-full bg-gradient-to-r from-transparent via-border to-transparent;
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+  .shimmer::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      hsl(var(--muted) / 0.6) 50%,
+      transparent 100%
+    );
+    animation: shimmer 1.6s infinite;
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "root": true,
+  "ignorePatterns": ["next-env.d.ts"],
+  "extends": ["next/core-web-vitals", "next/typescript", "prettier"],
+  "plugins": ["simple-import-sort"],
+  "rules": {
+    "simple-import-sort/imports": [
+      "warn",
+      {
+        "groups": [
+          ["^\\u0000"],
+          ["^node:"],
+          ["^react", "^next", "^@?\\w"],
+          ["^@/config", "^@/constants", "^@/types", "^@/schemas"],
+          ["^@/store", "^@/services", "^@/providers"],
+          ["^@/lib", "^@/utils", "^@/hooks"],
+          ["^@/design-system", "^@/components"],
+          ["^@/features", "^@/shared"],
+          ["^@/styles"],
+          ["^\\."],
+          ["^.+\\.s?css$"]
+        ]
+      }
+    ],
+    "simple-import-sort/exports": "warn",
+    "@typescript-eslint/no-unused-vars": [
+      "warn",
+      { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }
+    ],
+    "@typescript-eslint/consistent-type-imports": [
+      "warn",
+      { "prefer": "type-imports", "fixStyle": "inline-type-imports" }
+    ],
+    "react/self-closing-comp": "warn",
+    "react-hooks/exhaustive-deps": "warn"
+  }
+}

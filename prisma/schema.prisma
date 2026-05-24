@@ -1,0 +1,893 @@
+// =============================================================================
+//  Elviora — Database Schema
+//  Single source of truth (Prisma) → PostgreSQL.
+//
+//  Conventions:
+//   • Tables and columns are snake_case in the DB (via @@map / @map).
+//   • Primary keys are UUID v4 generated DB-side (gen_random_uuid()).
+//   • Money fields use Decimal(12,2) for storefront and 6 decimals for FX rates.
+//   • All timestamps are TIMESTAMPTZ — store UTC, render in user locale.
+//   • Foreign keys are explicitly indexed (Postgres does not index FKs by default).
+//   • onDelete: Cascade for owned children; SetNull for soft references
+//     (e.g. order_items keep their snapshot when product is removed).
+//   • Composite uniques and partial indexes are used to guard data integrity
+//     (one default address per user, one active cart per session, etc).
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+  // Output to the default node_modules location keeps imports portable.
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+//  ENUMS — business-state vocabularies
+// =============================================================================
+
+enum UserRole {
+  CUSTOMER
+  VIP
+  STAFF
+
+  @@map("user_role")
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
+  EDITOR
+  FULFILLMENT
+  SUPPORT
+
+  @@map("admin_role")
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  RETURNED
+  REFUNDED
+
+  @@map("order_status")
+}
+
+enum PaymentStatus {
+  PENDING
+  AUTHORIZED
+  PAID
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+  VOIDED
+
+  @@map("payment_status")
+}
+
+enum PaymentMethod {
+  CARD
+  PAYPAL
+  APPLE_PAY
+  GOOGLE_PAY
+  KLARNA
+  AFTERPAY
+  BANK_TRANSFER
+  COD
+
+  @@map("payment_method")
+}
+
+enum ShipmentStatus {
+  PENDING
+  LABEL_CREATED
+  IN_TRANSIT
+  OUT_FOR_DELIVERY
+  DELIVERED
+  RETURNED
+  FAILED
+
+  @@map("shipment_status")
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+  FREE_SHIPPING
+
+  @@map("discount_type")
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAUSED
+  CANCELLED
+  EXPIRED
+
+  @@map("subscription_status")
+}
+
+enum LoyaltyTxType {
+  EARNED
+  REDEEMED
+  EXPIRED
+  ADJUSTMENT
+  REFERRAL
+
+  @@map("loyalty_tx_type")
+}
+
+enum NotificationType {
+  ORDER_UPDATE
+  PROMOTION
+  REVIEW_REQUEST
+  SYSTEM
+  LOYALTY
+  ABANDONED_CART
+  NEW_PRODUCT
+
+  @@map("notification_type")
+}
+
+// =============================================================================
+//  IDENTITY & ACCESS
+// =============================================================================
+
+/// End-customers of the storefront. Operators live in `admin_users`.
+model User {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  firstName    String?   @map("first_name") @db.VarChar(80)
+  lastName     String?   @map("last_name") @db.VarChar(80)
+  email        String    @unique @db.VarChar(255)
+  phone        String?   @db.VarChar(32)
+  passwordHash String    @map("password_hash") @db.VarChar(255)
+  role         UserRole  @default(CUSTOMER)
+  isVerified   Boolean   @default(false) @map("is_verified")
+  profileImage String?   @map("profile_image")
+  lastLoginAt  DateTime? @map("last_login_at") @db.Timestamptz
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  addresses       UserAddress[]
+  carts           Cart[]
+  wishlists       Wishlist[]
+  orders          Order[]
+  reviews         Review[]
+  notifications   Notification[]
+  recentlyViewed  RecentlyViewedProduct[]
+  searchLogs      SearchLog[]
+  viewLogs        ProductViewLog[]
+  loyaltyPoints   LoyaltyPoint[]
+  couponUsages    CouponUsage[]
+  subscriptions   Subscription[]
+  aiAssessments   AiSkinAssessment[]
+  referralsMade   Referral[]              @relation("ReferrerRelation")
+  referralsGotten Referral[]              @relation("ReferredRelation")
+
+  @@index([role])
+  @@index([createdAt])
+  @@map("users")
+}
+
+/// Saved shipping / billing addresses. A user may have many; exactly one
+/// per user may be flagged default (enforced by a partial unique index).
+model UserAddress {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  fullName     String   @map("full_name") @db.VarChar(160)
+  phone        String?  @db.VarChar(32)
+  country      String   @db.VarChar(2) // ISO-3166 alpha-2
+  city         String   @db.VarChar(120)
+  area         String?  @db.VarChar(160)
+  addressLine1 String   @map("address_line_1") @db.VarChar(255)
+  addressLine2 String?  @map("address_line_2") @db.VarChar(255)
+  postalCode   String?  @map("postal_code") @db.VarChar(20)
+  isDefault    Boolean  @default(false) @map("is_default")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // One default address per user — enforced at the DB layer.
+  @@unique([userId, isDefault], map: "uq_user_default_address")
+  @@index([userId])
+  @@map("user_addresses")
+}
+
+/// Operators (back-office). Separated from `users` so we can apply distinct
+/// security policies (MFA, IP restriction, narrower password rules).
+model AdminUser {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String    @db.VarChar(160)
+  email        String    @unique @db.VarChar(255)
+  passwordHash String    @map("password_hash") @db.VarChar(255)
+  role         AdminRole @default(EDITOR)
+  isActive     Boolean   @default(true) @map("is_active")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  activityLogs       AdminActivityLog[]
+  orderStatusChanges OrderStatusHistory[]
+
+  @@index([role])
+  @@map("admin_users")
+}
+
+/// Append-only audit log for back-office actions.
+model AdminActivityLog {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  adminUserId String   @map("admin_user_id") @db.Uuid
+  action      String   @db.VarChar(64) // e.g. "update", "delete"
+  module      String   @db.VarChar(64) // e.g. "products", "orders"
+  description String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  adminUser AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId])
+  @@index([module, createdAt])
+  @@map("admin_activity_logs")
+}
+
+// =============================================================================
+//  CATALOG
+// =============================================================================
+
+/// Self-referential category tree (Skincare → Serums → Vitamin C, etc).
+model Category {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  parentId    String?  @map("parent_id") @db.Uuid
+  name        String   @db.VarChar(160)
+  slug        String   @unique @db.VarChar(180)
+  description String?  @db.Text
+  image       String?
+  isActive    Boolean  @default(true) @map("is_active")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  parent   Category?  @relation("CategoryParent", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[] @relation("CategoryParent")
+  products Product[]
+
+  @@index([parentId])
+  @@index([isActive, sortOrder])
+  @@map("categories")
+}
+
+model Brand {
+  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String  @db.VarChar(160)
+  slug        String  @unique @db.VarChar(180)
+  logo        String?
+  description String? @db.Text
+  isActive    Boolean @default(true) @map("is_active")
+
+  products Product[]
+
+  @@index([isActive])
+  @@map("brands")
+}
+
+/// Master product. SKU/barcode/slug are all unique. Pricing here is the
+/// "from" price; actual transactable price lives on `product_variants`.
+model Product {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  categoryId       String?  @map("category_id") @db.Uuid
+  brandId          String?  @map("brand_id") @db.Uuid
+  name             String   @db.VarChar(255)
+  slug             String   @unique @db.VarChar(255)
+  shortDescription String?  @map("short_description") @db.VarChar(500)
+  fullDescription  String?  @map("full_description") @db.Text
+  sku              String   @unique @db.VarChar(80)
+  barcode          String?  @unique @db.VarChar(64)
+  price            Decimal  @db.Decimal(12, 2)
+  comparePrice     Decimal? @map("compare_price") @db.Decimal(12, 2)
+  costPrice        Decimal? @map("cost_price") @db.Decimal(12, 2)
+  isFeatured       Boolean  @default(false) @map("is_featured")
+  isActive         Boolean  @default(true) @map("is_active")
+  seoTitle         String?  @map("seo_title") @db.VarChar(255)
+  seoDescription   String?  @map("seo_description") @db.VarChar(500)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  category       Category?               @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  brand          Brand?                  @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  variants       ProductVariant[]
+  images         ProductImage[]
+  tagMappings    ProductTagMapping[]
+  skinConcerns   ProductSkinConcern[]
+  ingredients    ProductIngredient[]
+  cartItems      CartItem[]
+  orderItems     OrderItem[]
+  wishlists      Wishlist[]
+  reviews        Review[]
+  recentlyViewed RecentlyViewedProduct[]
+  viewLogs       ProductViewLog[]
+
+  // CHECK constraints — non-negative pricing.
+  @@index([categoryId])
+  @@index([brandId])
+  @@index([isActive])
+  @@index([isFeatured, isActive])
+  @@index([createdAt])
+  // Trigram index is added in a follow-up migration for fuzzy name search.
+  @@map("products")
+}
+
+/// A purchasable variant of a product: 30ml / 50ml, shade "Rose", etc.
+/// Stock is held here, not on the master product.
+model ProductVariant {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  productId     String   @map("product_id") @db.Uuid
+  size          String?  @db.VarChar(64)
+  shade         String?  @db.VarChar(64)
+  fragrance     String?  @db.VarChar(64)
+  sku           String   @unique @db.VarChar(80)
+  price         Decimal  @db.Decimal(12, 2)
+  stockQuantity Int      @default(0) @map("stock_quantity")
+  weight        Decimal? @db.Decimal(8, 3) // kilograms — for shipping rate calc
+  isActive      Boolean  @default(true) @map("is_active")
+
+  product    Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  images     ProductImage[]
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+
+  @@index([productId])
+  @@index([isActive])
+  @@index([stockQuantity])
+  @@map("product_variants")
+}
+
+/// Product gallery. Image may be attached to a variant (e.g. swatch) or to
+/// the master product (lifestyle, packshot).
+model ProductImage {
+  id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  productId String  @map("product_id") @db.Uuid
+  variantId String? @map("variant_id") @db.Uuid
+  imageUrl  String  @map("image_url")
+  altText   String? @map("alt_text") @db.VarChar(255)
+  isPrimary Boolean @default(false) @map("is_primary")
+  sortOrder Int     @default(0) @map("sort_order")
+
+  product Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@index([productId, sortOrder])
+  @@index([variantId])
+  @@map("product_images")
+}
+
+/// Free-form, merchandiser-controlled product tags ("New", "Vegan", "Editor's pick").
+model ProductTag {
+  id   String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name String @db.VarChar(80)
+  slug String @unique @db.VarChar(100)
+
+  productMappings ProductTagMapping[]
+
+  @@map("product_tags")
+}
+
+model ProductTagMapping {
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  productId String @map("product_id") @db.Uuid
+  tagId     String @map("tag_id") @db.Uuid
+
+  product Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tag     ProductTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, tagId], map: "uq_product_tag")
+  @@index([tagId])
+  @@map("product_tag_mappings")
+}
+
+// =============================================================================
+//  COSMETICS-SPECIFIC ATTRIBUTES
+// =============================================================================
+
+/// Skincare concerns powering filters and the AI assistant
+/// (Acne, Hyperpigmentation, Aging, Sensitivity, ...).
+model SkinConcern {
+  id   String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name String @db.VarChar(120)
+  slug String @unique @db.VarChar(140)
+
+  products ProductSkinConcern[]
+
+  @@map("skin_concerns")
+}
+
+model ProductSkinConcern {
+  id            String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  productId     String @map("product_id") @db.Uuid
+  skinConcernId String @map("skin_concern_id") @db.Uuid
+
+  product     Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  skinConcern SkinConcern @relation(fields: [skinConcernId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, skinConcernId], map: "uq_product_skin_concern")
+  @@index([skinConcernId])
+  @@map("product_skin_concerns")
+}
+
+/// INCI ingredient registry — feeds product detail pages and "free from" filters.
+model Ingredient {
+  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String  @db.VarChar(160)
+  slug        String  @unique @db.VarChar(180)
+  description String? @db.Text
+
+  products ProductIngredient[]
+
+  @@map("ingredients")
+}
+
+model ProductIngredient {
+  id           String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  productId    String @map("product_id") @db.Uuid
+  ingredientId String @map("ingredient_id") @db.Uuid
+
+  product    Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, ingredientId], map: "uq_product_ingredient")
+  @@index([ingredientId])
+  @@map("product_ingredients")
+}
+
+// =============================================================================
+//  COMMERCE — Cart, Wishlist
+// =============================================================================
+
+/// A cart belongs to a logged-in user OR (for guests) a session_id.
+/// Exactly one is required — enforced by a CHECK constraint at the DB layer.
+model Cart {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String?  @map("user_id") @db.Uuid
+  sessionId String?  @map("session_id") @db.VarChar(80)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  user  User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items CartItem[]
+
+  @@unique([userId], map: "uq_user_active_cart")
+  @@unique([sessionId], map: "uq_session_active_cart")
+  @@index([updatedAt])
+  @@map("carts")
+}
+
+/// Cart line. `price` is the price snapshot at time-of-add — protects the
+/// shopper from price changes between viewing and checkout.
+model CartItem {
+  id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cartId    String  @map("cart_id") @db.Uuid
+  productId String  @map("product_id") @db.Uuid
+  variantId String? @map("variant_id") @db.Uuid
+  quantity  Int     @default(1)
+  price     Decimal @db.Decimal(12, 2)
+
+  cart    Cart            @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  @@unique([cartId, productId, variantId], map: "uq_cart_line")
+  @@index([cartId])
+  @@index([productId])
+  @@map("cart_items")
+}
+
+model Wishlist {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  productId String   @map("product_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId], map: "uq_wishlist_user_product")
+  @@index([productId])
+  @@map("wishlists")
+}
+
+// =============================================================================
+//  COMMERCE — Orders, Payments, Shipments
+// =============================================================================
+
+/// Customer-facing order. `order_number` is a human-readable identifier
+/// (e.g. "ELV-2026-000142") generated in application code; `id` is the PK.
+model Order {
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String?       @map("user_id") @db.Uuid
+  orderNumber    String        @unique @map("order_number") @db.VarChar(32)
+  orderStatus    OrderStatus   @default(PENDING) @map("order_status")
+  paymentStatus  PaymentStatus @default(PENDING) @map("payment_status")
+  subtotal       Decimal       @db.Decimal(12, 2)
+  shippingFee    Decimal       @default(0) @map("shipping_fee") @db.Decimal(12, 2)
+  discountAmount Decimal       @default(0) @map("discount_amount") @db.Decimal(12, 2)
+  totalAmount    Decimal       @map("total_amount") @db.Decimal(12, 2)
+  currency       String        @default("USD") @db.VarChar(3)
+  notes          String?       @db.Text
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz
+
+  user          User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
+  items         OrderItem[]
+  statusHistory OrderStatusHistory[]
+  payments      Payment[]
+  shipments     Shipment[]
+  couponUsages  CouponUsage[]
+
+  @@index([userId])
+  @@index([orderStatus])
+  @@index([paymentStatus])
+  @@index([createdAt])
+  @@index([userId, createdAt])
+  @@map("orders")
+}
+
+/// Order line item. We snapshot `product_name`, `variant_name`, `unit_price`
+/// so the order is immutable even if the catalog changes later.
+model OrderItem {
+  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId     String  @map("order_id") @db.Uuid
+  productId   String? @map("product_id") @db.Uuid
+  variantId   String? @map("variant_id") @db.Uuid
+  productName String  @map("product_name") @db.VarChar(255)
+  variantName String? @map("variant_name") @db.VarChar(255)
+  quantity    Int
+  unitPrice   Decimal @map("unit_price") @db.Decimal(12, 2)
+  totalPrice  Decimal @map("total_price") @db.Decimal(12, 2)
+
+  order   Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+/// Status-change audit trail for every order.
+model OrderStatusHistory {
+  id        String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId   String      @map("order_id") @db.Uuid
+  status    OrderStatus
+  note      String?     @db.Text
+  changedBy String?     @map("changed_by") @db.Uuid // FK → admin_users.id
+  createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz
+
+  order          Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  changedByAdmin AdminUser? @relation(fields: [changedBy], references: [id], onDelete: SetNull)
+
+  @@index([orderId, createdAt])
+  @@map("order_status_history")
+}
+
+/// One row per payment attempt; an order can have multiple (auth, capture,
+/// refund) so we don't overwrite history.
+model Payment {
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId       String        @map("order_id") @db.Uuid
+  paymentMethod PaymentMethod @map("payment_method")
+  transactionId String?       @unique @map("transaction_id") @db.VarChar(120)
+  amount        Decimal       @db.Decimal(12, 2)
+  paymentStatus PaymentStatus @default(PENDING) @map("payment_status")
+  paidAt        DateTime?     @map("paid_at") @db.Timestamptz
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([paymentStatus])
+  @@map("payments")
+}
+
+/// Carrier dispatch + tracking. One order may ship in multiple parcels.
+model Shipment {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId        String         @map("order_id") @db.Uuid
+  courierName    String         @map("courier_name") @db.VarChar(120)
+  trackingNumber String?        @unique @map("tracking_number") @db.VarChar(120)
+  shipmentStatus ShipmentStatus @default(PENDING) @map("shipment_status")
+  shippedAt      DateTime?      @map("shipped_at") @db.Timestamptz
+  deliveredAt    DateTime?      @map("delivered_at") @db.Timestamptz
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([shipmentStatus])
+  @@map("shipments")
+}
+
+// =============================================================================
+//  REVIEWS & UGC
+// =============================================================================
+
+/// Product review. Star rating is constrained to 1-5 via CHECK.
+/// `is_verified_purchase` is set at write time after looking up the order_items.
+model Review {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId             String   @map("user_id") @db.Uuid
+  productId          String   @map("product_id") @db.Uuid
+  rating             Int
+  title              String?  @db.VarChar(200)
+  comment            String?  @db.Text
+  isVerifiedPurchase Boolean  @default(false) @map("is_verified_purchase")
+  isApproved         Boolean  @default(false) @map("is_approved") // moderation gate
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  images  ReviewImage[]
+
+  @@unique([userId, productId], map: "uq_review_user_product")
+  @@index([productId, isApproved])
+  @@index([createdAt])
+  @@map("reviews")
+}
+
+model ReviewImage {
+  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reviewId String @map("review_id") @db.Uuid
+  imageUrl String @map("image_url")
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@index([reviewId])
+  @@map("review_images")
+}
+
+// =============================================================================
+//  MARKETING — Coupons, Banners, Blog, Newsletter
+// =============================================================================
+
+model Coupon {
+  id                 String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code               String       @unique @db.VarChar(64)
+  discountType       DiscountType @map("discount_type")
+  discountValue      Decimal      @map("discount_value") @db.Decimal(12, 2)
+  minimumOrderAmount Decimal?     @map("minimum_order_amount") @db.Decimal(12, 2)
+  maximumDiscount    Decimal?     @map("maximum_discount") @db.Decimal(12, 2)
+  usageLimit         Int?         @map("usage_limit") // null = unlimited
+  usedCount          Int          @default(0) @map("used_count")
+  startsAt           DateTime?    @map("starts_at") @db.Timestamptz
+  expiresAt          DateTime?    @map("expires_at") @db.Timestamptz
+  isActive           Boolean      @default(true) @map("is_active")
+
+  usages CouponUsage[]
+
+  @@index([isActive, expiresAt])
+  @@map("coupons")
+}
+
+/// One row per redemption — used to enforce per-user usage caps.
+model CouponUsage {
+  id       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  couponId String   @map("coupon_id") @db.Uuid
+  userId   String?  @map("user_id") @db.Uuid
+  orderId  String?  @map("order_id") @db.Uuid
+  usedAt   DateTime @default(now()) @map("used_at") @db.Timestamptz
+
+  coupon Coupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  order  Order? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([couponId])
+  @@index([userId])
+  @@index([orderId])
+  @@map("coupon_usages")
+}
+
+model Banner {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title       String    @db.VarChar(200)
+  imageUrl    String    @map("image_url")
+  redirectUrl String?   @map("redirect_url")
+  position    String    @db.VarChar(64) // e.g. "homepage_hero", "category_top"
+  isActive    Boolean   @default(true) @map("is_active")
+  startsAt    DateTime? @map("starts_at") @db.Timestamptz
+  expiresAt   DateTime? @map("expires_at") @db.Timestamptz
+
+  @@index([position, isActive])
+  @@index([isActive, expiresAt])
+  @@map("banners")
+}
+
+model BlogCategory {
+  id   String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name String @db.VarChar(160)
+  slug String @unique @db.VarChar(180)
+
+  posts BlogPost[]
+
+  @@map("blog_categories")
+}
+
+model BlogPost {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  categoryId     String?   @map("category_id") @db.Uuid
+  title          String    @db.VarChar(255)
+  slug           String    @unique @db.VarChar(255)
+  thumbnail      String?
+  content        String    @db.Text
+  seoTitle       String?   @map("seo_title") @db.VarChar(255)
+  seoDescription String?   @map("seo_description") @db.VarChar(500)
+  isPublished    Boolean   @default(false) @map("is_published")
+  publishedAt    DateTime? @map("published_at") @db.Timestamptz
+
+  category BlogCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([categoryId])
+  @@index([isPublished, publishedAt])
+  @@map("blog_posts")
+}
+
+model NewsletterSubscriber {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email        String   @unique @db.VarChar(255)
+  isActive     Boolean  @default(true) @map("is_active")
+  subscribedAt DateTime @default(now()) @map("subscribed_at") @db.Timestamptz
+
+  @@index([isActive])
+  @@map("newsletter_subscribers")
+}
+
+// =============================================================================
+//  NOTIFICATIONS
+// =============================================================================
+
+model Notification {
+  id        String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
+  type      NotificationType
+  title     String           @db.VarChar(200)
+  message   String           @db.Text
+  isRead    Boolean          @default(false) @map("is_read")
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead, createdAt])
+  @@map("notifications")
+}
+
+// =============================================================================
+//  ANALYTICS — write-heavy logs
+// =============================================================================
+
+/// Last-N viewed products per user. App layer trims to a fixed window
+/// (e.g. 20 newest) on insert.
+model RecentlyViewedProduct {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  productId String   @map("product_id") @db.Uuid
+  viewedAt  DateTime @default(now()) @map("viewed_at") @db.Timestamptz
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId], map: "uq_recently_viewed_user_product")
+  @@index([userId, viewedAt(sort: Desc)])
+  @@map("recently_viewed_products")
+}
+
+/// Search-bar query log. Powers "trending" and zero-result analysis.
+model SearchLog {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String?  @map("user_id") @db.Uuid
+  keyword     String   @db.VarChar(255)
+  resultCount Int      @default(0) @map("result_count")
+  searchedAt  DateTime @default(now()) @map("searched_at") @db.Timestamptz
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([keyword])
+  @@index([searchedAt])
+  @@index([userId, searchedAt])
+  @@map("search_logs")
+}
+
+/// Granular pageview log — high volume. Consider partitioning by month
+/// in production via a migration that adds PARTITION BY RANGE (viewed_at).
+model ProductViewLog {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String?  @map("user_id") @db.Uuid
+  productId String   @map("product_id") @db.Uuid
+  viewedAt  DateTime @default(now()) @map("viewed_at") @db.Timestamptz
+
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, viewedAt])
+  @@index([userId, viewedAt])
+  @@map("product_view_logs")
+}
+
+// =============================================================================
+//  LOYALTY, REFERRALS, SUBSCRIPTIONS
+// =============================================================================
+
+/// Append-only ledger of points changes. Current balance =
+/// SUM(points) for a user. Type makes the change semantically queryable.
+model LoyaltyPoint {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String        @map("user_id") @db.Uuid
+  points          Int // signed: + earned / − redeemed
+  transactionType LoyaltyTxType @map("transaction_type")
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("loyalty_points")
+}
+
+model Referral {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  referrerUserId String   @map("referrer_user_id") @db.Uuid
+  referredUserId String   @map("referred_user_id") @db.Uuid
+  rewardPoints   Int      @default(0) @map("reward_points")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  referrer User @relation("ReferrerRelation", fields: [referrerUserId], references: [id], onDelete: Cascade)
+  referred User @relation("ReferredRelation", fields: [referredUserId], references: [id], onDelete: Cascade)
+
+  @@unique([referredUserId], map: "uq_referred_user_once")
+  @@index([referrerUserId])
+  @@map("referrals")
+}
+
+model Subscription {
+  id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId           String             @map("user_id") @db.Uuid
+  subscriptionType String             @map("subscription_type") @db.VarChar(64) // e.g. "ELVIORA_INSIDER_ANNUAL"
+  startDate        DateTime           @map("start_date") @db.Timestamptz
+  endDate          DateTime?          @map("end_date") @db.Timestamptz
+  status           SubscriptionStatus @default(ACTIVE)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([endDate])
+  @@map("subscriptions")
+}
+
+// =============================================================================
+//  AI SKINCARE ASSISTANT
+// =============================================================================
+
+/// Captured assessment from the AI concierge — feeds personalization.
+/// `concerns` and `recommendations` are JSON for flexibility as the model
+/// evolves; promote to relational tables when shape stabilizes.
+model AiSkinAssessment {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String?  @map("user_id") @db.Uuid
+  skinType        String?  @map("skin_type") @db.VarChar(32) // e.g. "oily", "combination"
+  concerns        Json?
+  recommendations Json?
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@map("ai_skin_assessments")
+}
+
+// =============================================================================
+//  SYSTEM — Settings (KV store)
+// =============================================================================
+
+model Setting {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key       String   @unique @db.VarChar(120)
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("settings")
+}

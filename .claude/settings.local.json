@@ -1,0 +1,6 @@
+{
+  "permissions": {
+    "allow": ["Bash(mkdir -p \\\\ *)", "Bash(npm install *)", "Bash(npm run *)"],
+    "additionalDirectories": ["/Users/hshahir/Desktop/Elviora/Elviora-FS/src/app/(shop)/products"]
+  }
+}

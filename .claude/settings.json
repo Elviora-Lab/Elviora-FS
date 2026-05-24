@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm ls *)",
+      "Bash(node -e ' *)",
+      "Bash(NODE_OPTIONS='--max-old-space-size=4096' npx next build --no-mangling)"
+    ]
+  }
+}
