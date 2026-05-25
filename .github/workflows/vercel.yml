@@ -1,0 +1,127 @@
+# =============================================================================
+#  Vercel Deploy via GitHub Actions
+# =============================================================================
+#
+#  Runs the Vercel CLI on GitHub's infra so we own the deploy pipeline instead
+#  of delegating to Vercel's git integration. Two flows:
+#
+#    • push to `main`          → production deploy (overwrites elviora.vercel.app)
+#    • pull_request            → preview deploy (unique URL commented on the PR)
+#
+#  Required GitHub repository secrets (Settings → Secrets and variables → Actions):
+#
+#    VERCEL_TOKEN        Personal access token from
+#                        https://vercel.com/account/tokens   (Scope: Full Account)
+#    VERCEL_ORG_ID       From `.vercel/project.json` after `vercel link`
+#    VERCEL_PROJECT_ID   Same file
+#
+#  Initial setup (one-time, locally):
+#    npm i -g vercel
+#    vercel login
+#    vercel link            # picks the existing project; writes .vercel/project.json
+#    cat .vercel/project.json   # copy orgId + projectId into GitHub secrets
+#
+#  All app env vars (DATABASE_URL, JWT_SECRET, etc) live in the Vercel project
+#  itself — they're pulled into the build runner by `vercel pull` below, not
+#  duplicated as GitHub secrets.
+# =============================================================================
+
+name: Vercel Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+# Cancel any in-flight deploy for the same ref when a new commit lands.
+concurrency:
+  group: vercel-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Production deploy — only on push to main
+  # ---------------------------------------------------------------------------
+  deploy-production:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull production env from Vercel
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build (runs prisma generate + prisma migrate deploy + next build)
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy to Vercel
+        id: deploy
+        run: |
+          url=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "🚀 Production deployed: $url"
+
+  # ---------------------------------------------------------------------------
+  # Preview deploy — on every PR (incl. external forks if they have token access)
+  # ---------------------------------------------------------------------------
+  deploy-preview:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    environment:
+      name: preview
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull preview env from Vercel
+        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build
+        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy preview to Vercel
+        id: deploy
+        run: |
+          url=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "🔍 Preview deployed: $url"
+
+      - name: Comment preview URL on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const url = '${{ steps.deploy.outputs.url }}';
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `🚀 **Preview deployed**\n\n${url}\n\n_Auto-rebuilt on every push to this PR._`,
+            });
