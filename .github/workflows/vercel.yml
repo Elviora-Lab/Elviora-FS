@@ -40,8 +40,14 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  # The Vercel CLI auto-reads these three from the environment, so we don't
+  # need to pass them as flags. Passing `--token=$VAR` inline was breaking
+  # whenever the secret resolved to empty (CLI then parsed the next arg as
+  # the token value, producing "Must not contain: '-', '.'" errors on flags
+  # like `--prod`).
   VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
   VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+  VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -67,15 +73,13 @@ jobs:
         run: npm install --global vercel@latest
 
       - name: Pull production env from Vercel
-        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-
+        run: vercel pull --yes --environment=production
       - name: Build (runs prisma generate + prisma migrate deploy + next build)
-        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
-
+        run: vercel build --prod
       - name: Deploy to Vercel
         id: deploy
         run: |
-          url=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
+          url=$(vercel deploy --prebuilt --prod)
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "🚀 Production deployed: $url"
 
@@ -102,15 +106,13 @@ jobs:
         run: npm install --global vercel@latest
 
       - name: Pull preview env from Vercel
-        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
-
+        run: vercel pull --yes --environment=preview
       - name: Build
-        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
-
+        run: vercel build
       - name: Deploy preview to Vercel
         id: deploy
         run: |
-          url=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
+          url=$(vercel deploy --prebuilt)
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "🔍 Preview deployed: $url"
 
