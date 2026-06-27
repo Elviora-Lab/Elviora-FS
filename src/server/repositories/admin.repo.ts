@@ -112,6 +112,8 @@ export const adminProductsRepo = {
     return prisma.productVariant.update({
       where: { id: variantId },
       data: { stockQuantity },
+      // Include the parent slug so callers can invalidate the product cache.
+      include: { product: { select: { slug: true } } },
     });
   },
 };

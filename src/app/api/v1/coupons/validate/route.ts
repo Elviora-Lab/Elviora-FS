@@ -1,14 +1,37 @@
+import { z } from 'zod';
+
+import { getSession } from '@/server/auth/get-session';
+import { getOrCreateGuestId } from '@/server/auth/guest-session';
 import { createHandler } from '@/server/http/handler';
+import { parseJson } from '@/server/http/parse';
 import { apiSuccess } from '@/server/http/response';
+import { cartService } from '@/server/services/cart.service';
+import { couponsService } from '@/server/services/coupons.service';
 
 export const runtime = 'nodejs';
 
+const validateBody = z.object({ code: z.string().min(1).max(64) });
+
 /**
- * Validate a coupon against the current cart context.
- *
- * Scaffold — wire the service + repository following the patterns in
- * /api/v1/products and /api/v1/cart.
+ * Preview a coupon against the caller's current cart. Returns the computed
+ * discount so the UI can show the new total. The coupon is re-validated and its
+ * usage counter incremented atomically at checkout — this endpoint never
+ * mutates state.
  */
-export const GET = createHandler(async () => {
-  return apiSuccess({ items: [] }, { message: 'Not yet implemented' });
+export const POST = createHandler(async (req) => {
+  const { code } = await parseJson(req, validateBody);
+
+  const session = await getSession(req);
+  const sessionId = await getOrCreateGuestId();
+  const cart = await cartService.getCart({ userId: session?.sub ?? null, sessionId });
+
+  const { coupon, discount } = await couponsService.evaluate(code, cart.subtotal);
+
+  return apiSuccess({
+    code: coupon.code,
+    discountType: coupon.discountType,
+    discount: Number(discount),
+    subtotal: cart.subtotal,
+    total: Math.max(0, cart.subtotal - Number(discount)),
+  });
 });

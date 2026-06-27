@@ -9,6 +9,7 @@ import { withAction } from '../_with-action';
 
 import { requireAdmin } from '@/server/auth/guards';
 import { adminProductsRepo } from '@/server/repositories/admin.repo';
+import { productsService } from '@/server/services/products.service';
 
 const productBody = z.object({
   name: z.string().min(2).max(255),
@@ -56,6 +57,9 @@ export const updateProduct = withAction(
       ...(data.categoryId ? { category: { connect: { id: data.categoryId } } } : {}),
       ...(data.brandId ? { brand: { connect: { id: data.brandId } } } : {}),
     });
+    // Drop the cached PDP (Redis + in-process) so price/availability edits show
+    // immediately instead of waiting out the 120s TTL.
+    await productsService.invalidate(product.slug);
     revalidatePath('/admin/products');
     revalidatePath(`/admin/products/${id}`);
     return product;
@@ -64,7 +68,9 @@ export const updateProduct = withAction(
 
 export const deleteProduct = withAction(async (input: { id: string }) => {
   await requireAdmin();
-  await adminProductsRepo.delete(input.id);
+  // delete() returns the removed row, so we still have its slug to invalidate.
+  const product = await adminProductsRepo.delete(input.id);
+  await productsService.invalidate(product.slug);
   revalidatePath('/admin/products');
   return { id: input.id };
 });
@@ -73,7 +79,8 @@ export const updateStock = withAction(
   async (input: { variantId: string; stockQuantity: number }) => {
     await requireAdmin();
     const stockQuantity = Math.max(0, Math.floor(input.stockQuantity));
-    await adminProductsRepo.updateVariantStock(input.variantId, stockQuantity);
+    const variant = await adminProductsRepo.updateVariantStock(input.variantId, stockQuantity);
+    await productsService.invalidate(variant.product.slug);
     revalidatePath('/admin/products');
     return { variantId: input.variantId, stockQuantity };
   },

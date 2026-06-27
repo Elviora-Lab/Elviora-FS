@@ -9,6 +9,7 @@ import { events } from '@/server/events';
 import { BadRequestError, NotFoundError } from '@/server/http/errors';
 import { cartRepo } from '@/server/repositories/cart.repo';
 import { ordersRepo } from '@/server/repositories/orders.repo';
+import { couponsService } from '@/server/services/coupons.service';
 
 const orderNumberAlphabet = customAlphabet('0123456789ABCDEFGHJKMNPQRSTVWXYZ', 8);
 const newOrderNumber = () => `ELV-${new Date().getFullYear()}-${orderNumberAlphabet()}`;
@@ -46,6 +47,7 @@ export const ordersService = {
     };
     currency?: string;
     notes?: string;
+    couponCode?: string;
   }) {
     return prisma
       .$transaction(async (tx) => {
@@ -58,17 +60,31 @@ export const ordersService = {
         if (cart.items.length === 0) throw new BadRequestError('Cart is empty');
 
         const currency = opts.currency ?? 'PKR';
+        // Accumulate money with Prisma.Decimal — never JS floats — so the stored
+        // totals exactly match the sum of line prices.
         const subtotal = cart.items.reduce(
-          (sum, item) => sum + Number(item.price) * item.quantity,
-          0,
+          (sum, item) => sum.add(new Prisma.Decimal(item.price).mul(item.quantity)),
+          new Prisma.Decimal(0),
         );
+
+        // Evaluate the coupon (if any) against the subtotal. Validation throws
+        // a 400; the usage count is incremented atomically further below.
+        let discount = new Prisma.Decimal(0);
+        let appliedCoupon: { id: string } | null = null;
+        if (opts.couponCode) {
+          const evaluation = await couponsService.evaluate(opts.couponCode, subtotal);
+          discount = evaluation.discount;
+          appliedCoupon = { id: evaluation.coupon.id };
+        }
+        const totalAmount = subtotal.minus(discount);
 
         const order = await tx.order.create({
           data: {
             userId: opts.userId,
             orderNumber: newOrderNumber(),
-            subtotal: new Prisma.Decimal(subtotal),
-            totalAmount: new Prisma.Decimal(subtotal),
+            subtotal,
+            discountAmount: discount,
+            totalAmount,
             currency,
             notes: opts.notes,
             shippingFullName: opts.shippingAddress.fullName,
@@ -87,7 +103,7 @@ export const ordersService = {
                 variantName: variantLabel(item.variant),
                 quantity: item.quantity,
                 unitPrice: item.price,
-                totalPrice: new Prisma.Decimal(Number(item.price) * item.quantity),
+                totalPrice: new Prisma.Decimal(item.price).mul(item.quantity),
               })),
             },
             statusHistory: { create: { status: 'PENDING' } },
@@ -95,14 +111,39 @@ export const ordersService = {
           include: { items: true },
         });
 
-        // Decrement stock for each variant.
+        // Decrement stock for each variant atomically. The `stockQuantity >=
+        // quantity` guard is part of the WHERE clause, so two concurrent
+        // checkouts of the last unit cannot both succeed — the loser's
+        // updateMany affects 0 rows and we roll the whole transaction back.
         for (const item of cart.items) {
           if (item.variantId) {
-            await tx.productVariant.update({
-              where: { id: item.variantId },
+            const { count } = await tx.productVariant.updateMany({
+              where: { id: item.variantId, stockQuantity: { gte: item.quantity } },
               data: { stockQuantity: { decrement: item.quantity } },
             });
+            if (count === 0) {
+              throw new BadRequestError(`Insufficient stock for ${item.product.name}`);
+            }
           }
+        }
+
+        // Redeem the coupon atomically. The column-comparison guard
+        // (`used_count < usage_limit`) lives in the WHERE so concurrent
+        // redemptions can't exceed the limit — if it affects 0 rows the coupon
+        // was exhausted/deactivated between validation and now, and we roll back.
+        if (appliedCoupon) {
+          const affected = await tx.$executeRaw`
+            UPDATE "coupons"
+            SET "used_count" = "used_count" + 1
+            WHERE "id" = ${appliedCoupon.id}::uuid
+              AND "is_active" = true
+              AND ("usage_limit" IS NULL OR "used_count" < "usage_limit")`;
+          if (affected === 0) {
+            throw new BadRequestError('This coupon is no longer available');
+          }
+          await tx.couponUsage.create({
+            data: { couponId: appliedCoupon.id, userId: opts.userId, orderId: order.id },
+          });
         }
 
         await tx.cartItem.deleteMany({ where: { cartId: cart.id } });

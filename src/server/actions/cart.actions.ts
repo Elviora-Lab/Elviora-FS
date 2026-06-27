@@ -7,6 +7,7 @@ import { withAction } from './_with-action';
 import { getSession } from '@/server/auth/get-session';
 import { getOrCreateGuestId } from '@/server/auth/guest-session';
 import { cartService } from '@/server/services/cart.service';
+import { couponsService } from '@/server/services/coupons.service';
 import { addLineBody, applyCouponBody, updateLineBody } from '@/server/validators/cart.schema';
 
 export const addToCart = withAction(async (input: { variantId: string; quantity?: number }) => {
@@ -32,7 +33,20 @@ export const updateCartLine = withAction(async (input: { lineId: string; quantit
 
 export const applyCoupon = withAction(async (input: { code: string }) => {
   const body = applyCouponBody.parse(input);
-  // Hook real coupon validation here.
+  const session = await getSession();
+  const sessionId = await getOrCreateGuestId();
+
+  // Validate against the caller's current cart subtotal. Throws a 400 with a
+  // human reason if invalid; the discount is re-validated and the usage counter
+  // incremented atomically at checkout (ordersService.createFromCart).
+  const cart = await cartService.getCart({ userId: session?.sub ?? null, sessionId });
+  const { coupon, discount } = await couponsService.evaluate(body.code, cart.subtotal);
+
   revalidateTag('cart');
-  return { applied: true, code: body.code };
+  return {
+    applied: true,
+    code: coupon.code,
+    discount: Number(discount),
+    discountType: coupon.discountType,
+  };
 });
