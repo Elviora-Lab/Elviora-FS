@@ -143,3 +143,6 @@ vite.config.ts.timestamp-*
 .vite/
 .vercel
 .env*
+
+# Local catalog crawl dataset (input for prisma/import-shop-data.ts; ~31MB, not tracked)
+data/
