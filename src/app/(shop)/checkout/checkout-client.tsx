@@ -58,7 +58,7 @@ export function CheckoutClient({
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
-  const { clear: clearLocalCart } = useCart();
+  const { clear: clearLocalCart, cart: clientCart } = useCart();
 
   const initialAddressId = addresses.find((a) => a.isDefault)?.id ?? addresses[0]?.id ?? 'new';
   const [addressId, setAddressId] = useState<string>(initialAddressId);
@@ -106,6 +106,7 @@ export function CheckoutClient({
         ...(usingNewAddress ? { address: newAddress } : { addressId }),
         paymentMethod,
         notes: notes || undefined,
+        couponCode: clientCart.couponCode ?? undefined,
       });
       if (!result.success) {
         toast.error(result.message);

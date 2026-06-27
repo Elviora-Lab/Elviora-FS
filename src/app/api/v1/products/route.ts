@@ -1,3 +1,5 @@
+import { analyticsServer } from '@/server/analytics';
+import { getSession } from '@/server/auth/get-session';
 import { createHandler } from '@/server/http/handler';
 import { paginated, resolvePagination } from '@/server/http/pagination';
 import { parseQuery } from '@/server/http/parse';
@@ -26,6 +28,13 @@ export const GET = createHandler(async (req) => {
     pg.page,
     pg.pageSize,
   );
+
+  // Log real searches (a `q` term) for the admin "top searches" panel. Only the
+  // first page, so paging through results doesn't inflate counts. Best-effort.
+  if (q.q && q.q.trim() && pg.page === 1) {
+    const session = await getSession(req);
+    void analyticsServer.search(q.q.trim(), total, session?.sub ?? null);
+  }
 
   return apiSuccess(paginated(items, total, pg));
 });

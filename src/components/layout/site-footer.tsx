@@ -4,6 +4,7 @@ import { footerNav } from '@/config/navigation';
 import { siteConfig } from '@/config/site';
 
 import { BrandLockup } from '@/components/brand/brand-logo';
+import { NewsletterForm } from '@/components/layout/newsletter-form';
 
 export function SiteFooter() {
   return (
@@ -15,21 +16,7 @@ export function SiteFooter() {
             <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
               {siteConfig.description}
             </p>
-            <form className="mt-2 flex gap-2" action="/api/newsletter" method="post">
-              <input
-                type="email"
-                name="email"
-                required
-                placeholder="Your email"
-                className="h-11 flex-1 rounded-md border border-border bg-background/60 px-3.5 text-sm placeholder:text-muted-foreground focus-visible:border-foreground/50 focus-visible:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-              />
-              <button
-                type="submit"
-                className="h-11 rounded-md bg-foreground px-5 text-xs uppercase tracking-[0.14em] text-background transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-              >
-                Subscribe
-              </button>
-            </form>
+            <NewsletterForm />
           </div>
 
           {Object.entries(footerNav).map(([heading, items]) => (
