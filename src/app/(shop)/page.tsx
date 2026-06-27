@@ -8,6 +8,8 @@ import { Reveal } from '@/design-system/primitives/reveal';
 import { Section, SectionHeading } from '@/design-system/primitives/section';
 import { Button } from '@/components/ui/button';
 
+import { HeroShowcase } from './_components/hero-showcase';
+
 import { productsService } from '@/server/services/products.service';
 
 export const metadata = buildMetadata({
@@ -16,9 +18,11 @@ export const metadata = buildMetadata({
     'Elviora — a curated edit of high-pigment lips, second-skin foundation, and glass-finish nails. Cosmetics designed to wear like light.',
 });
 
+// ISR — the homepage is the same for everyone; revalidate periodically so new
+// bestsellers surface without rendering fresh on every request.
+export const revalidate = 300;
+
 // Editorial imagery (Unsplash, free for commercial use).
-const HERO_IMAGE =
-  'https://images.unsplash.com/photo-1515688594390-b649af70d282?auto=format&fit=crop&w=1400&q=85';
 const EDITORIAL_IMAGE =
   'https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&w=1600&q=85';
 
@@ -53,6 +57,18 @@ const CATEGORIES = [
 export default async function HomePage() {
   const { items: bestsellers } = await productsService.list({}, 'popular', 1, 8);
 
+  // Real, shoppable products power the animated hero showcase.
+  const heroProducts = bestsellers
+    .filter((p) => p.imageUrl)
+    .slice(0, 5)
+    .map((p) => ({
+      slug: p.slug,
+      name: p.name,
+      imageUrl: p.imageUrl,
+      price: p.price,
+      brandLine: p.brandLine,
+    }));
+
   return (
     <>
       {/* — Editorial hero — */}
@@ -84,7 +100,19 @@ export default async function HomePage() {
                 <Link href="/products?sort=popular">Bestsellers</Link>
               </Button>
             </div>
-            <dl className="mt-6 flex gap-8 text-sm">
+            {/* Quick category jump-off */}
+            <div className="flex flex-wrap gap-2">
+              {CATEGORIES.map((c) => (
+                <Link
+                  key={c.href}
+                  href={c.href}
+                  className="rounded-full border border-border/70 bg-background/40 px-4 py-1.5 text-xs uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground"
+                >
+                  {c.name}
+                </Link>
+              ))}
+            </div>
+            <dl className="mt-4 flex gap-8 text-sm">
               <div>
                 <dt className="font-serif text-2xl font-light text-foreground">266</dt>
                 <dd className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
@@ -105,18 +133,8 @@ export default async function HomePage() {
               </div>
             </dl>
           </Reveal>
-          <Reveal
-            delay={0.1}
-            className="relative aspect-[4/5] overflow-hidden rounded-lg bg-brand-pearl shadow-elevated"
-          >
-            <Image
-              src={HERO_IMAGE}
-              alt="Elviora — luminous editorial makeup"
-              fill
-              priority
-              sizes="(min-width:1024px) 50vw, 100vw"
-              className="object-cover"
-            />
+          <Reveal delay={0.1}>
+            <HeroShowcase products={heroProducts} />
           </Reveal>
         </div>
       </Section>
