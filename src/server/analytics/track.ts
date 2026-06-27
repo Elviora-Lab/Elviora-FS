@@ -23,6 +23,14 @@ export const analyticsServer = {
     }
   },
 
+  async cartAdd(productId: string, variantId: string | null, userId: string | null) {
+    try {
+      await prisma.cartEventLog.create({ data: { productId, variantId, userId } });
+    } catch {
+      /* best-effort */
+    }
+  },
+
   async recordRecentlyViewed(userId: string, productId: string) {
     try {
       await prisma.recentlyViewedProduct.upsert({

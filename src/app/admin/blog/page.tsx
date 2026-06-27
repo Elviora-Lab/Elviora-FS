@@ -1,17 +1,22 @@
 import { buildMetadata } from '@/lib/seo/metadata';
 
-export const metadata = buildMetadata({ title: 'Admin · Journal', noIndex: true });
+import { BlogAdmin } from './blog-admin';
 
-export default function AdminBlogPage() {
+import { adminBlogRepo } from '@/server/repositories/admin.repo';
+
+export const metadata = buildMetadata({ title: 'Admin · Journal', noIndex: true });
+export const dynamic = 'force-dynamic';
+
+export default async function AdminBlogPage() {
+  const posts = await adminBlogRepo.list();
+
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <header>
         <h1 className="editorial-heading text-display-md">Journal</h1>
         <p className="text-sm text-muted-foreground">Editorial posts powering /blog.</p>
       </header>
-      <div className="rounded-lg border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
-        Wire post operations against the admin RTK Query endpoints.
-      </div>
+      <BlogAdmin posts={posts} />
     </div>
   );
 }

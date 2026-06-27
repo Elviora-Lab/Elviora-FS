@@ -857,6 +857,22 @@ model ProductViewLog {
   @@map("product_view_logs")
 }
 
+/// Append-only log of "add to cart" events, for merchandising analytics.
+/// Relation-less (plain id columns): analytics tolerates orphaned rows and we
+/// join product details at query time, so product/variant deletion needn't
+/// cascade here.
+model CartEventLog {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String?  @map("user_id") @db.Uuid
+  productId String   @map("product_id") @db.Uuid
+  variantId String?  @map("variant_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([productId, createdAt])
+  @@index([userId, createdAt])
+  @@map("cart_event_logs")
+}
+
 // =============================================================================
 //  LOYALTY, REFERRALS, SUBSCRIPTIONS
 // =============================================================================
