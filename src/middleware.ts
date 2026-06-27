@@ -4,7 +4,6 @@ import { jwtVerify } from 'jose';
 import { ADMIN_PREFIXES, AUTH_ROUTES, PROTECTED_PREFIXES } from '@/config/routes';
 
 const ACCESS_COOKIE = 'elv_at';
-const ROLE_COOKIE = 'elv_role';
 
 const ADMIN_ROLES = new Set(['ADMIN', 'SUPER_ADMIN', 'STAFF']);
 
@@ -31,19 +30,20 @@ async function verify(token: string) {
 /**
  * Edge middleware — runs before every matched request.
  *
- * Verifies the access-token cookie with jose (Edge-compatible). The role-hint
- * cookie is a fast path for RBAC checks; the JWT remains the source of truth
- * and is verified on every protected navigation.
+ * Verifies the access-token cookie with jose (Edge-compatible). The verified
+ * JWT is the ONLY source of truth for both authentication and role. The
+ * client-supplied `elv_role` cookie is never trusted for authorization — it is
+ * a UI hint only. If `JWT_SECRET` is unset, `verify` returns null for every
+ * token, so the gate fails closed (protected/admin routes redirect to login).
  */
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   const token = req.cookies.get(ACCESS_COOKIE)?.value;
-  const roleHint = req.cookies.get(ROLE_COOKIE)?.value;
 
   const claims = token ? await verify(token) : null;
   const isAuthed = !!claims;
-  const role = claims?.role ?? roleHint;
+  const role = claims?.role ?? null;
 
   const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
   const isAdmin = ADMIN_PREFIXES.some((p) => pathname.startsWith(p));

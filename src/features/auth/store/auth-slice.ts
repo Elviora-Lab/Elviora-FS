@@ -1,6 +1,8 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
-export type UserRole = 'guest' | 'customer' | 'admin';
+// Mirrors the server's UserRole enum (Prisma) exactly — the API returns these
+// uppercase values, so the client must not invent a lowercase variant.
+export type UserRole = 'CUSTOMER' | 'VIP' | 'STAFF' | 'ADMIN' | 'SUPER_ADMIN' | 'SUPPORT';
 
 export type AuthUser = {
   id: string;

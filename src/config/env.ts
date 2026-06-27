@@ -108,6 +108,31 @@ export const serverEnv = (() => {
     console.error('Invalid server environment variables:', parsed.error.flatten().fieldErrors);
     throw new Error('Invalid server environment variables');
   }
+
+  // Production hardening: secrets that are optional in dev MUST be present (and
+  // strong) in production. Fail fast at boot/build instead of at first request.
+  if (publicEnv.NEXT_PUBLIC_ENVIRONMENT === 'production') {
+    const problems: string[] = [];
+    if (!parsed.data.JWT_SECRET || parsed.data.JWT_SECRET.length < 32) {
+      problems.push('JWT_SECRET must be set and at least 32 characters');
+    }
+    if (parsed.data.JWT_REFRESH_SECRET && parsed.data.JWT_REFRESH_SECRET.length < 32) {
+      problems.push('JWT_REFRESH_SECRET, when set, must be at least 32 characters');
+    }
+    if (!parsed.data.DATABASE_URL) {
+      problems.push('DATABASE_URL must be set');
+    }
+    // Stripe is all-or-nothing: if any payment secret is set, require both.
+    const hasStripe = parsed.data.STRIPE_SECRET_KEY || parsed.data.STRIPE_WEBHOOK_SECRET;
+    if (hasStripe && !(parsed.data.STRIPE_SECRET_KEY && parsed.data.STRIPE_WEBHOOK_SECRET)) {
+      problems.push('STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET must both be set');
+    }
+    if (problems.length) {
+      console.error('Invalid production environment:', problems);
+      throw new Error(`Invalid production environment: ${problems.join('; ')}`);
+    }
+  }
+
   return parsed.data;
 })();
 

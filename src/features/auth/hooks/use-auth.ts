@@ -3,10 +3,13 @@
 import { useCallback } from 'react';
 
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { tokenStorage } from '@/services/auth/token-storage';
 
 import { useLogoutMutation } from '../api/auth-api';
 import { type AuthUser, clearUser, setUser } from '../store/auth-slice';
+
+// Roles that may access the admin surface — must match the server's
+// requireAdmin guard (src/server/auth/guards.ts).
+const ADMIN_ROLES = new Set(['ADMIN', 'SUPER_ADMIN', 'STAFF']);
 
 export function useAuth() {
   const dispatch = useAppDispatch();
@@ -15,20 +18,21 @@ export function useAuth() {
   const [logoutMutation] = useLogoutMutation();
 
   const signIn = useCallback(
-    (payload: { user: AuthUser; accessToken: string; refreshToken: string }) => {
-      tokenStorage.set({ access: payload.accessToken, refresh: payload.refreshToken });
-      dispatch(setUser(payload.user));
+    // The login/register response already set the httpOnly auth cookies; the
+    // client only needs to mirror the user into Redux for instant UI.
+    (user: AuthUser) => {
+      dispatch(setUser(user));
     },
     [dispatch],
   );
 
   const signOut = useCallback(async () => {
     try {
+      // Server clears (and revokes) the auth cookies.
       await logoutMutation().unwrap();
     } catch {
       // best-effort; clear local state regardless
     }
-    tokenStorage.clear();
     dispatch(clearUser());
   }, [dispatch, logoutMutation]);
 
@@ -36,7 +40,7 @@ export function useAuth() {
     user,
     status,
     isAuthenticated: status === 'authenticated' && !!user,
-    isAdmin: user?.role === 'admin',
+    isAdmin: !!user && ADMIN_ROLES.has(user.role),
     signIn,
     signOut,
   };

@@ -7,8 +7,6 @@ import {
 
 import { publicEnv } from '@/config/env';
 
-import { tokenStorage } from '@/services/auth/token-storage';
-
 /**
  * Base URL strategy
  * -----------------
@@ -44,17 +42,20 @@ function inferApiBase(envValue?: string): string {
  */
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: API_BASE,
+  // Auth lives in httpOnly cookies; sending credentials is what authenticates
+  // the request. The client never reads or attaches tokens itself.
   credentials: 'include',
   prepareHeaders: (headers) => {
-    const token = tokenStorage.getAccess();
-    if (token) headers.set('authorization', `Bearer ${token}`);
     if (!headers.has('accept')) headers.set('accept', 'application/json');
     headers.set('x-client', 'elviora-web');
     return headers;
   },
 });
 
-type Mutex = { promise: Promise<void> | null };
+// Single-flight refresh guard. Tokens are httpOnly cookies, so refreshing just
+// means asking the server to rotate the cookie pair; success/failure is the
+// HTTP status, and the client holds no token state.
+type Mutex = { promise: Promise<boolean> | null };
 const refreshMutex: Mutex = { promise: null };
 
 async function refreshAccessToken(): Promise<boolean> {
@@ -64,14 +65,7 @@ async function refreshAccessToken(): Promise<boolean> {
       credentials: 'include',
       headers: { 'content-type': 'application/json' },
     });
-    if (!res.ok) return false;
-    const json = (await res.json()) as {
-      data?: { accessToken?: string; refreshToken?: string };
-    };
-    const access = json.data?.accessToken;
-    if (!access) return false;
-    tokenStorage.set({ access, refresh: json.data?.refreshToken });
-    return true;
+    return res.ok;
   } catch {
     return false;
   }
@@ -84,19 +78,16 @@ export const baseQueryWithReauth: BaseQueryFn<
 > = async (args, api, extraOptions) => {
   let result = await rawBaseQuery(args, api, extraOptions);
 
-  // 401 → single-flight refresh → retry.
+  // 401 → single-flight refresh → retry once if the cookie was rotated.
   if (result.error?.status === 401) {
     if (!refreshMutex.promise) {
-      refreshMutex.promise = (async () => {
-        const ok = await refreshAccessToken();
-        if (!ok) tokenStorage.clear();
-      })().finally(() => {
+      refreshMutex.promise = refreshAccessToken().finally(() => {
         refreshMutex.promise = null;
       });
     }
-    await refreshMutex.promise;
+    const refreshed = await refreshMutex.promise;
 
-    if (tokenStorage.getAccess()) {
+    if (refreshed) {
       result = await rawBaseQuery(args, api, extraOptions);
     }
   }

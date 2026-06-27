@@ -40,7 +40,7 @@ export function LoginForm() {
   const onSubmit = form.handleSubmit(async (values) => {
     try {
       const session = await login({ email: values.email, password: values.password }).unwrap();
-      signIn(session);
+      signIn(session.user);
       toast.success('Welcome back');
       // If we have an explicit redirect (gated route), honor it.
       // Otherwise send admins to /admin and customers to /account.
