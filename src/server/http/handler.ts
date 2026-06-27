@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { Prisma } from '@prisma/client';
+import * as Sentry from '@sentry/nextjs';
 import { ZodError } from 'zod';
 
 import { isDev } from '@/config/env';
@@ -42,10 +43,12 @@ export function createHandler<Params extends Record<string, string> = Record<str
 function toApiError(err: unknown, req: Request): Response {
   // Domain HTTP errors.
   if (err instanceof HttpError) {
+    const retryAfter = (err as unknown as { retryAfter?: number }).retryAfter;
     return apiError(err.message, {
       code: err.code,
       status: err.status,
       errors: err.details,
+      headers: retryAfter ? { 'Retry-After': String(retryAfter) } : undefined,
     });
   }
 
@@ -84,7 +87,10 @@ function toApiError(err: unknown, req: Request): Response {
     // eslint-disable-next-line no-console
     console.error('[api:error]', req.method, new URL(req.url).pathname, err);
   } else {
-    // In production, forward to your observability sink (Sentry/Datadog) here.
+    // Report unexpected 500s to Sentry (no-op when DSN unset).
+    Sentry.captureException(err, {
+      tags: { area: 'api', method: req.method, path: new URL(req.url).pathname },
+    });
     // eslint-disable-next-line no-console
     console.error('[api:error]', err);
   }

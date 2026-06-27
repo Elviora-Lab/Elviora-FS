@@ -11,46 +11,53 @@
 
 @layer base {
   :root {
-    /* — Brand palette — */
-    --brand-ivory: 38 40% 96%;
-    --brand-pearl: 36 30% 92%;
-    --brand-champagne: 38 45% 80%;
-    --brand-gold: 36 55% 55%;
-    --brand-beige: 32 25% 78%;
-    --brand-charcoal: 220 12% 18%;
-    --brand-rose: 12 35% 78%;
+    /* — Brand palette — inspired by the cosmetics world:
+       rose-gold, champagne, blush, mauve, plum-noir, nude. — */
+    --brand-ivory: 36 44% 96%;
+    --brand-pearl: 34 32% 93%;
+    --brand-champagne: 36 48% 83%;
+    --brand-gold: 36 60% 56%;
+    --brand-rosegold: 16 58% 66%;
+    --brand-blush: 350 58% 90%;
+    --brand-rose: 350 46% 80%;
+    --brand-mauve: 325 22% 60%;
+    --brand-plum: 318 32% 24%;
+    --brand-beige: 30 28% 81%;
+    --brand-nude: 26 34% 85%;
+    --brand-charcoal: 320 16% 13%;
+    --brand-noir: 320 18% 7%;
 
-    /* — Semantic tokens (light) — */
-    --background: 38 40% 98%;
-    --foreground: 220 12% 14%;
+    /* — Semantic tokens (light) — warm blush-ivory + rose-gold — */
+    --background: 34 42% 98%;
+    --foreground: 320 16% 13%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 220 12% 14%;
+    --card: 36 50% 99%;
+    --card-foreground: 320 16% 13%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 12% 14%;
+    --popover: 36 50% 99%;
+    --popover-foreground: 320 16% 13%;
 
-    --primary: 220 12% 18%;
-    --primary-foreground: 38 40% 96%;
+    --primary: 320 18% 15%;
+    --primary-foreground: 36 44% 96%;
 
-    --secondary: 36 30% 92%;
-    --secondary-foreground: 220 12% 18%;
+    --secondary: 32 30% 92%;
+    --secondary-foreground: 320 18% 15%;
 
-    --muted: 36 20% 94%;
-    --muted-foreground: 220 8% 42%;
+    --muted: 32 24% 94%;
+    --muted-foreground: 320 8% 40%;
 
-    --accent: 36 55% 55%;
-    --accent-foreground: 38 40% 98%;
+    --accent: 16 58% 60%;
+    --accent-foreground: 36 44% 98%;
 
     --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 152 50% 38%;
+    --success: 152 46% 38%;
     --success-foreground: 0 0% 100%;
 
-    --border: 32 20% 88%;
-    --input: 32 20% 88%;
-    --ring: 36 55% 55%;
+    --border: 30 24% 87%;
+    --input: 30 24% 87%;
+    --ring: 16 58% 60%;
 
     --radius: 0.5rem;
 
@@ -60,36 +67,38 @@
   }
 
   .dark {
-    --background: 220 14% 8%;
-    --foreground: 38 30% 94%;
+    /* Warm "rose-noir": a deep aubergine base (not cold slate) with champagne
+       ink and a rose-gold accent — a luxe cosmetics-counter-at-night feel. */
+    --background: 320 16% 7%;
+    --foreground: 36 32% 92%;
 
-    --card: 220 14% 10%;
-    --card-foreground: 38 30% 94%;
+    --card: 322 15% 10%;
+    --card-foreground: 36 32% 92%;
 
-    --popover: 220 14% 10%;
-    --popover-foreground: 38 30% 94%;
+    --popover: 322 16% 9%;
+    --popover-foreground: 36 32% 92%;
 
-    --primary: 38 40% 96%;
-    --primary-foreground: 220 12% 14%;
+    --primary: 36 40% 91%;
+    --primary-foreground: 320 20% 10%;
 
-    --secondary: 220 10% 16%;
-    --secondary-foreground: 38 30% 94%;
+    --secondary: 320 12% 16%;
+    --secondary-foreground: 36 32% 92%;
 
-    --muted: 220 10% 14%;
-    --muted-foreground: 38 15% 70%;
+    --muted: 320 10% 15%;
+    --muted-foreground: 28 20% 73%;
 
-    --accent: 36 55% 60%;
-    --accent-foreground: 220 14% 8%;
+    --accent: 18 66% 66%;
+    --accent-foreground: 320 22% 9%;
 
-    --destructive: 0 65% 45%;
+    --destructive: 0 62% 52%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 152 45% 45%;
-    --success-foreground: 0 0% 100%;
+    --success: 152 42% 50%;
+    --success-foreground: 320 22% 8%;
 
-    --border: 220 10% 18%;
-    --input: 220 10% 18%;
-    --ring: 36 55% 60%;
+    --border: 320 12% 19%;
+    --input: 320 12% 19%;
+    --ring: 18 66% 66%;
   }
 
   * {
@@ -113,6 +122,17 @@
      * blurs, or hero elements that briefly overflow before media queries kick
      * in. Vertical scroll is unaffected. */
     overflow-x: hidden;
+  }
+
+  /* Ambient depth in dark mode — faint rose-gold + plum washes so the deep
+   * noir reads as a lit boudoir rather than a flat black. Fixed so it stays
+   * put while scrolling. Alphas are intentionally low to avoid muddiness. */
+  .dark body {
+    background-image:
+      radial-gradient(55% 45% at 12% -5%, hsl(var(--brand-rosegold) / 0.08), transparent 70%),
+      radial-gradient(50% 45% at 100% 0%, hsl(var(--brand-plum) / 0.22), transparent 72%),
+      radial-gradient(60% 50% at 50% 110%, hsl(var(--brand-mauve) / 0.07), transparent 70%);
+    background-attachment: fixed;
   }
 
   /* Long words / monospace tokens (order numbers, SKUs) should wrap rather
@@ -191,30 +211,30 @@
    */
   .surface-pearl {
     @apply bg-gradient-pearl;
-    --background: 38 40% 98%;
-    --foreground: 220 12% 14%;
-    --card: 0 0% 100%;
-    --card-foreground: 220 12% 14%;
-    --muted: 36 20% 94%;
-    --muted-foreground: 220 10% 32%; /* darker than default for stronger contrast on warm pearl */
-    --border: 32 22% 78%;
-    --input: 32 22% 78%;
-    --primary: 220 12% 18%;
-    --primary-foreground: 38 40% 96%;
+    --background: 34 42% 98%;
+    --foreground: 320 16% 13%;
+    --card: 36 50% 99%;
+    --card-foreground: 320 16% 13%;
+    --muted: 32 24% 94%;
+    --muted-foreground: 320 10% 30%; /* darker than default for stronger contrast on warm pearl */
+    --border: 30 24% 80%;
+    --input: 30 24% 80%;
+    --primary: 320 18% 15%;
+    --primary-foreground: 36 44% 96%;
     color: hsl(var(--foreground));
   }
   .dark .surface-pearl {
     /* Same overrides apply in dark mode — surface stays editorial-light. */
-    --background: 38 40% 98%;
-    --foreground: 220 12% 14%;
-    --card: 0 0% 100%;
-    --card-foreground: 220 12% 14%;
-    --muted: 36 20% 94%;
-    --muted-foreground: 220 10% 32%;
-    --border: 32 22% 78%;
-    --input: 32 22% 78%;
-    --primary: 220 12% 18%;
-    --primary-foreground: 38 40% 96%;
+    --background: 34 42% 98%;
+    --foreground: 320 16% 13%;
+    --card: 36 50% 99%;
+    --card-foreground: 320 16% 13%;
+    --muted: 32 24% 94%;
+    --muted-foreground: 320 10% 30%;
+    --border: 30 24% 80%;
+    --input: 30 24% 80%;
+    --primary: 320 18% 15%;
+    --primary-foreground: 36 44% 96%;
     color: hsl(var(--foreground));
   }
 

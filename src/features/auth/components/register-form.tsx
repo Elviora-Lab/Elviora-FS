@@ -47,7 +47,7 @@ export function RegisterForm() {
         email: values.email,
         password: values.password,
       }).unwrap();
-      signIn(session);
+      signIn(session.user);
       toast.success('Account created');
       router.push('/account');
     } catch (err) {

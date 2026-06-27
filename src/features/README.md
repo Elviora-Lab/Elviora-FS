@@ -23,10 +23,15 @@ src/features/<feature>/
 3. **Schemas are the boundary.** Validate every input (forms, URL params, server responses where reasonable) at the seam between the network and the app.
 4. **Public surface = barrel.** Anything not exported from `index.ts` is internal — refactor freely.
 
-## Reference implementations (fully wired)
+## Implemented features
 
-- `auth/` — JWT + refresh, RHF + Zod forms, role hook
+- `auth/` — JWT + refresh, RHF + Zod forms, role hook, session hydrator
 - `products/` — list / detail / search endpoints, grid + filters
 - `cart/` — local slice, RTK Query mirror, drawer pattern
+- `wishlist/` — toggle + hydrator
 
-The remaining features ship as scaffolds — extend them following the same anatomy.
+These four are the only feature modules. The previously generated scaffolds
+(orders, checkout, reviews, blog, etc.) were removed — they exported
+real-looking hooks against placeholder endpoints. Add new features here
+following the anatomy above; much of their server logic already exists under
+`src/server/` (services, repositories, actions).

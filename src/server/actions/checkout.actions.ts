@@ -4,13 +4,15 @@ import { revalidatePath } from 'next/cache';
 import { PaymentMethod, Prisma } from '@prisma/client';
 import { z } from 'zod';
 
+import { serverEnv } from '@/config/env';
+
 import { prisma } from '@/lib/db';
 
 import { withAction } from './_with-action';
 
 import { requireUser } from '@/server/auth/guards';
-import { events } from '@/server/events';
 import { BadRequestError } from '@/server/http/errors';
+import { createPaymentIntent } from '@/server/payments/stripe';
 import { addressesService } from '@/server/services/addresses.service';
 import { ordersService } from '@/server/services/orders.service';
 import { addressBody } from '@/server/validators/addresses.schema';
@@ -22,6 +24,7 @@ const placeOrderInput = z.object({
   address: addressBody.optional(),
   paymentMethod: z.nativeEnum(PaymentMethod),
   notes: z.string().max(500).optional(),
+  couponCode: z.string().min(1).max(64).optional(),
 });
 
 /**
@@ -58,6 +61,7 @@ export const placeOrder = withAction(async (raw: unknown) => {
     userId: session.sub,
     cartId: cart.id,
     notes: input.notes,
+    couponCode: input.couponCode,
     shippingAddress: {
       fullName: shippingAddress.fullName,
       phone: shippingAddress.phone ?? null,
@@ -72,22 +76,40 @@ export const placeOrder = withAction(async (raw: unknown) => {
 
   // Record the chosen payment method. The actual amount is captured/cleared
   // by the PSP webhook (Stripe) or by an operator (COD/bank transfer).
-  await prisma.payment.create({
+  const payment = await prisma.payment.create({
     data: {
       orderId: order.id,
       paymentMethod: input.paymentMethod,
-      amount: new Prisma.Decimal(Number(order.totalAmount)),
+      // order.totalAmount is already a Decimal — pass it through, don't round-trip
+      // through a JS float.
+      amount: new Prisma.Decimal(order.totalAmount),
       paymentStatus: 'PENDING',
     },
   });
 
-  events.emit('order.created', {
-    orderId: order.id,
-    userId: session.sub,
-    total: Number(order.totalAmount),
-    currency: order.currency,
-  });
+  // For card payments, open a Stripe PaymentIntent and return its client_secret
+  // so the browser can confirm the charge. `metadata.orderId` is what the Stripe
+  // webhook reads to reconcile the order; the PI id is stored as the payment's
+  // transactionId so refunds can be matched back. Non-card methods (COD/bank)
+  // skip this and are settled by an operator.
+  let clientSecret: string | null = null;
+  if (input.paymentMethod === PaymentMethod.CARD && serverEnv.STRIPE_SECRET_KEY) {
+    const intent = await createPaymentIntent({
+      amountMinor: Math.round(Number(order.totalAmount) * 100),
+      currency: order.currency,
+      metadata: { orderId: order.id, orderNumber: order.orderNumber },
+      customerEmail: session.email,
+    });
+    clientSecret = intent.client_secret;
+    await prisma.payment.update({
+      where: { id: payment.id },
+      data: { transactionId: intent.id },
+    });
+  }
+
+  // `order.created` is emitted once by ordersService.createFromCart — do not
+  // re-emit here, or every order would trigger its side effects twice.
 
   revalidatePath('/account/orders');
-  return { orderId: order.id, orderNumber: order.orderNumber };
+  return { orderId: order.id, orderNumber: order.orderNumber, clientSecret };
 });

@@ -102,13 +102,27 @@ export const cartRepo = {
     });
   },
 
-  updateLineQuantity(lineId: string, quantity: number) {
-    if (quantity <= 0) return prisma.cartItem.delete({ where: { id: lineId } });
-    return prisma.cartItem.update({ where: { id: lineId }, data: { quantity } });
+  /**
+   * Update a line's quantity, scoped to the owning cart. Uses `updateMany`/
+   * `deleteMany` with a `cartId` filter so a caller can never mutate a line
+   * that belongs to another shopper's cart (IDOR). Returns the affected count
+   * so the service can 404 when the line isn't in the caller's cart.
+   */
+  async updateLineQuantity(cartId: string, lineId: string, quantity: number) {
+    if (quantity <= 0) {
+      const { count } = await prisma.cartItem.deleteMany({ where: { id: lineId, cartId } });
+      return count;
+    }
+    const { count } = await prisma.cartItem.updateMany({
+      where: { id: lineId, cartId },
+      data: { quantity },
+    });
+    return count;
   },
 
-  removeLine(lineId: string) {
-    return prisma.cartItem.delete({ where: { id: lineId } });
+  async removeLine(cartId: string, lineId: string) {
+    const { count } = await prisma.cartItem.deleteMany({ where: { id: lineId, cartId } });
+    return count;
   },
 
   clear(cartId: string) {

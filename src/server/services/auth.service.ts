@@ -1,6 +1,12 @@
 import 'server-only';
 
-import { hashPassword, issueSession, type SessionUser, verifyPassword } from '@/server/auth';
+import {
+  DUMMY_PASSWORD_HASH,
+  hashPassword,
+  issueSession,
+  type SessionUser,
+  verifyPassword,
+} from '@/server/auth';
 import { events } from '@/server/events';
 import { ConflictError, UnauthorizedError } from '@/server/http/errors';
 import { usersRepo } from '@/server/repositories/users.repo';
@@ -31,7 +37,12 @@ export const authService = {
 
   async login(input: { email: string; password: string }) {
     const user = await usersRepo.findByEmail(input.email);
-    if (!user) throw new UnauthorizedError('Invalid email or password');
+    if (!user) {
+      // Run a dummy compare so the no-such-user path costs the same as a wrong
+      // password — otherwise response timing leaks which emails are registered.
+      await verifyPassword(input.password, DUMMY_PASSWORD_HASH);
+      throw new UnauthorizedError('Invalid email or password');
+    }
 
     const ok = await verifyPassword(input.password, user.passwordHash);
     if (!ok) throw new UnauthorizedError('Invalid email or password');

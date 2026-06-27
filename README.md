@@ -57,7 +57,7 @@ src/
 │   ├── auth/           ✓ Fully implemented (reference)
 │   ├── products/       ✓ Fully implemented (reference)
 │   ├── cart/           ✓ Fully implemented (reference)
-│   └── …               15 additional feature modules scaffolded
+│   └── wishlist/       ✓ Implemented (toggle + hydrator)
 ├── services/           HTTP layer
 │   ├── api/            RTK Query baseApi + axios + error normalize
 │   └── auth/           Token storage

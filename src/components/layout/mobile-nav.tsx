@@ -95,6 +95,20 @@ export function MobileNav() {
         <nav className="px-2 py-2">
           <Accordion type="multiple" className="flex flex-col">
             {mainNav.map((item) => {
+              if (item.comingSoon) {
+                return (
+                  <div
+                    key={item.href}
+                    aria-disabled="true"
+                    className="flex items-center justify-between rounded-md px-3 py-3 text-base font-light tracking-wide text-foreground/40"
+                  >
+                    <span>{item.label}</span>
+                    <span className="rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                      Coming soon
+                    </span>
+                  </div>
+                );
+              }
               if (!item.children?.length) {
                 return (
                   <Link

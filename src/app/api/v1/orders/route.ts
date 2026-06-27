@@ -22,6 +22,7 @@ const createOrderBody = z.object({
   shippingAddressId: z.string().uuid(),
   currency: z.string().length(3).optional(),
   notes: z.string().max(500).optional(),
+  couponCode: z.string().min(1).max(64).optional(),
 });
 
 export const POST = createHandler(async (req) => {
@@ -37,6 +38,7 @@ export const POST = createHandler(async (req) => {
     cartId: body.cartId,
     currency: body.currency,
     notes: body.notes,
+    couponCode: body.couponCode,
     shippingAddress: {
       fullName: address.fullName,
       phone: address.phone ?? null,

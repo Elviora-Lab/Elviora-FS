@@ -51,9 +51,40 @@ env:
 
 jobs:
   # ---------------------------------------------------------------------------
+  # Quality gate — must pass before any deploy job runs.
+  # ---------------------------------------------------------------------------
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npm run type-check
+
+      - name: Lint
+        run: npm run lint -- --max-warnings=0
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Test
+        run: npm test
+
+  # ---------------------------------------------------------------------------
   # Production deploy — only on push to main
   # ---------------------------------------------------------------------------
   deploy-production:
+    needs: quality
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
@@ -69,12 +100,26 @@ jobs:
           node-version: 20
           cache: npm
 
+      - name: Install dependencies
+        run: npm ci
+
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 
       - name: Pull production env from Vercel
         run: vercel pull --yes --environment=production
-      - name: Build (runs prisma generate + prisma migrate deploy + next build)
+
+      # Migrations run here — once, against the production DB over the DIRECT_URL
+      # (non-pooled) connection — instead of during the build. Preview builds no
+      # longer touch the schema. Idempotent: applies only pending migrations.
+      - name: Run database migrations (production)
+        run: |
+          set -a
+          . ./.vercel/.env.production.local
+          set +a
+          npx prisma migrate deploy
+
+      - name: Build (prisma generate + next build)
         run: vercel build --prod
       - name: Deploy to Vercel
         id: deploy
@@ -87,6 +132,7 @@ jobs:
   # Preview deploy — on every PR (incl. external forks if they have token access)
   # ---------------------------------------------------------------------------
   deploy-preview:
+    needs: quality
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     environment:

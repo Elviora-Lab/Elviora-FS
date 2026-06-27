@@ -54,13 +54,43 @@ export const cartService = {
     opts: { userId: string | null; sessionId: string },
     payload: { lineId: string; quantity: number },
   ) {
-    await cartRepo.updateLineQuantity(payload.lineId, payload.quantity);
-    return cartService.getCart(opts);
+    const cart = await cartRepo.findOrCreate({
+      userId: opts.userId ?? undefined,
+      sessionId: opts.sessionId,
+    });
+
+    // Re-validate stock on quantity increase — `addLine` checks stock, but the
+    // line could otherwise be bumped to any quantity here, bypassing that gate.
+    const line = cart.items.find((i) => i.id === payload.lineId);
+    if (!line) throw new NotFoundError('Cart line not found');
+    if (payload.quantity > 0 && line.variantId) {
+      const variant = await prisma.productVariant.findUnique({
+        where: { id: line.variantId },
+        select: { stockQuantity: true, isActive: true },
+      });
+      if (!variant || !variant.isActive) throw new NotFoundError('Variant not found');
+      if (variant.stockQuantity < payload.quantity) {
+        throw new BadRequestError('Requested quantity exceeds stock');
+      }
+    }
+
+    const affected = await cartRepo.updateLineQuantity(cart.id, payload.lineId, payload.quantity);
+    if (affected === 0) throw new NotFoundError('Cart line not found');
+
+    const refreshed = await cartRepo.findById(cart.id);
+    return refreshed ? serializeCart(refreshed) : null;
   },
 
   async removeLine(opts: { userId: string | null; sessionId: string }, lineId: string) {
-    await cartRepo.removeLine(lineId);
-    return cartService.getCart(opts);
+    const cart = await cartRepo.findOrCreate({
+      userId: opts.userId ?? undefined,
+      sessionId: opts.sessionId,
+    });
+    const affected = await cartRepo.removeLine(cart.id, lineId);
+    if (affected === 0) throw new NotFoundError('Cart line not found');
+
+    const refreshed = await cartRepo.findById(cart.id);
+    return refreshed ? serializeCart(refreshed) : null;
   },
 };
 

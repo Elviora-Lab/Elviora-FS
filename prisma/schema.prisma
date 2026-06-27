@@ -20,8 +20,14 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  // Runtime connection — may be a pooled (PgBouncer/Supabase :6543) URL.
+  url       = env("DATABASE_URL")
+  // Direct, non-pooled connection used by `prisma migrate` / introspection.
+  // Must be set wherever migrations run (CI release step, local dev); the
+  // running app itself only needs DATABASE_URL. Point it at DATABASE_URL when
+  // that connection is already direct (non-pooled).
+  directUrl = env("DIRECT_URL")
 }
 
 // =============================================================================
@@ -173,10 +179,30 @@ model User {
   referralsGotten    Referral[]              @relation("ReferredRelation")
   // Audit trail of order-status transitions this user triggered (admin actor).
   orderStatusChanges OrderStatusHistory[]    @relation("OrderStatusChanger")
+  refreshTokens      RefreshToken[]
 
   @@index([role])
   @@index([createdAt])
   @@map("users")
+}
+
+/// Server-side record of every issued refresh token, keyed by its JWT `jti`.
+/// Enables rotation, revocation (logout), and reuse detection: a refresh JWT is
+/// only honored if its `jti` row exists, is not revoked, and is not expired.
+model RefreshToken {
+  jti        String    @id @db.VarChar(64)
+  userId     String    @map("user_id") @db.Uuid
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz
+  // jti of the token that superseded this one (set on rotation); aids auditing.
+  replacedBy String?   @map("replaced_by") @db.VarChar(64)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
 }
 
 /// Saved shipping / billing addresses. A user may have many; exactly one
@@ -197,8 +223,11 @@ model UserAddress {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // One default address per user — enforced at the DB layer.
-  @@unique([userId, isDefault], map: "uq_user_default_address")
+  // "At most one default address per user" is enforced by a PARTIAL unique
+  // index (`WHERE is_default`) created in the migration. Prisma can't express
+  // partial unique constraints in the schema, so it isn't declared with
+  // @@unique here — a plain composite unique on (userId, isDefault) would
+  // wrongly cap each user at two addresses (one default + one non-default).
   @@index([userId])
   @@map("user_addresses")
 }
