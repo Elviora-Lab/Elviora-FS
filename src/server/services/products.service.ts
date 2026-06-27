@@ -23,11 +23,15 @@ export const productsService = {
     return { items: items.map(toProductCard), total };
   },
 
-  async getBySlug(slug: string, viewer: { userId: string | null } = { userId: null }) {
+  async getBySlug(slug: string, viewer: { userId?: string | null; track?: boolean } = {}) {
     const product = await cache.wrap(`product:${slug}`, 120, () => productsRepo.findBySlug(slug));
     if (!product) throw new NotFoundError('Product not found');
 
-    events.emit('product.viewed', { productId: product.id, userId: viewer.userId });
+    // Count a view only for the actual page render — `generateMetadata` also
+    // calls this and passes `track: false` to avoid double-counting.
+    if (viewer.track !== false) {
+      events.emit('product.viewed', { productId: product.id, userId: viewer.userId ?? null });
+    }
 
     return product;
   },

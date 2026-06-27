@@ -37,6 +37,7 @@ type SourceImage = {
   alt_text: string | null;
   position: number | null;
   image_type: string | null;
+  variant_ids?: number[];
 };
 type SourceReview = {
   review_id: string;
@@ -196,17 +197,32 @@ async function main() {
       vCount += res.count;
     }
 
+    // Map source variant ids → DB variant ids so images can link to the
+    // variant they depict (drives the "show the selected shade" gallery).
+    const dbVariants = await prisma.productVariant.findMany({
+      where: { productId: product.id },
+      select: { id: true, sku: true },
+    });
+    const variantIdBySku = new Map(dbVariants.map((v) => [v.sku, v.id]));
+
     // Images — replace on each run (no FK references into product_images).
     await prisma.productImage.deleteMany({ where: { productId: product.id } });
     if (p.images.length) {
       const res = await prisma.productImage.createMany({
-        data: p.images.map((img, idx) => ({
-          productId: product.id,
-          imageUrl: img.url,
-          altText: truncate(img.alt_text ?? p.product_name, 255),
-          isPrimary: img.image_type === 'primary' || img.position === 1,
-          sortOrder: img.position ?? idx,
-        })),
+        data: p.images.map((img, idx) => {
+          const sourceVariantId = img.variant_ids?.[0];
+          const variantId = sourceVariantId
+            ? (variantIdBySku.get(`SB-V-${sourceVariantId}`) ?? null)
+            : null;
+          return {
+            productId: product.id,
+            variantId,
+            imageUrl: img.url,
+            altText: truncate(img.alt_text ?? p.product_name, 255),
+            isPrimary: img.image_type === 'primary' || img.position === 1,
+            sortOrder: img.position ?? idx,
+          };
+        }),
       });
       iCount += res.count;
     }
