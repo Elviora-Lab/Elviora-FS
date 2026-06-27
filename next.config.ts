@@ -12,6 +12,8 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'images.unsplash.com' },
       { protocol: 'https', hostname: 'res.cloudinary.com' },
       { protocol: 'https', hostname: 'cdn.elviora.com' },
+      // Imported catalog (data/products.json) serves images from Shopify's CDN.
+      { protocol: 'https', hostname: 'cdn.shopify.com' },
     ],
     deviceSizes: [360, 640, 750, 828, 1080, 1200, 1440, 1920, 2560],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
@@ -36,12 +38,16 @@ const nextConfig: NextConfig = {
   },
 };
 
-// Wrap with Sentry. Source-map upload only happens when SENTRY_AUTH_TOKEN is
-// present (CI/production); otherwise this is a transparent pass-through.
-export default withSentryConfig(nextConfig, {
-  org: process.env.SENTRY_ORG,
-  project: process.env.SENTRY_PROJECT,
-  authToken: process.env.SENTRY_AUTH_TOKEN,
-  silent: !process.env.CI,
-  telemetry: false,
-});
+// Only wrap with Sentry when a DSN is configured (production/preview). The
+// Sentry build plugin injects client instrumentation that, in local dev with
+// no DSN, triggers Next's "missing bootstrap script" invariant — and there's
+// nothing to report to anyway. So local dev runs the plain config.
+export default process.env.NEXT_PUBLIC_SENTRY_DSN
+  ? withSentryConfig(nextConfig, {
+      org: process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT,
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+      silent: !process.env.CI,
+      telemetry: false,
+    })
+  : nextConfig;
