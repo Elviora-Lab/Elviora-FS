@@ -1,0 +1,52 @@
+import Link from 'next/link';
+
+import { buildMetadata } from '@/lib/seo/metadata';
+
+import { Section, SectionHeading } from '@/design-system/primitives/section';
+import { Button } from '@/components/ui/button';
+
+export const metadata = buildMetadata({
+  title: 'Gift Cards',
+  description:
+    'Give the gift of choice with an Elviora gift card — beautifully presented and always the right shade.',
+  path: '/gift-cards',
+});
+
+export default function GiftCardsPage() {
+  return (
+    <Section>
+      <div className="container flex max-w-3xl flex-col gap-12">
+        <SectionHeading
+          eyebrow="The perfect gift"
+          title="Elviora gift cards"
+          description="When you are not sure of the shade, give the gift of choice. Our gift cards never expire and can be used on anything in the house."
+        />
+
+        <div className="flex flex-col gap-4">
+          <h2 className="editorial-heading text-display-sm">How it works</h2>
+          <ul className="flex flex-col gap-3 text-pretty leading-relaxed text-muted-foreground">
+            <li>Available in denominations from Rs 2,500 to Rs 25,000.</li>
+            <li>Delivered digitally by email, ready to forward to the lucky recipient.</li>
+            <li>Redeemable on every product and never expires.</li>
+            <li>Apply the code at checkout — any unused balance stays on the card.</li>
+          </ul>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <p className="text-pretty leading-relaxed text-muted-foreground">
+            Gift cards are coming soon to the Elviora storefront. In the meantime, our client care
+            team can arrange one for you directly.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <Button asChild>
+              <Link href="/contact">Request a gift card</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/products">Browse the collection</Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    </Section>
+  );
+}

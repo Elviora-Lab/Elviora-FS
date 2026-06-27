@@ -1,17 +1,22 @@
 import { buildMetadata } from '@/lib/seo/metadata';
 
-export const metadata = buildMetadata({ title: 'Admin · Banners', noIndex: true });
+import { BannersAdmin } from './banners-admin';
 
-export default function AdminBannersPage() {
+import { adminBannersRepo } from '@/server/repositories/admin.repo';
+
+export const metadata = buildMetadata({ title: 'Admin · Banners', noIndex: true });
+export const dynamic = 'force-dynamic';
+
+export default async function AdminBannersPage() {
+  const banners = await adminBannersRepo.list();
+
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <header>
         <h1 className="editorial-heading text-display-md">Banners</h1>
         <p className="text-sm text-muted-foreground">Hero banners and editorial creative.</p>
       </header>
-      <div className="rounded-lg border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
-        Wire banner operations against the admin RTK Query endpoints.
-      </div>
+      <BannersAdmin banners={banners} />
     </div>
   );
 }

@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/button';
 import { useRemoveCartLineMutation, useUpdateCartLineMutation } from '@/features/cart/api/cart-api';
 import { useCart } from '@/features/cart/hooks/use-cart';
 
+import { CouponField } from './coupon-field';
+
 export function CartPageClient() {
   const { cart, subtotal, count, updateQty, remove } = useCart();
   const [updateLine] = useUpdateCartLineMutation();
@@ -101,6 +103,7 @@ export function CartPageClient() {
           <span className="text-muted-foreground">Subtotal</span>
           <Price amount={subtotal} currency={cart.lines[0]?.currency ?? 'PKR'} />
         </div>
+        <CouponField />
         <p className="text-xs text-muted-foreground">
           Shipping, taxes and discounts calculated at checkout.
         </p>

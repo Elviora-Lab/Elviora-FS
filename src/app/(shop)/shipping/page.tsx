@@ -1,0 +1,67 @@
+import Link from 'next/link';
+
+import { buildMetadata } from '@/lib/seo/metadata';
+
+import { Section, SectionHeading } from '@/design-system/primitives/section';
+
+export const metadata = buildMetadata({
+  title: 'Shipping & Returns',
+  description:
+    'Delivery times, shipping costs, and our 30-day returns policy for orders across Pakistan.',
+  path: '/shipping',
+});
+
+export default function ShippingPage() {
+  return (
+    <Section>
+      <div className="container flex max-w-3xl flex-col gap-12">
+        <SectionHeading
+          eyebrow="Delivery"
+          title="Shipping & returns"
+          description="Everything you need to know about getting Elviora to your door — and sending it back if it is not quite right."
+        />
+
+        <div className="flex flex-col gap-4">
+          <h2 className="editorial-heading text-display-sm">Shipping</h2>
+          <ul className="flex flex-col gap-3 text-pretty leading-relaxed text-muted-foreground">
+            <li>Nationwide delivery across Pakistan in 2 to 5 business days.</li>
+            <li>Complimentary shipping on orders over Rs 15,000.</li>
+            <li>A flat fee of Rs 250 applies to orders below the threshold.</li>
+            <li>Orders are processed within 24 hours, Monday to Saturday.</li>
+          </ul>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <h2 className="editorial-heading text-display-sm">Returns</h2>
+          <p className="text-pretty leading-relaxed text-muted-foreground">
+            We want you to love what you receive. Unopened products may be returned within 30 days
+            of delivery for a full refund to your original payment method. For hygiene reasons,
+            opened cosmetics cannot be returned unless faulty.
+          </p>
+          <p className="text-pretty leading-relaxed text-muted-foreground">
+            To start a return, email{' '}
+            <a
+              className="font-medium text-foreground underline underline-offset-4"
+              href="mailto:hello@elviora.com"
+            >
+              hello@elviora.com
+            </a>{' '}
+            with your order number and we will guide you through the next steps.
+          </p>
+        </div>
+
+        <p className="text-sm text-muted-foreground">
+          Have a question first? Visit our{' '}
+          <Link className="text-foreground underline underline-offset-4" href="/faq">
+            FAQ
+          </Link>{' '}
+          or{' '}
+          <Link className="text-foreground underline underline-offset-4" href="/contact">
+            contact us
+          </Link>
+          .
+        </p>
+      </div>
+    </Section>
+  );
+}

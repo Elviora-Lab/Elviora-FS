@@ -58,6 +58,7 @@ export const accountNav: NavItem[] = [
   { label: 'Orders', href: '/account/orders' },
   { label: 'Wishlist', href: '/account/wishlist' },
   { label: 'Addresses', href: '/account/addresses' },
+  { label: 'Notifications', href: '/account/notifications' },
 ];
 
 export const adminNav: NavItem[] = [

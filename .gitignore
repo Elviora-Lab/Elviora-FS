@@ -146,3 +146,5 @@ vite.config.ts.timestamp-*
 
 # Local catalog crawl dataset (input for prisma/import-shop-data.ts; ~31MB, not tracked)
 data/
+
+.DS_Store

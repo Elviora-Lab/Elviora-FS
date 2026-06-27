@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { type OrderStatus, type Prisma } from '@prisma/client';
+import { type OrderStatus, type Prisma, type UserRole } from '@prisma/client';
 
 import { prisma } from '@/lib/db';
 
@@ -11,20 +11,38 @@ import { prisma } from '@/lib/db';
 
 // ---------- Dashboard ----------
 
+// Orders that count toward recognized revenue — everything except those that
+// were voided. Keying on order status (not paymentStatus) is correct here:
+// COD / bank-transfer orders are fulfilled without ever flipping payment to
+// PAID, and only the Stripe webhook sets PAID, so a paymentStatus filter would
+// undercount real sales.
+const REVENUE_WHERE: Prisma.OrderWhereInput = {
+  orderStatus: { notIn: ['CANCELLED', 'RETURNED', 'REFUNDED'] },
+};
+
+const sumRevenue = async (extra?: Prisma.OrderWhereInput) => {
+  const agg = await prisma.order.aggregate({
+    _sum: { totalAmount: true },
+    where: { ...REVENUE_WHERE, ...extra },
+  });
+  return Number(agg._sum.totalAmount ?? 0);
+};
+
 export const adminDashboardRepo = {
   async kpis() {
     const [
-      totalRevenue,
+      revenue,
+      revenueToday,
+      revenueWeek,
       ordersLast30,
       productsCount,
       usersCount,
       pendingReviews,
       lowStockVariants,
     ] = await Promise.all([
-      prisma.order.aggregate({
-        _sum: { totalAmount: true },
-        where: { paymentStatus: 'PAID' },
-      }),
+      sumRevenue(),
+      sumRevenue({ createdAt: { gte: startOfToday() } }),
+      sumRevenue({ createdAt: { gte: startOfWeek() } }),
       prisma.order.count({
         where: { createdAt: { gte: daysAgo(30) } },
       }),
@@ -35,7 +53,9 @@ export const adminDashboardRepo = {
     ]);
 
     return {
-      revenue: Number(totalRevenue._sum.totalAmount ?? 0),
+      revenue,
+      revenueToday,
+      revenueWeek,
       ordersLast30,
       productsCount,
       usersCount,
@@ -55,6 +75,19 @@ export const adminDashboardRepo = {
 
 function daysAgo(d: number) {
   return new Date(Date.now() - d * 24 * 60 * 60 * 1000);
+}
+
+// Local-time calendar boundaries (uses the server's timezone).
+function startOfToday() {
+  const n = new Date();
+  return new Date(n.getFullYear(), n.getMonth(), n.getDate());
+}
+
+function startOfWeek() {
+  const t = startOfToday();
+  const mondayOffset = (t.getDay() + 6) % 7; // Mon=0 … Sun=6
+  t.setDate(t.getDate() - mondayOffset);
+  return t;
 }
 
 // ---------- Products ----------
@@ -204,5 +237,168 @@ export const adminCategoriesRepo = {
 
   delete(id: string) {
     return prisma.category.delete({ where: { id } });
+  },
+};
+
+// ---------- Analytics ----------
+
+type ProductLite = { id: string; name: string; slug: string; imageUrl: string };
+type RankedProduct = ProductLite & { count: number };
+
+/** Resolve product display info for a set of ids, keyed by id. */
+async function resolveProducts(ids: string[]): Promise<Map<string, ProductLite>> {
+  if (ids.length === 0) return new Map();
+  const products = await prisma.product.findMany({
+    where: { id: { in: ids } },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      images: { where: { isPrimary: true }, take: 1, select: { imageUrl: true } },
+    },
+  });
+  return new Map(
+    products.map((p) => [
+      p.id,
+      { id: p.id, name: p.name, slug: p.slug, imageUrl: p.images[0]?.imageUrl ?? '' },
+    ]),
+  );
+}
+
+const since = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+export const adminAnalyticsRepo = {
+  /** Top viewed products in the window, with display info. */
+  async topViewed(days: number, limit = 8): Promise<RankedProduct[]> {
+    const rows = await prisma.productViewLog.groupBy({
+      by: ['productId'],
+      where: { viewedAt: { gte: since(days) } },
+      _count: { productId: true },
+      orderBy: { _count: { productId: 'desc' } },
+      take: limit,
+    });
+    const map = await resolveProducts(rows.map((r) => r.productId));
+    return rows.flatMap((r) => {
+      const p = map.get(r.productId);
+      return p ? [{ ...p, count: r._count.productId }] : [];
+    });
+  },
+
+  /** Top products added to cart in the window, with display info. */
+  async topAddedToCart(days: number, limit = 8): Promise<RankedProduct[]> {
+    const rows = await prisma.cartEventLog.groupBy({
+      by: ['productId'],
+      where: { createdAt: { gte: since(days) } },
+      _count: { productId: true },
+      orderBy: { _count: { productId: 'desc' } },
+      take: limit,
+    });
+    const map = await resolveProducts(rows.map((r) => r.productId));
+    return rows.flatMap((r) => {
+      const p = map.get(r.productId);
+      return p ? [{ ...p, count: r._count.productId }] : [];
+    });
+  },
+
+  /** Top search keywords in the window. */
+  async topSearches(days: number, limit = 8): Promise<Array<{ keyword: string; count: number }>> {
+    const rows = await prisma.searchLog.groupBy({
+      by: ['keyword'],
+      where: { searchedAt: { gte: since(days) } },
+      _count: { keyword: true },
+      orderBy: { _count: { keyword: 'desc' } },
+      take: limit,
+    });
+    return rows.map((r) => ({ keyword: r.keyword, count: r._count.keyword }));
+  },
+
+  /** View → cart → order volumes for the window (the funnel). */
+  async funnel(days: number) {
+    const gte = since(days);
+    const [views, cartAdds, orders] = await Promise.all([
+      prisma.productViewLog.count({ where: { viewedAt: { gte } } }),
+      prisma.cartEventLog.count({ where: { createdAt: { gte } } }),
+      prisma.order.count({ where: { createdAt: { gte } } }),
+    ]);
+    return { views, cartAdds, orders };
+  },
+};
+
+// ---------- Users ----------
+
+export const adminUsersRepo = {
+  list(opts: { skip?: number; take?: number; q?: string } = {}) {
+    const where: Prisma.UserWhereInput = opts.q
+      ? {
+          OR: [
+            { email: { contains: opts.q, mode: 'insensitive' } },
+            { firstName: { contains: opts.q, mode: 'insensitive' } },
+            { lastName: { contains: opts.q, mode: 'insensitive' } },
+          ],
+        }
+      : {};
+    return prisma.$transaction([
+      prisma.user.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: opts.skip ?? 0,
+        take: opts.take ?? 50,
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          role: true,
+          isVerified: true,
+          createdAt: true,
+          _count: { select: { orders: true } },
+        },
+      }),
+      prisma.user.count({ where }),
+    ]);
+  },
+
+  updateRole(id: string, role: UserRole) {
+    return prisma.user.update({ where: { id }, data: { role } });
+  },
+};
+
+// ---------- Banners ----------
+
+export const adminBannersRepo = {
+  list() {
+    return prisma.banner.findMany({ orderBy: [{ position: 'asc' }, { title: 'asc' }] });
+  },
+  create(data: Prisma.BannerCreateInput) {
+    return prisma.banner.create({ data });
+  },
+  delete(id: string) {
+    return prisma.banner.delete({ where: { id } });
+  },
+  setActive(id: string, isActive: boolean) {
+    return prisma.banner.update({ where: { id }, data: { isActive } });
+  },
+};
+
+// ---------- Blog ----------
+
+export const adminBlogRepo = {
+  list() {
+    return prisma.blogPost.findMany({
+      orderBy: [{ isPublished: 'desc' }, { publishedAt: 'desc' }],
+      include: { category: { select: { name: true } } },
+    });
+  },
+  create(data: Prisma.BlogPostCreateInput) {
+    return prisma.blogPost.create({ data });
+  },
+  delete(id: string) {
+    return prisma.blogPost.delete({ where: { id } });
+  },
+  setPublished(id: string, isPublished: boolean) {
+    return prisma.blogPost.update({
+      where: { id },
+      data: { isPublished, publishedAt: isPublished ? new Date() : null },
+    });
   },
 };

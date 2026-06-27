@@ -1,28 +1,75 @@
+import Image from 'next/image';
+import Link from 'next/link';
+
 import { buildMetadata } from '@/lib/seo/metadata';
+import { formatDate } from '@/utils/format';
 
 import { EmptyState } from '@/design-system/primitives/empty-state';
 import { Section, SectionHeading } from '@/design-system/primitives/section';
 
+import { blogRepo } from '@/server/repositories/blog.repo';
+
 export const metadata = buildMetadata({
   title: 'The Journal',
-  description: 'Editorial — skincare science, rituals, and conversations from the Elviora studio.',
+  description: 'Editorial — colour stories, rituals, and conversations from the Elviora studio.',
   path: '/blog',
 });
 
-export default function BlogIndexPage() {
+export const revalidate = 300;
+
+function excerpt(post: { seoDescription: string | null; content: string }) {
+  return post.seoDescription?.trim() || `${post.content.trim().slice(0, 160)}…`;
+}
+
+export default async function BlogIndexPage() {
+  const posts = await blogRepo.listPublished();
+
   return (
     <Section>
       <div className="container flex flex-col gap-10">
         <SectionHeading
           eyebrow="The Journal"
-          title="Skincare, considered."
-          description="Slow reads on ingredients, rituals, and the people behind the formulas."
+          title="Colour, considered."
+          description="Slow reads on shades, finishes, and the people behind the formulas."
         />
-        {/* Wire to GET /api/v1/blog once the service is implemented. */}
-        <EmptyState
-          title="The first issue is coming soon"
-          description="Our editors are finalising the inaugural edition. Subscribe below and we will let you know when it's out."
-        />
+
+        {posts.length === 0 ? (
+          <EmptyState
+            title="The first issue is coming soon"
+            description="Our editors are finalising the inaugural edition. Subscribe below and we will let you know when it's out."
+          />
+        ) : (
+          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+            {posts.map((post) => (
+              <Link key={post.id} href={`/blog/${post.slug}`} className="group flex flex-col gap-3">
+                <div className="relative aspect-[3/2] overflow-hidden rounded-md bg-gradient-pearl">
+                  {post.thumbnail ? (
+                    <Image
+                      src={post.thumbnail}
+                      alt={post.title}
+                      fill
+                      sizes="(min-width:1024px) 33vw, (min-width:768px) 50vw, 100vw"
+                      className="object-cover transition-transform duration-700 ease-editorial group-hover:scale-[1.04]"
+                    />
+                  ) : null}
+                </div>
+                <div className="flex flex-col gap-1">
+                  {post.publishedAt ? (
+                    <span className="eyebrow">
+                      {formatDate(post.publishedAt, { dateStyle: 'medium' })}
+                    </span>
+                  ) : null}
+                  <h2 className="font-serif text-xl font-light group-hover:underline">
+                    {post.title}
+                  </h2>
+                  <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
+                    {excerpt(post)}
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
     </Section>
   );

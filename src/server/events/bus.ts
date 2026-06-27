@@ -25,8 +25,15 @@ export type DomainEvents = {
 
 type EventName = keyof DomainEvents;
 
-const emitter = new EventEmitter();
+// Pin the emitter to globalThis. Next.js bundles `instrumentation.ts` (where
+// listeners are registered) separately from route/server-action code (where
+// events are emitted); a module-level `new EventEmitter()` would give each
+// bundle its own instance, so emits would never reach the listeners. A
+// process-global singleton bridges them.
+const globalForBus = globalThis as unknown as { __elvioraEmitter?: EventEmitter };
+const emitter = globalForBus.__elvioraEmitter ?? new EventEmitter();
 emitter.setMaxListeners(64);
+globalForBus.__elvioraEmitter = emitter;
 
 export const events = {
   emit<E extends EventName>(event: E, payload: DomainEvents[E]) {

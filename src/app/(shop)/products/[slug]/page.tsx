@@ -10,25 +10,25 @@ import { buildMetadata } from '@/lib/seo/metadata';
 import { ProductCard } from '@/design-system/patterns/product-card';
 import { Breadcrumb } from '@/design-system/primitives/breadcrumb';
 import { Section } from '@/design-system/primitives/section';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
-import { Badge } from '@/components/ui/badge';
 
-import { ProductGallery } from './_components/product-gallery';
-import { ProductPurchase } from './_components/product-purchase';
+import { ProductExperience } from './_components/product-experience';
+import { ProductReviews } from './_components/product-reviews';
+import { ProductViewBeacon } from './_components/product-view-beacon';
 
+import { reviewsRepo } from '@/server/repositories/reviews.repo';
 import { productsService } from '@/server/services/products.service';
 
 type Params = Promise<{ slug: string }>;
 
+// ISR: the PDP is the same for everyone; view tracking happens via a client
+// beacon, so the page itself can be cached and revalidated periodically.
+export const revalidate = 300;
+
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { slug } = await params;
   try {
-    const product = await productsService.getBySlug(slug);
+    // Metadata pass — don't count this as a product view.
+    const product = await productsService.getBySlug(slug, { track: false });
     return buildMetadata({
       title: product.seoTitle ?? product.name,
       description: product.seoDescription ?? product.shortDescription ?? siteConfig.description,
@@ -45,18 +45,43 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
 
   let product;
   try {
-    product = await productsService.getBySlug(slug);
+    // No view emit here — keeps the render cacheable; the beacon logs the view.
+    product = await productsService.getBySlug(slug, { track: false });
   } catch {
     notFound();
   }
 
-  const related = await productsService.getRelated(slug, 4).catch(() => []);
+  const [related, reviewSummary, reviews] = await Promise.all([
+    productsService.getRelated(slug, 4).catch(() => []),
+    reviewsRepo.summary(product.id),
+    reviewsRepo.listApproved(product.id, 10),
+  ]);
 
   const primaryImage = product.images[0]?.imageUrl;
   const galleryImages = product.images.map((img) => ({
     url: img.imageUrl,
     alt: img.altText ?? product.name,
+    variantId: img.variantId,
   }));
+
+  // Parse shade swatches: source labels look like "ST-01 @#DA849D" — pull out
+  // the hex colour and a clean name so the UI can show a swatch, not a code.
+  const variantOptions = product.variants.map((v) => {
+    const label = [v.size, v.shade, v.fragrance].filter(Boolean).join(' · ') || v.sku;
+    const hexMatch = label.match(/@#?([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/);
+    const name = label
+      .replace(/\s*@#?[0-9a-fA-F]{3,8}\b/i, '')
+      .replace(/[·\s]+$/, '')
+      .trim();
+    return {
+      id: v.id,
+      name: name || v.sku,
+      hex: hexMatch ? `#${hexMatch[1]}` : undefined,
+      price: Number(v.price),
+      stockQuantity: v.stockQuantity,
+      isActive: v.isActive,
+    };
+  });
 
   const startingPrice = Math.min(...product.variants.map((v) => Number(v.price)));
   const totalStock = product.variants.reduce((sum, v) => sum + v.stockQuantity, 0);
@@ -64,6 +89,7 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
   return (
     <Section>
       <div className="container flex flex-col gap-10">
+        <ProductViewBeacon slug={slug} />
         <Breadcrumb
           items={[
             { label: 'Home', href: '/' },
@@ -75,97 +101,28 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
           ]}
         />
 
-        <div className="grid gap-10 lg:grid-cols-2">
-          {/* Gallery */}
-          <ProductGallery images={galleryImages} productName={product.name} />
-
-          {/* Purchase column */}
-          <div className="flex flex-col gap-6">
-            <div className="flex flex-col gap-2">
-              {product.brand ? <span className="eyebrow">{product.brand.name}</span> : null}
-              <h1 className="editorial-heading text-display-md md:text-display-lg">
-                {product.name}
-              </h1>
-              {product.shortDescription ? (
-                <p className="text-pretty leading-relaxed text-muted-foreground">
-                  {product.shortDescription}
-                </p>
-              ) : null}
-            </div>
-
-            {product.skinConcerns.length > 0 ? (
-              <div className="flex flex-wrap gap-1.5">
-                {product.skinConcerns.map((pc) => (
-                  <Badge key={pc.skinConcern.id} variant="outline">
-                    {pc.skinConcern.name}
-                  </Badge>
-                ))}
-              </div>
-            ) : null}
-
-            <ProductPurchase
-              productId={product.id}
-              variants={product.variants.map((v) => ({
-                id: v.id,
-                label: [v.size, v.shade, v.fragrance].filter(Boolean).join(' · ') || v.sku,
-                price: Number(v.price),
-                stockQuantity: v.stockQuantity,
-                isActive: v.isActive,
-              }))}
-              comparePrice={product.comparePrice ? Number(product.comparePrice) : undefined}
-              currency="PKR"
-              fallbackPrice={startingPrice}
-              outOfStock={totalStock === 0}
-            />
-
-            {/* Detail accordion */}
-            <Accordion type="multiple" defaultValue={['description']} className="mt-2">
-              <AccordionItem value="description">
-                <AccordionTrigger>Description</AccordionTrigger>
-                <AccordionContent>
-                  {product.fullDescription ?? product.shortDescription ?? 'No description yet.'}
-                </AccordionContent>
-              </AccordionItem>
-
-              {product.ingredients.length > 0 ? (
-                <AccordionItem value="ingredients">
-                  <AccordionTrigger>Hero ingredients</AccordionTrigger>
-                  <AccordionContent>
-                    <ul className="flex flex-col gap-2">
-                      {product.ingredients.map((pi) => (
-                        <li key={pi.ingredient.id}>
-                          <span className="font-medium text-foreground">{pi.ingredient.name}</span>
-                          {pi.ingredient.description ? (
-                            <span className="text-muted-foreground">
-                              {' '}
-                              — {pi.ingredient.description}
-                            </span>
-                          ) : null}
-                        </li>
-                      ))}
-                    </ul>
-                  </AccordionContent>
-                </AccordionItem>
-              ) : null}
-
-              <AccordionItem value="ritual">
-                <AccordionTrigger>How to use</AccordionTrigger>
-                <AccordionContent>
-                  Apply to clean skin morning and evening. Layer under a moisturizer. Always follow
-                  daytime use with broad-spectrum sunscreen.
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem value="shipping">
-                <AccordionTrigger>Shipping &amp; returns</AccordionTrigger>
-                <AccordionContent>
-                  Complimentary shipping on orders over Rs 15,000. Free 30-day returns on all
-                  unopened products.
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </div>
-        </div>
+        <ProductExperience
+          productId={product.id}
+          productName={product.name}
+          brandName={product.brand?.name ?? undefined}
+          shortDescription={product.shortDescription ?? undefined}
+          fullDescription={product.fullDescription ?? undefined}
+          skinConcerns={product.skinConcerns.map((pc) => ({
+            id: pc.skinConcern.id,
+            name: pc.skinConcern.name,
+          }))}
+          ingredients={product.ingredients.map((pi) => ({
+            id: pi.ingredient.id,
+            name: pi.ingredient.name,
+            description: pi.ingredient.description,
+          }))}
+          images={galleryImages}
+          variants={variantOptions}
+          comparePrice={product.comparePrice ? Number(product.comparePrice) : undefined}
+          currency="PKR"
+          fallbackPrice={startingPrice}
+          outOfStock={totalStock === 0}
+        />
 
         {/* Related products */}
         {related.length > 0 ? (
@@ -181,6 +138,9 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
             </div>
           </section>
         ) : null}
+
+        {/* Reviews */}
+        <ProductReviews productId={product.id} summary={reviewSummary} reviews={reviews} />
 
         {/* SEO */}
         <JsonLd

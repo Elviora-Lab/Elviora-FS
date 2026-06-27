@@ -1,14 +1,24 @@
+import { z } from 'zod';
+
+import { prisma } from '@/lib/db';
+
+import { events } from '@/server/events';
 import { createHandler } from '@/server/http/handler';
+import { parseJson } from '@/server/http/parse';
 import { apiSuccess } from '@/server/http/response';
 
 export const runtime = 'nodejs';
 
-/**
- * Newsletter subscribe / unsubscribe.
- *
- * Scaffold — wire the service + repository following the patterns in
- * /api/v1/products and /api/v1/cart.
- */
-export const GET = createHandler(async () => {
-  return apiSuccess({ items: [] }, { message: 'Not yet implemented' });
+const subscribeBody = z.object({ email: z.string().email() });
+
+/** Subscribe an email to the newsletter (idempotent). */
+export const POST = createHandler(async (req) => {
+  const { email } = await parseJson(req, subscribeBody);
+  await prisma.newsletterSubscriber.upsert({
+    where: { email },
+    update: { isActive: true },
+    create: { email },
+  });
+  events.emit('newsletter.subscribed', { email });
+  return apiSuccess({ email }, { message: 'Subscribed' });
 });

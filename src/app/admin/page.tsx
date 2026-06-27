@@ -18,6 +18,8 @@ export default async function AdminDashboardPage() {
   ]);
 
   const tiles: Array<{ label: string; value: string; accent: boolean; href?: string }> = [
+    { label: 'Revenue · today', value: formatMoney(kpis.revenueToday), accent: false },
+    { label: 'Revenue · this week', value: formatMoney(kpis.revenueWeek), accent: false },
     { label: 'Lifetime revenue', value: formatMoney(kpis.revenue), accent: false },
     { label: 'Orders (30d)', value: String(kpis.ordersLast30), accent: false },
     { label: 'Active products', value: String(kpis.productsCount), accent: false },
