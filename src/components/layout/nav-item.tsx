@@ -29,6 +29,20 @@ import { cn } from '@/lib/cn';
 export function NavItem({ item }: { item: NavItemType }) {
   const hasChildren = !!item.children?.length;
 
+  if (item.comingSoon) {
+    return (
+      <span
+        aria-disabled="true"
+        className="inline-flex cursor-default select-none items-center gap-1.5 text-xs uppercase tracking-[0.14em] text-foreground/40"
+      >
+        {item.label}
+        <span className="rounded-full border border-border/60 px-1.5 py-0.5 text-[9px] tracking-[0.1em] text-muted-foreground">
+          Soon
+        </span>
+      </span>
+    );
+  }
+
   if (!hasChildren) {
     return (
       <Link

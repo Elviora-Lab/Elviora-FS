@@ -3,34 +3,28 @@ export type NavItem = {
   href: string;
   description?: string;
   children?: NavItem[];
+  /** Render as a non-clickable "coming soon" item (no products yet). */
+  comingSoon?: boolean;
 };
 
 export const mainNav: NavItem[] = [
   {
-    label: 'Skincare',
-    href: '/categories/skincare',
-    // Sub-categories use FLAT slugs that match the actual `categories.slug`
-    // values in the DB (the route is `/categories/[slug]` — single segment).
-    // Parent/child grouping is purely visual via the nav config.
-    children: [
-      { label: 'Cleansers', href: '/categories/cleansers' },
-      { label: 'Serums', href: '/categories/serums' },
-      { label: 'Moisturizers', href: '/categories/moisturizers' },
-      { label: 'Sunscreens', href: '/categories/sunscreens' },
-      { label: 'Masks', href: '/categories/masks' },
-    ],
-  },
-  {
     label: 'Makeup',
-    href: '/categories/makeup',
+    // No `makeup` parent category exists in the DB — all current products are
+    // makeup, so the parent links to the full catalog and the children are the
+    // real `categories.slug` values (route is `/categories/[slug]`).
+    href: '/products',
     children: [
-      { label: 'Lip', href: '/categories/lip' },
-      { label: 'Eye', href: '/categories/eye' },
+      { label: 'Lips', href: '/categories/lips' },
+      { label: 'Eyes', href: '/categories/eyes' },
       { label: 'Face', href: '/categories/face' },
-      { label: 'Nail', href: '/categories/nail' },
+      { label: 'Nails', href: '/categories/nails' },
     ],
   },
-  { label: 'Body', href: '/categories/body' },
+  // Skincare isn't part of the current catalog yet.
+  { label: 'Skincare', href: '/categories/skincare', comingSoon: true },
+  { label: 'Best Sellers', href: '/products?sort=popular' },
+  { label: 'New Arrivals', href: '/products?sort=newest' },
   { label: 'The Journal', href: '/blog' },
 ];
 
