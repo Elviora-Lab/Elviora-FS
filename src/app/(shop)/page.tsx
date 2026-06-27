@@ -3,47 +3,115 @@ import Link from 'next/link';
 
 import { buildMetadata } from '@/lib/seo/metadata';
 
+import { ProductCard } from '@/design-system/patterns/product-card';
 import { Reveal } from '@/design-system/primitives/reveal';
 import { Section, SectionHeading } from '@/design-system/primitives/section';
 import { Button } from '@/components/ui/button';
 
+import { productsService } from '@/server/services/products.service';
+
 export const metadata = buildMetadata({
-  title: 'Refined skincare. Quietly powerful.',
+  title: 'Colour, made luminous.',
   description:
-    'Discover the Elviora ritual — a curated edit of high-performance skincare and editorial cosmetics, formulated with rare botanicals and clinical precision.',
+    'Elviora — a curated edit of high-pigment lips, second-skin foundation, and glass-finish nails. Cosmetics designed to wear like light.',
 });
 
-export default function HomePage() {
+// Editorial imagery (Unsplash, free for commercial use).
+const HERO_IMAGE =
+  'https://images.unsplash.com/photo-1515688594390-b649af70d282?auto=format&fit=crop&w=1400&q=85';
+const EDITORIAL_IMAGE =
+  'https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&w=1600&q=85';
+
+// Category tiles use real product imagery from the catalog.
+const CATEGORIES = [
+  {
+    name: 'Lips',
+    href: '/categories/lips',
+    blurb: 'High-pigment colour',
+    img: 'https://cdn.shopify.com/s/files/1/0727/6701/3161/files/LiquidLipstick-terracota-rose-16_ce627aa1-9e61-423c-8b10-2240990461f7.jpg?v=1711142141',
+  },
+  {
+    name: 'Eyes',
+    href: '/categories/eyes',
+    blurb: 'Define & line',
+    img: 'https://cdn.shopify.com/s/files/1/0727/6701/3161/files/Liquid_Eyeliner_Image_1_-_WEBP.webp?v=1736921602',
+  },
+  {
+    name: 'Face',
+    href: '/categories/face',
+    blurb: 'Glow & base',
+    img: 'https://cdn.shopify.com/s/files/1/0727/6701/3161/files/Highlighter_SP-03.png?v=1777577801',
+  },
+  {
+    name: 'Nails',
+    href: '/categories/nails',
+    blurb: 'Glass finish',
+    img: 'https://cdn.shopify.com/s/files/1/0727/6701/3161/files/ST-40_1.webp?v=1739441174',
+  },
+];
+
+export default async function HomePage() {
+  const { items: bestsellers } = await productsService.list({}, 'popular', 1, 8);
+
   return (
     <>
       {/* — Editorial hero — */}
       <Section as="section" size="lg" className="surface-pearl relative overflow-hidden">
+        {/* Soft blush halo behind the copy for a cosmetic glow. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -left-24 top-1/4 size-[28rem] rounded-full bg-brand-blush/50 blur-3xl"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-16 -top-10 size-[22rem] rounded-full bg-brand-rosegold/20 blur-3xl"
+        />
         <div className="container relative grid items-center gap-12 lg:grid-cols-2">
           <Reveal className="flex max-w-xl flex-col gap-6">
-            <span className="eyebrow">The Spring Edit · 2026</span>
+            <span className="eyebrow">The Colour Edit · 2026</span>
             <h1 className="editorial-heading text-display-xl md:text-display-2xl">
-              Quietly luminous skin, every morning.
+              Colour, made luminous.
             </h1>
             <p className="text-pretty text-base leading-relaxed text-muted-foreground md:text-lg">
-              A study in restraint — twelve essentials, eighty-four botanicals, one ritual. Crafted
-              in small batches, refined in light.
+              High-pigment lips, second-skin foundation, and glass-finish nails — a curated edit of
+              cosmetics designed to wear like light, made in small batches.
             </p>
             <div className="mt-2 flex flex-wrap gap-3">
               <Button asChild size="lg" variant="gold" uppercase>
-                <Link href="/products">Shop the edit</Link>
+                <Link href="/products">Shop the collection</Link>
               </Button>
               <Button asChild size="lg" variant="outline">
-                <Link href="/ai-skincare-assistant">Speak with our concierge</Link>
+                <Link href="/products?sort=popular">Bestsellers</Link>
               </Button>
             </div>
+            <dl className="mt-6 flex gap-8 text-sm">
+              <div>
+                <dt className="font-serif text-2xl font-light text-foreground">266</dt>
+                <dd className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                  Shades & finishes
+                </dd>
+              </div>
+              <div>
+                <dt className="font-serif text-2xl font-light text-foreground">Cruelty-free</dt>
+                <dd className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                  Always
+                </dd>
+              </div>
+              <div>
+                <dt className="font-serif text-2xl font-light text-foreground">Small-batch</dt>
+                <dd className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                  Made fresh
+                </dd>
+              </div>
+            </dl>
           </Reveal>
           <Reveal
             delay={0.1}
             className="relative aspect-[4/5] overflow-hidden rounded-lg bg-brand-pearl shadow-elevated"
           >
             <Image
-              src="https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=1200&q=80"
-              alt="Elviora editorial campaign"
+              src={HERO_IMAGE}
+              alt="Elviora — luminous editorial makeup"
               fill
               priority
               sizes="(min-width:1024px) 50vw, 100vw"
@@ -53,28 +121,17 @@ export default function HomePage() {
         </div>
       </Section>
 
-      {/* — Categories — */}
+      {/* — Shop by category — */}
       <Section>
         <div className="container">
           <SectionHeading
-            eyebrow="Explore"
-            title="Two rituals, infinite expression"
-            description="From sun-warmed serums to editorial colour — each formula is a quiet promise of luminosity."
+            eyebrow="The Edit"
+            title="Find your finish"
+            description="Four ways to play — lips, eyes, face, and nails."
           />
-          <div className="mt-12 grid gap-6 md:grid-cols-2">
-            {[
-              {
-                name: 'Skincare',
-                href: '/categories/skincare',
-                img: 'https://images.unsplash.com/photo-1570194065650-d99fb4bedf0a?auto=format&fit=crop&w=800&q=80',
-              },
-              {
-                name: 'Makeup',
-                href: '/categories/makeup',
-                img: 'https://images.unsplash.com/photo-1522335789203-aaa2c4c80a90?auto=format&fit=crop&w=800&q=80',
-              },
-            ].map((c, i) => (
-              <Reveal key={c.href} inView delay={i * 0.08}>
+          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {CATEGORIES.map((c, i) => (
+              <Reveal key={c.href} inView delay={i * 0.06}>
                 <Link
                   href={c.href}
                   className="group relative block aspect-[4/5] overflow-hidden rounded-md bg-muted"
@@ -83,20 +140,87 @@ export default function HomePage() {
                     src={c.img}
                     alt={c.name}
                     fill
-                    sizes="(min-width:768px) 33vw, 100vw"
-                    className="object-cover transition-transform duration-700 ease-editorial group-hover:scale-[1.04]"
+                    sizes="(min-width:1024px) 25vw, (min-width:640px) 50vw, 100vw"
+                    className="object-cover transition-transform duration-700 ease-editorial group-hover:scale-[1.05]"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/15 to-transparent" />
-                  <div className="absolute inset-x-6 bottom-6 flex items-end justify-between text-background">
-                    <span className="font-serif text-2xl font-light">{c.name}</span>
-                    <span className="text-xs uppercase tracking-[0.14em] opacity-95 group-hover:opacity-100">
-                      Discover →
+                  <div className="absolute inset-0 bg-gradient-to-t from-brand-noir/70 via-brand-noir/10 to-transparent" />
+                  <div className="absolute inset-x-5 bottom-5 flex items-end justify-between text-brand-ivory">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] uppercase tracking-[0.18em] opacity-80">
+                        {c.blurb}
+                      </span>
+                      <span className="font-serif text-2xl font-light">{c.name}</span>
+                    </div>
+                    <span className="text-xs uppercase tracking-[0.14em] opacity-90 transition-opacity group-hover:opacity-100">
+                      Shop →
                     </span>
                   </div>
                 </Link>
               </Reveal>
             ))}
           </div>
+        </div>
+      </Section>
+
+      {/* — Bestsellers — */}
+      {bestsellers.length > 0 && (
+        <Section className="border-t border-border/60">
+          <div className="container">
+            <SectionHeading
+              eyebrow="Most loved"
+              title="Bestsellers"
+              description="The pieces our community reaches for, again and again."
+            />
+            <div className="mt-12 grid grid-cols-2 gap-x-5 gap-y-10 md:grid-cols-3 lg:grid-cols-4">
+              {bestsellers.slice(0, 8).map((product, i) => (
+                <Reveal key={product.id} inView delay={(i % 4) * 0.05}>
+                  <ProductCard product={product} priority={i < 4} />
+                </Reveal>
+              ))}
+            </div>
+            <div className="mt-12 flex justify-center">
+              <Button asChild size="lg" variant="outline" uppercase>
+                <Link href="/products">View all</Link>
+              </Button>
+            </div>
+          </div>
+        </Section>
+      )}
+
+      {/* — Editorial band — */}
+      <Section as="section" size="lg">
+        <div className="container">
+          <Reveal inView className="relative overflow-hidden rounded-xl">
+            <div className="relative aspect-[16/10] w-full md:aspect-[21/9]">
+              <Image
+                src={EDITORIAL_IMAGE}
+                alt="Elviora — the colour studio"
+                fill
+                sizes="100vw"
+                className="object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-brand-noir/80 via-brand-noir/40 to-transparent" />
+            </div>
+            <div className="absolute inset-0 flex items-center">
+              <div className="flex max-w-md flex-col gap-4 px-6 text-brand-ivory md:px-14">
+                <span className="text-[11px] uppercase tracking-[0.24em] text-brand-champagne">
+                  The House
+                </span>
+                <h2 className="editorial-heading text-display-md md:text-display-lg">
+                  Made in small batches. Worn in every light.
+                </h2>
+                <p className="text-pretty text-sm leading-relaxed text-brand-ivory/80">
+                  Pigments pressed for payoff, formulas kind to skin, shades built for every tone.
+                  This is colour, considered.
+                </p>
+                <div className="mt-2">
+                  <Button asChild size="lg" variant="gold" uppercase>
+                    <Link href="/products">Discover the collection</Link>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </Reveal>
         </div>
       </Section>
 
@@ -114,7 +238,7 @@ export default function HomePage() {
             </span>
           </p>
           <p className="mt-6 text-xs uppercase tracking-[0.32em] text-muted-foreground">
-            The Art of Radiant Beauty
+            The Art of Radiant Colour
           </p>
         </Reveal>
       </Section>
