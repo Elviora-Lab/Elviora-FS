@@ -7,9 +7,11 @@ import { formatDate, formatMoney } from '@/utils/format';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
+import { CourierCard } from './courier-card';
 import { StatusUpdater } from './status-updater';
 
 import { adminOrdersRepo } from '@/server/repositories/admin.repo';
+import { isPostExConfigured } from '@/server/shipping/postex';
 
 export const metadata = buildMetadata({ title: 'Admin · Order', noIndex: true });
 export const dynamic = 'force-dynamic';
@@ -144,6 +146,26 @@ export default async function AdminOrderDetailPage({
             </CardHeader>
             <CardContent>
               <StatusUpdater orderId={order.id} currentStatus={order.orderStatus} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Shipping</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CourierCard
+                orderId={order.id}
+                configured={isPostExConfigured()}
+                shipment={
+                  order.shipments[0]
+                    ? {
+                        courierName: order.shipments[0].courierName,
+                        trackingNumber: order.shipments[0].trackingNumber,
+                      }
+                    : null
+                }
+              />
             </CardContent>
           </Card>
 

@@ -38,6 +38,9 @@ const serverEnvSchema = z.object({
   S3_SECRET_ACCESS_KEY: optionalStr,
   S3_PUBLIC_URL: optionalUrl,
   OPENAI_API_KEY: optionalStr,
+  // PostEx courier (Pakistan) — merchant API token + optional pickup address code.
+  POSTEX_API_TOKEN: optionalStr,
+  POSTEX_PICKUP_ADDRESS_CODE: optionalStr,
   // postgresql:// URLs are not valid http(s) URLs, so use a plain string check
   // and require the protocol prefix when set.
   DATABASE_URL: z.preprocess(
@@ -103,6 +106,8 @@ export const serverEnv = (() => {
     S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY,
     S3_PUBLIC_URL: process.env.S3_PUBLIC_URL,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    POSTEX_API_TOKEN: process.env.POSTEX_API_TOKEN,
+    POSTEX_PICKUP_ADDRESS_CODE: process.env.POSTEX_PICKUP_ADDRESS_CODE,
   });
   if (!parsed.success) {
     console.error('Invalid server environment variables:', parsed.error.flatten().fieldErrors);
