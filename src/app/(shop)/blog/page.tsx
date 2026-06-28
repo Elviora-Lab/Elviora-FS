@@ -22,7 +22,8 @@ function excerpt(post: { seoDescription: string | null; content: string }) {
 }
 
 export default async function BlogIndexPage() {
-  const posts = await blogRepo.listPublished();
+  // Resilient: don't fail the build if the DB is unavailable at prerender time.
+  const posts = await blogRepo.listPublished().catch(() => []);
 
   return (
     <Section>
