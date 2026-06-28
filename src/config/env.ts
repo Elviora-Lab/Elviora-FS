@@ -37,6 +37,8 @@ const serverEnvSchema = z.object({
   S3_ACCESS_KEY_ID: optionalStr,
   S3_SECRET_ACCESS_KEY: optionalStr,
   S3_PUBLIC_URL: optionalUrl,
+  // S3-compatible endpoint (Supabase Storage, R2, MinIO…). Omit for AWS S3.
+  S3_ENDPOINT: optionalUrl,
   OPENAI_API_KEY: optionalStr,
   // PostEx courier (Pakistan) — merchant API token + optional pickup address code.
   POSTEX_API_TOKEN: optionalStr,
@@ -105,6 +107,7 @@ export const serverEnv = (() => {
     S3_ACCESS_KEY_ID: process.env.S3_ACCESS_KEY_ID,
     S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY,
     S3_PUBLIC_URL: process.env.S3_PUBLIC_URL,
+    S3_ENDPOINT: process.env.S3_ENDPOINT,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     POSTEX_API_TOKEN: process.env.POSTEX_API_TOKEN,
     POSTEX_PICKUP_ADDRESS_CODE: process.env.POSTEX_PICKUP_ADDRESS_CODE,

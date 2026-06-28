@@ -19,6 +19,9 @@ function client(): S3Client {
       accessKeyId: serverEnv.S3_ACCESS_KEY_ID,
       secretAccessKey: serverEnv.S3_SECRET_ACCESS_KEY,
     },
+    // S3-compatible providers (e.g. Supabase Storage) need a custom endpoint
+    // and path-style addressing (bucket in the path, not the host).
+    ...(serverEnv.S3_ENDPOINT ? { endpoint: serverEnv.S3_ENDPOINT, forcePathStyle: true } : {}),
   });
   return cachedClient;
 }
