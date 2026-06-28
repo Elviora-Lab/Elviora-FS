@@ -26,6 +26,8 @@ import { Label } from '@/components/ui/label';
 import { cartApi } from '@/features/cart/api/cart-api';
 import { useCart } from '@/features/cart/hooks/use-cart';
 
+import { BackInStockNotify } from './back-in-stock-notify';
+
 import { addToCart } from '@/server/actions/cart.actions';
 
 export type GalleryImage = { url: string; alt: string; variantId: string | null };
@@ -275,6 +277,10 @@ export function ProductExperience({
           >
             {outOfStock ? 'Out of stock' : canAdd ? 'Add to bag' : 'Unavailable'}
           </Button>
+
+          {selected && !canAdd ? (
+            <BackInStockNotify key={selected.id} variantId={selected.id} />
+          ) : null}
 
           <p className="text-xs text-muted-foreground">
             Free shipping on orders over Rs 15,000 · 30-day returns

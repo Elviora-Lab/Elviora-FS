@@ -336,19 +336,20 @@ model Product {
   createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  category       Category?               @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  brand          Brand?                  @relation(fields: [brandId], references: [id], onDelete: SetNull)
-  variants       ProductVariant[]
-  images         ProductImage[]
-  tagMappings    ProductTagMapping[]
-  skinConcerns   ProductSkinConcern[]
-  ingredients    ProductIngredient[]
-  cartItems      CartItem[]
-  orderItems     OrderItem[]
-  wishlists      Wishlist[]
-  reviews        Review[]
-  recentlyViewed RecentlyViewedProduct[]
-  viewLogs       ProductViewLog[]
+  category           Category?               @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  brand              Brand?                  @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  variants           ProductVariant[]
+  images             ProductImage[]
+  tagMappings        ProductTagMapping[]
+  skinConcerns       ProductSkinConcern[]
+  ingredients        ProductIngredient[]
+  cartItems          CartItem[]
+  orderItems         OrderItem[]
+  wishlists          Wishlist[]
+  reviews            Review[]
+  recentlyViewed     RecentlyViewedProduct[]
+  viewLogs           ProductViewLog[]
+  stockNotifications StockNotification[]
 
   // CHECK constraints — non-negative pricing.
   @@index([categoryId])
@@ -374,10 +375,11 @@ model ProductVariant {
   weight        Decimal? @db.Decimal(8, 3) // kilograms — for shipping rate calc
   isActive      Boolean  @default(true) @map("is_active")
 
-  product    Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
-  images     ProductImage[]
-  cartItems  CartItem[]
-  orderItems OrderItem[]
+  product            Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
+  images             ProductImage[]
+  cartItems          CartItem[]
+  orderItems         OrderItem[]
+  stockNotifications StockNotification[]
 
   @@index([productId])
   @@index([isActive])
@@ -539,6 +541,26 @@ model Wishlist {
   @@unique([userId, productId], map: "uq_wishlist_user_product")
   @@index([productId])
   @@map("wishlists")
+}
+
+/// "Notify me when back in stock" waitlist for an out-of-stock variant. Works
+/// for guests (email only) and logged-in users. One row per (variant, email);
+/// `notifiedAt` is set once the restock email is sent.
+model StockNotification {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  variantId  String    @map("variant_id") @db.Uuid
+  productId  String    @map("product_id") @db.Uuid
+  userId     String?   @map("user_id") @db.Uuid
+  email      String    @db.VarChar(255)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  notifiedAt DateTime? @map("notified_at") @db.Timestamptz
+
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  product Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([variantId, email], map: "uq_stock_notify")
+  @@index([variantId, notifiedAt])
+  @@map("stock_notifications")
 }
 
 // =============================================================================
