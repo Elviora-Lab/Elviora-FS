@@ -31,7 +31,10 @@
       "Bash(awk '/^model Order /,/^}/' prisma/schema.prisma)",
       "Bash(awk '/^model Wishlist /,/^}/' prisma/schema.prisma)",
       "Bash(awk '/^model Product /,/^}/' prisma/schema.prisma)",
-      "Bash(awk '/^model ProductVariant /,/^}/' prisma/schema.prisma)"
+      "Bash(awk '/^model ProductVariant /,/^}/' prisma/schema.prisma)",
+      "Bash(git add *)",
+      "Bash(git commit -q -m ' *)",
+      "Bash(git push *)"
     ],
     "additionalDirectories": [
       "/Users/hshahir/Desktop/Elviora/Elviora-FS/src/app/api/v1/products",
