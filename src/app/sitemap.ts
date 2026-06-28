@@ -30,15 +30,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = siteConfig.url;
   const now = new Date();
 
-  const [products, categories, posts] = await Promise.all([
-    prisma.product.findMany({ where: { isActive: true }, select: { slug: true, updatedAt: true } }),
-    prisma.category.findMany({ where: { isActive: true }, select: { slug: true } }),
-    prisma.blogPost.findMany({
-      where: { isPublished: true },
-      select: { slug: true, publishedAt: true },
-    }),
-  ]);
-
   const staticRoutes: MetadataRoute.Sitemap = STATIC_PATHS.map(
     ([path, changeFrequency, priority]) => ({
       url: `${base}${path}`,
@@ -47,6 +38,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority,
     }),
   );
+
+  // Fetch dynamic entries, but never let a build-time DB hiccup fail the whole
+  // build — fall back to the static routes if the DB is unavailable.
+  let products: Array<{ slug: string; updatedAt: Date }> = [];
+  let categories: Array<{ slug: string }> = [];
+  let posts: Array<{ slug: string; publishedAt: Date | null }> = [];
+  try {
+    [products, categories, posts] = await Promise.all([
+      prisma.product.findMany({
+        where: { isActive: true },
+        select: { slug: true, updatedAt: true },
+      }),
+      prisma.category.findMany({ where: { isActive: true }, select: { slug: true } }),
+      prisma.blogPost.findMany({
+        where: { isPublished: true },
+        select: { slug: true, publishedAt: true },
+      }),
+    ]);
+  } catch {
+    return staticRoutes;
+  }
 
   const productRoutes: MetadataRoute.Sitemap = products.map((p) => ({
     url: `${base}/products/${p.slug}`,

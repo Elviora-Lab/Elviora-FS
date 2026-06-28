@@ -55,7 +55,12 @@ const CATEGORIES = [
 ];
 
 export default async function HomePage() {
-  const { items: bestsellers } = await productsService.list({}, 'popular', 1, 8);
+  // Resilient at build/runtime: a DB hiccup yields an empty edit rather than a
+  // crashed render; ISR repopulates on the next successful revalidate.
+  const bestsellers = await productsService
+    .list({}, 'popular', 1, 8)
+    .then((r) => r.items)
+    .catch(() => []);
 
   // Real, shoppable products power the animated hero showcase.
   const heroProducts = bestsellers
