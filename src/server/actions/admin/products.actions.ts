@@ -1,8 +1,10 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 
+import { prisma } from '@/lib/db';
 import { toSlug } from '@/utils/slug';
 
 import { withAction } from '../_with-action';
@@ -85,3 +87,136 @@ export const updateStock = withAction(
     return { variantId: input.variantId, stockQuantity };
   },
 );
+
+// ---------------------------------------------------------------------------
+// Bulk operations
+// ---------------------------------------------------------------------------
+
+const bulkActiveBody = z.object({
+  ids: z.array(z.string().uuid()).min(1).max(500),
+  isActive: z.boolean(),
+});
+
+/** Enable/disable many products at once. */
+export const bulkSetProductActive = withAction(async (input: z.infer<typeof bulkActiveBody>) => {
+  await requireAdmin();
+  const { ids, isActive } = bulkActiveBody.parse(input);
+  const count = await adminProductsRepo.bulkSetActive(ids, isActive);
+  // Invalidate the affected PDP caches so storefront reflects the change.
+  const slugs = await adminProductsRepo.slugsForIds(ids);
+  await Promise.all(slugs.map((s) => productsService.invalidate(s.slug)));
+  revalidatePath('/admin/products');
+  revalidatePath('/products');
+  return { count, isActive };
+});
+
+const importRow = z.object({
+  name: z.string().min(2).max(255),
+  price: z.coerce.number().min(0),
+  sku: z.string().max(80).optional(),
+  category: z.string().max(120).optional(),
+  brand: z.string().max(160).optional(),
+  shortDescription: z.string().max(500).optional(),
+  imageUrl: z.string().url().optional().or(z.literal('')),
+  stock: z.coerce.number().int().min(0).optional(),
+  isActive: z.boolean().optional(),
+});
+
+/**
+ * Bulk-create/update products from parsed rows (CSV import). Matches existing
+ * products by slug (derived from name): updates them, otherwise creates a new
+ * product with a default sellable variant. Per-row failures are counted, not
+ * fatal.
+ */
+export const bulkImportProducts = withAction(async (input: { rows: unknown[] }) => {
+  await requireAdmin();
+  const rows = z.array(importRow).min(1).max(1000).parse(input.rows);
+
+  let created = 0;
+  let updated = 0;
+  let failed = 0;
+
+  for (const row of rows) {
+    try {
+      const slug = toSlug(row.name);
+      if (!slug) {
+        failed++;
+        continue;
+      }
+
+      let brandId: string | null = null;
+      if (row.brand) {
+        const b = await prisma.brand.upsert({
+          where: { slug: toSlug(row.brand) },
+          update: {},
+          create: { name: row.brand, slug: toSlug(row.brand) },
+        });
+        brandId = b.id;
+      }
+
+      let categoryId: string | null = null;
+      if (row.category) {
+        const c = await prisma.category.upsert({
+          where: { slug: toSlug(row.category) },
+          update: {},
+          create: { name: row.category, slug: toSlug(row.category) },
+        });
+        categoryId = c.id;
+      }
+
+      const common = {
+        name: row.name,
+        shortDescription: row.shortDescription ?? null,
+        price: new Prisma.Decimal(row.price),
+        isActive: row.isActive ?? true,
+        brandId,
+        categoryId,
+      };
+
+      const existing = await prisma.product.findUnique({ where: { slug }, select: { id: true } });
+      let productId: string;
+
+      if (existing) {
+        // Don't touch sku on update (avoids unique collisions).
+        await prisma.product.update({ where: { id: existing.id }, data: common });
+        productId = existing.id;
+        updated++;
+      } else {
+        const sku = (row.sku?.trim() || `IMP-${slug}`).slice(0, 80);
+        const product = await prisma.product.create({ data: { ...common, slug, sku } });
+        productId = product.id;
+        // A default variant so the product is immediately sellable.
+        await prisma.productVariant.create({
+          data: {
+            productId,
+            sku: `${sku}-V`.slice(0, 80),
+            price: common.price,
+            stockQuantity: row.stock ?? 0,
+          },
+        });
+        created++;
+      }
+
+      if (row.imageUrl) {
+        await prisma.productImage.deleteMany({ where: { productId, isPrimary: true } });
+        await prisma.productImage.create({
+          data: {
+            productId,
+            imageUrl: row.imageUrl,
+            isPrimary: true,
+            sortOrder: 0,
+            altText: row.name,
+          },
+        });
+      }
+
+      await productsService.invalidate(slug);
+    } catch {
+      failed++;
+    }
+  }
+
+  revalidatePath('/admin/products');
+  revalidatePath('/products');
+  return { created, updated, failed };
+});

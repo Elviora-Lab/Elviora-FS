@@ -149,6 +149,19 @@ export const adminProductsRepo = {
       include: { product: { select: { slug: true } } },
     });
   },
+
+  async bulkSetActive(ids: string[], isActive: boolean) {
+    const { count } = await prisma.product.updateMany({
+      where: { id: { in: ids } },
+      data: { isActive },
+    });
+    return count;
+  },
+
+  /** Slugs for a set of product ids — used to invalidate their PDP caches. */
+  slugsForIds(ids: string[]) {
+    return prisma.product.findMany({ where: { id: { in: ids } }, select: { slug: true } });
+  },
 };
 
 // ---------- Orders ----------

@@ -148,3 +148,6 @@ vite.config.ts.timestamp-*
 data/
 
 .DS_Store
+
+# Local DB dump for prod restore (not tracked)
+elviora_db_dump.sql
