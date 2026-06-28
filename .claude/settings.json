@@ -27,7 +27,8 @@
       "Bash(awk '/adminProductsRepo = \\\\{/,/^};/' src/server/repositories/admin.repo.ts)",
       "Bash(npx tsx -e ' *)",
       "Bash(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/api/v1/cron/abandoned-cart)",
-      "Bash(echo \"no auth -> $\\(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/api/v1/cron/abandoned-cart\\) \\(expect 503: CRON_SECRET unset locally\\)\")"
+      "Bash(echo \"no auth -> $\\(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/api/v1/cron/abandoned-cart\\) \\(expect 503: CRON_SECRET unset locally\\)\")",
+      "Bash(awk '/^model Order /,/^}/' prisma/schema.prisma)"
     ],
     "additionalDirectories": [
       "/Users/hshahir/Desktop/Elviora/Elviora-FS/src/app/api/v1/products",

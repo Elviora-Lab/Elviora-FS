@@ -1,0 +1,66 @@
+'use server';
+
+import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
+
+import { prisma } from '@/lib/db';
+
+import { withAction } from './_with-action';
+
+import { requireUser } from '@/server/auth/guards';
+import { sendEmail } from '@/server/email';
+import { returnUpdateEmail } from '@/server/email/templates/return-update';
+import { BadRequestError, NotFoundError } from '@/server/http/errors';
+import { notifyUser } from '@/server/notifications';
+import { returnsRepo } from '@/server/repositories/returns.repo';
+
+export const RETURN_REASONS = [
+  'Damaged or defective',
+  'Wrong item received',
+  'Not as described',
+  'Changed my mind',
+  'Other',
+] as const;
+
+const requestReturnBody = z.object({
+  orderId: z.string().uuid(),
+  reason: z.enum(RETURN_REASONS),
+  comment: z.string().max(1000).optional(),
+});
+
+/** Customer requests a return for one of their delivered orders. */
+export const requestReturn = withAction(async (input: z.infer<typeof requestReturnBody>) => {
+  const session = await requireUser();
+  const { orderId, reason, comment } = requestReturnBody.parse(input);
+
+  const order = await prisma.order.findFirst({
+    where: { id: orderId, userId: session.sub },
+    select: { id: true, orderStatus: true, orderNumber: true, user: { select: { email: true } } },
+  });
+  if (!order) throw new NotFoundError('Order not found');
+  if (order.orderStatus !== 'DELIVERED') {
+    throw new BadRequestError('Returns can only be requested for delivered orders');
+  }
+  if (await returnsRepo.findByOrder(orderId)) {
+    throw new BadRequestError('A return request already exists for this order');
+  }
+
+  const created = await returnsRepo.create({ orderId, userId: session.sub, reason, comment });
+
+  await notifyUser({
+    userId: session.sub,
+    type: 'ORDER_UPDATE',
+    title: 'Return request received',
+    message: `We received your return request for order ${order.orderNumber}.`,
+  });
+  if (order.user?.email) {
+    const { subject, html, text } = returnUpdateEmail({
+      orderNumber: order.orderNumber,
+      status: 'REQUESTED',
+    });
+    await sendEmail({ to: order.user.email, subject, html, text });
+  }
+
+  revalidatePath(`/account/orders/${orderId}`);
+  return { id: created.id, status: created.status };
+});

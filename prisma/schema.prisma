@@ -143,6 +143,15 @@ enum NotificationType {
   @@map("notification_type")
 }
 
+enum ReturnStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+  REFUNDED
+
+  @@map("return_status")
+}
+
 // =============================================================================
 //  IDENTITY & ACCESS
 // =============================================================================
@@ -180,6 +189,7 @@ model User {
   // Audit trail of order-status transitions this user triggered (admin actor).
   orderStatusChanges OrderStatusHistory[]    @relation("OrderStatusChanger")
   refreshTokens      RefreshToken[]
+  returnRequests     ReturnRequest[]
 
   @@index([role])
   @@index([createdAt])
@@ -571,6 +581,7 @@ model Order {
   payments      Payment[]
   shipments     Shipment[]
   couponUsages  CouponUsage[]
+  returnRequest ReturnRequest?
 
   @@index([userId])
   @@index([orderStatus])
@@ -578,6 +589,29 @@ model Order {
   @@index([createdAt])
   @@index([userId, createdAt])
   @@map("orders")
+}
+
+/// Customer-initiated return / refund request for a delivered order. One per
+/// order (v1, order-level). The admin moves it through REQUESTED → APPROVED →
+/// REFUNDED (or REJECTED); marking REFUNDED also flips the order to REFUNDED.
+model ReturnRequest {
+  id         String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId    String       @unique @map("order_id") @db.Uuid
+  userId     String       @map("user_id") @db.Uuid
+  status     ReturnStatus @default(REQUESTED)
+  reason     String       @db.VarChar(120)
+  comment    String?      @db.Text
+  adminNote  String?      @map("admin_note") @db.Text
+  createdAt  DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+  resolvedAt DateTime?    @map("resolved_at") @db.Timestamptz
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([userId])
+  @@map("return_requests")
 }
 
 /// Order line item. We snapshot `product_name`, `variant_name`, `unit_price`

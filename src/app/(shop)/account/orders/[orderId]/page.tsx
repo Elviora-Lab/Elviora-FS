@@ -8,7 +8,10 @@ import { Price } from '@/design-system/primitives/price';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
+import { ReturnSection } from './return-section';
+
 import { requireUser } from '@/server/auth/guards';
+import { returnsRepo } from '@/server/repositories/returns.repo';
 import { ordersService } from '@/server/services/orders.service';
 
 export const metadata = buildMetadata({
@@ -41,6 +44,8 @@ export default async function CustomerOrderDetailPage({ params }: { params: Para
   } catch {
     notFound();
   }
+
+  const existingReturn = await returnsRepo.findByOrder(orderId);
 
   return (
     <div className="flex flex-col gap-6">
@@ -213,6 +218,23 @@ export default async function CustomerOrderDetailPage({ params }: { params: Para
               </CardContent>
             </Card>
           ) : null}
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Returns</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ReturnSection
+                orderId={order.id}
+                orderStatus={order.orderStatus}
+                existing={
+                  existingReturn
+                    ? { status: existingReturn.status, reason: existingReturn.reason }
+                    : null
+                }
+              />
+            </CardContent>
+          </Card>
         </aside>
       </div>
     </div>
