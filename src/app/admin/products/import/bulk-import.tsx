@@ -2,12 +2,30 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { Download } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 import { bulkImportProducts } from '@/server/actions/admin/products.actions';
+
+const TEMPLATE_CSV = `name,price,sku,category,brand,description,imageUrl,stock,isActive
+Rose Glow Serum,1299,RGS-01,Face,Elviora,Luminous daily serum,https://cdn.example.com/rgs.jpg,100,true
+Velvet Matte Lip,599,VML-02,Lips,Elviora,Long-wear liquid lip,,50,true
+`;
+
+function downloadTemplate() {
+  const blob = new Blob([TEMPLATE_CSV], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'elviora-products-template.csv';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
 
 type ImportRow = {
   name: string;
@@ -134,8 +152,11 @@ export function BulkImport() {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-lg">Upload CSV</CardTitle>
+        <Button type="button" size="sm" variant="outline" onClick={downloadTemplate}>
+          <Download className="size-4" /> Template
+        </Button>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <input type="file" accept=".csv,text/csv" onChange={onFile} className="text-sm" />
