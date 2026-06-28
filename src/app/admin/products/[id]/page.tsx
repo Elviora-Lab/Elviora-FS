@@ -47,6 +47,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
           costPrice: product.costPrice ? Number(product.costPrice) : undefined,
           isFeatured: product.isFeatured,
           isActive: product.isActive,
+          images: product.images.filter((img) => !img.variantId).map((img) => img.imageUrl),
         }}
       />
 

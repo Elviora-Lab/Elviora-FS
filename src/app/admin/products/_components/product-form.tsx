@@ -1,12 +1,14 @@
 'use client';
 
-import { useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+
+import { ImageUploader } from './image-uploader';
 
 import {
   createProduct,
@@ -26,6 +28,7 @@ type Values = {
   costPrice?: number;
   isFeatured?: boolean;
   isActive?: boolean;
+  images?: string[];
 };
 
 export function ProductForm({
@@ -38,6 +41,7 @@ export function ProductForm({
   const router = useRouter();
   const [pending, start] = useTransition();
   const [deleting, startDelete] = useTransition();
+  const [images, setImages] = useState<string[]>(defaultValues?.images ?? []);
 
   async function onSubmit(formData: FormData) {
     const payload: Values = {
@@ -51,6 +55,7 @@ export function ProductForm({
       costPrice: formData.get('costPrice') ? Number(formData.get('costPrice')) : undefined,
       isFeatured: formData.get('isFeatured') === 'on',
       isActive: formData.get('isActive') === 'on',
+      images,
     };
 
     start(async () => {
@@ -112,6 +117,10 @@ export function ProductForm({
           rows={5}
           className="flex w-full rounded-md border border-input bg-transparent px-3.5 py-2 text-sm placeholder:text-muted-foreground/70 focus-visible:border-foreground/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         />
+      </Field>
+
+      <Field label="Product images">
+        <ImageUploader value={images} onChange={setImages} />
       </Field>
 
       <div className="grid gap-5 md:grid-cols-3">

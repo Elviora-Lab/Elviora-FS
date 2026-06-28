@@ -26,7 +26,26 @@ const productBody = z.object({
   isActive: z.coerce.boolean().optional(),
   categoryId: z.string().uuid().optional(),
   brandId: z.string().uuid().optional(),
+  // Product-level gallery image URLs (first = primary). Uploaded via the
+  // presign flow or pasted directly.
+  images: z.array(z.string().url()).max(20).optional(),
 });
+
+/** Replace a product's gallery (product-level images only; variant-linked
+ *  images are left untouched). First URL becomes the primary image. */
+async function setProductImages(productId: string, images: string[]) {
+  await prisma.productImage.deleteMany({ where: { productId, variantId: null } });
+  if (images.length) {
+    await prisma.productImage.createMany({
+      data: images.map((imageUrl, i) => ({
+        productId,
+        imageUrl,
+        isPrimary: i === 0,
+        sortOrder: i,
+      })),
+    });
+  }
+}
 
 export const createProduct = withAction(async (input: z.infer<typeof productBody>) => {
   await requireAdmin();
@@ -45,6 +64,7 @@ export const createProduct = withAction(async (input: z.infer<typeof productBody
     ...(data.categoryId ? { category: { connect: { id: data.categoryId } } } : {}),
     ...(data.brandId ? { brand: { connect: { id: data.brandId } } } : {}),
   });
+  if (data.images?.length) await setProductImages(product.id, data.images);
   revalidatePath('/admin/products');
   return product;
 });
@@ -53,12 +73,13 @@ export const updateProduct = withAction(
   async (input: { id: string } & Partial<z.infer<typeof productBody>>) => {
     await requireAdmin();
     const { id, ...rest } = input;
-    const data = productBody.partial().parse(rest);
+    const { images, ...data } = productBody.partial().parse(rest);
     const product = await adminProductsRepo.update(id, {
       ...data,
       ...(data.categoryId ? { category: { connect: { id: data.categoryId } } } : {}),
       ...(data.brandId ? { brand: { connect: { id: data.brandId } } } : {}),
     });
+    if (images) await setProductImages(id, images);
     // Drop the cached PDP (Redis + in-process) so price/availability edits show
     // immediately instead of waiting out the 120s TTL.
     await productsService.invalidate(product.slug);

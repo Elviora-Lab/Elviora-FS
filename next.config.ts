@@ -14,6 +14,9 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'cdn.elviora.com' },
       // Imported catalog (data/products.json) serves images from Shopify's CDN.
       { protocol: 'https', hostname: 'cdn.shopify.com' },
+      // Admins can attach product images by pasting arbitrary HTTPS URLs or
+      // uploading to object storage, so allow any HTTPS host for next/image.
+      { protocol: 'https', hostname: '**' },
     ],
     deviceSizes: [360, 640, 750, 828, 1080, 1200, 1440, 1920, 2560],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
