@@ -1,0 +1,53 @@
+# =============================================================================
+#  CI — quality gate
+# =============================================================================
+#
+#  Deployment is handled by Vercel's native Git integration (push to `main` →
+#  production; other branches → preview). This workflow only enforces quality:
+#  type-check, lint, format, and tests on every push and PR.
+#
+#  NOTE: Vercel's build runs `prisma generate && next build` (see package.json)
+#  — it does NOT run `prisma migrate deploy`. Apply new migrations against the
+#  production DB before/with the deploy, e.g. locally:
+#    DATABASE_URL=<direct-url> DIRECT_URL=<direct-url> npx prisma migrate deploy
+# =============================================================================
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npm run type-check
+
+      - name: Lint
+        run: npm run lint -- --max-warnings=0
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Test
+        run: npm test
