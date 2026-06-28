@@ -11,13 +11,19 @@ import { prisma } from '@/lib/db';
 
 // ---------- Dashboard ----------
 
-// Orders that count toward recognized revenue — everything except those that
-// were voided. Keying on order status (not paymentStatus) is correct here:
-// COD / bank-transfer orders are fulfilled without ever flipping payment to
-// PAID, and only the Stripe webhook sets PAID, so a paymentStatus filter would
-// undercount real sales.
+// Orders that count toward recognized revenue. An order is excluded when it is
+// voided/returned/refunded by EITHER signal:
+//   - orderStatus CANCELLED / RETURNED / REFUNDED, or
+//   - paymentStatus REFUNDED / VOIDED (a refund recorded on the payment even if
+//     the order status wasn't flipped).
+// We deliberately do NOT require paymentStatus = PAID: COD / bank-transfer
+// orders are fulfilled without ever flipping to PAID (only the Stripe webhook
+// sets PAID), so a positive paymentStatus filter would undercount real sales.
+// PARTIALLY_REFUNDED stays counted — without a stored refund amount we can't
+// subtract the partial value, and dropping the whole order would over-deduct.
 const REVENUE_WHERE: Prisma.OrderWhereInput = {
   orderStatus: { notIn: ['CANCELLED', 'RETURNED', 'REFUNDED'] },
+  paymentStatus: { notIn: ['REFUNDED', 'VOIDED'] },
 };
 
 const sumRevenue = async (extra?: Prisma.OrderWhereInput) => {
