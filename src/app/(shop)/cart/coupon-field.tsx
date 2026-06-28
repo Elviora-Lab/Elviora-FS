@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -15,17 +15,40 @@ import {
   applyCoupon as applyCouponLocal,
   removeCoupon as removeCouponLocal,
   selectCart,
+  selectCartSubtotal,
 } from '@/features/cart/store/cart-slice';
 
 import { applyCoupon as validateCoupon } from '@/server/actions/cart.actions';
 
 export function CouponField() {
   const dispatch = useAppDispatch();
-  const { couponCode } = useAppSelector(selectCart);
+  const { couponCode, couponDiscount } = useAppSelector(selectCart);
+  const subtotal = useAppSelector(selectCartSubtotal);
 
   const [code, setCode] = useState('');
-  const [savings, setSavings] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Keep the discount accurate when the cart changes after a coupon is applied
+  // (e.g. a percentage coupon, or the order drops below the minimum). Server is
+  // the source of truth — it recomputes against the live cart subtotal.
+  useEffect(() => {
+    if (!couponCode) return;
+    let cancelled = false;
+    (async () => {
+      const res = await validateCoupon({ code: couponCode });
+      if (cancelled) return;
+      if (res.success) {
+        dispatch(applyCouponLocal({ code: res.data.code, discount: res.data.discount }));
+      } else {
+        dispatch(removeCouponLocal());
+        toast.error(`${couponCode} removed — ${res.message}`);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subtotal]);
 
   async function apply(e: React.FormEvent) {
     e.preventDefault();
@@ -35,8 +58,7 @@ export function CouponField() {
     try {
       const res = await validateCoupon({ code: trimmed });
       if (res.success) {
-        dispatch(applyCouponLocal(res.data.code));
-        setSavings(res.data.discount);
+        dispatch(applyCouponLocal({ code: res.data.code, discount: res.data.discount }));
         toast.success(`Coupon ${res.data.code} applied`);
         setCode('');
       } else {
@@ -49,7 +71,6 @@ export function CouponField() {
 
   function remove() {
     dispatch(removeCouponLocal());
-    setSavings(null);
   }
 
   if (couponCode) {
@@ -57,8 +78,8 @@ export function CouponField() {
       <div className="flex items-center justify-between rounded-md border border-brand-rosegold/40 bg-brand-blush/20 px-3 py-2 text-sm">
         <span>
           <span className="font-medium">{couponCode}</span> applied
-          {savings != null ? (
-            <span className="text-muted-foreground"> · you save {formatMoney(savings)}</span>
+          {couponDiscount != null ? (
+            <span className="text-muted-foreground"> · you save {formatMoney(couponDiscount)}</span>
           ) : null}
         </span>
         <button

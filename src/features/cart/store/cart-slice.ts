@@ -19,12 +19,14 @@ export type CartLine = {
 type CartState = {
   lines: CartLine[];
   couponCode: string | null;
+  couponDiscount: number | null;
   shippingMethodId: string | null;
 };
 
 const initialState: CartState = {
   lines: [],
   couponCode: null,
+  couponDiscount: null,
   shippingMethodId: null,
 };
 
@@ -64,12 +66,15 @@ const cartSlice = createSlice({
     clearCart: (s) => {
       s.lines = [];
       s.couponCode = null;
+      s.couponDiscount = null;
     },
-    applyCoupon: (s, a: PayloadAction<string>) => {
-      s.couponCode = a.payload;
+    applyCoupon: (s, a: PayloadAction<{ code: string; discount: number }>) => {
+      s.couponCode = a.payload.code;
+      s.couponDiscount = a.payload.discount;
     },
     removeCoupon: (s) => {
       s.couponCode = null;
+      s.couponDiscount = null;
     },
     setShippingMethod: (s, a: PayloadAction<string | null>) => {
       s.shippingMethodId = a.payload;

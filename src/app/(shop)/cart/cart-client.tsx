@@ -3,6 +3,8 @@
 import Image from 'next/image';
 import Link from 'next/link';
 
+import { useAppSelector } from '@/store/hooks';
+
 import { EmptyState } from '@/design-system/primitives/empty-state';
 import { Price } from '@/design-system/primitives/price';
 import { QuantitySelector } from '@/design-system/primitives/quantity-selector';
@@ -10,11 +12,15 @@ import { Button } from '@/components/ui/button';
 
 import { useRemoveCartLineMutation, useUpdateCartLineMutation } from '@/features/cart/api/cart-api';
 import { useCart } from '@/features/cart/hooks/use-cart';
+import { selectCart } from '@/features/cart/store/cart-slice';
 
 import { CouponField } from './coupon-field';
 
 export function CartPageClient() {
   const { cart, subtotal, count, updateQty, remove } = useCart();
+  const { couponDiscount } = useAppSelector(selectCart);
+  const discount = couponDiscount ?? 0;
+  const total = Math.max(0, subtotal - discount);
   const [updateLine] = useUpdateCartLineMutation();
   const [removeLineMutation] = useRemoveCartLineMutation();
 
@@ -104,9 +110,19 @@ export function CartPageClient() {
           <Price amount={subtotal} currency={cart.lines[0]?.currency ?? 'PKR'} />
         </div>
         <CouponField />
-        <p className="text-xs text-muted-foreground">
-          Shipping, taxes and discounts calculated at checkout.
-        </p>
+        {discount > 0 ? (
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Discount</span>
+            <span className="tabular-nums">
+              −<Price amount={discount} currency={cart.lines[0]?.currency ?? 'PKR'} />
+            </span>
+          </div>
+        ) : null}
+        <div className="flex items-center justify-between border-t border-border pt-3 text-sm font-medium">
+          <span>Total</span>
+          <Price amount={total} currency={cart.lines[0]?.currency ?? 'PKR'} />
+        </div>
+        <p className="text-xs text-muted-foreground">Shipping and taxes calculated at checkout.</p>
         <Button asChild size="lg" variant="gold" uppercase>
           <Link href="/checkout">Proceed to checkout</Link>
         </Button>

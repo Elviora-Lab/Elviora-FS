@@ -38,7 +38,10 @@ export function useCart() {
       [dispatch],
     ),
     clear: useCallback(() => dispatch(clearCart()), [dispatch]),
-    applyCoupon: useCallback((code: string) => dispatch(applyCoupon(code)), [dispatch]),
+    applyCoupon: useCallback(
+      (code: string, discount = 0) => dispatch(applyCoupon({ code, discount })),
+      [dispatch],
+    ),
     removeCoupon: useCallback(() => dispatch(removeCoupon()), [dispatch]),
   };
 }

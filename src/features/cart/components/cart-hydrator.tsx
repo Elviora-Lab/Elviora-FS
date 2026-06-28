@@ -35,6 +35,7 @@ export function CartHydrator() {
       hydrate({
         lines: data.lines.map(toSliceLine),
         couponCode: data.couponCode ?? null,
+        couponDiscount: null,
         shippingMethodId: null,
       }),
     );

@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
+import { useAppSelector } from '@/store/hooks';
+
 import { cn } from '@/lib/cn';
 
 import { EmptyState } from '@/design-system/primitives/empty-state';
@@ -16,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 import { useCart } from '@/features/cart/hooks/use-cart';
+import { selectCart } from '@/features/cart/store/cart-slice';
 
 import { placeOrder } from '@/server/actions/checkout.actions';
 
@@ -59,6 +62,9 @@ export function CheckoutClient({
   const router = useRouter();
   const [pending, start] = useTransition();
   const { clear: clearLocalCart, cart: clientCart } = useCart();
+  const { couponCode, couponDiscount } = useAppSelector(selectCart);
+  const discount = couponDiscount ?? 0;
+  const total = Math.max(0, cart.subtotal - discount);
 
   const initialAddressId = addresses.find((a) => a.isDefault)?.id ?? addresses[0]?.id ?? 'new';
   const [addressId, setAddressId] = useState<string>(initialAddressId);
@@ -272,12 +278,26 @@ export function CheckoutClient({
           ))}
         </ul>
         <div className="luxe-divider" />
-        <div className="flex items-center justify-between">
-          <span className="eyebrow">Subtotal</span>
-          <Price amount={cart.subtotal} currency={cart.currency} size="lg" />
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">Subtotal</span>
+          <Price amount={cart.subtotal} currency={cart.currency} size="sm" />
+        </div>
+        {discount > 0 ? (
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">
+              Discount{couponCode ? ` (${couponCode})` : ''}
+            </span>
+            <span className="tabular-nums">
+              −<Price amount={discount} currency={cart.currency} size="sm" />
+            </span>
+          </div>
+        ) : null}
+        <div className="flex items-center justify-between border-t border-border pt-3">
+          <span className="eyebrow">Total</span>
+          <Price amount={total} currency={cart.currency} size="lg" />
         </div>
         <p className="text-xs text-muted-foreground">
-          Shipping, taxes and discounts calculated after placement.
+          Shipping &amp; taxes calculated after placement.
         </p>
         <Button size="lg" variant="gold" uppercase loading={pending} onClick={handlePlaceOrder}>
           Place order
