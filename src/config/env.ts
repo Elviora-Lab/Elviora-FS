@@ -43,6 +43,8 @@ const serverEnvSchema = z.object({
   // PostEx courier (Pakistan) — merchant API token + optional pickup address code.
   POSTEX_API_TOKEN: optionalStr,
   POSTEX_PICKUP_ADDRESS_CODE: optionalStr,
+  // Shared secret for cron endpoints (Vercel Cron sends it as a Bearer token).
+  CRON_SECRET: optionalStr,
   // postgresql:// URLs are not valid http(s) URLs, so use a plain string check
   // and require the protocol prefix when set.
   DATABASE_URL: z.preprocess(
@@ -111,6 +113,7 @@ export const serverEnv = (() => {
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     POSTEX_API_TOKEN: process.env.POSTEX_API_TOKEN,
     POSTEX_PICKUP_ADDRESS_CODE: process.env.POSTEX_PICKUP_ADDRESS_CODE,
+    CRON_SECRET: process.env.CRON_SECRET,
   });
   if (!parsed.success) {
     console.error('Invalid server environment variables:', parsed.error.flatten().fieldErrors);

@@ -479,11 +479,14 @@ model ProductIngredient {
 /// A cart belongs to a logged-in user OR (for guests) a session_id.
 /// Exactly one is required — enforced by a CHECK constraint at the DB layer.
 model Cart {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId    String?  @map("user_id") @db.Uuid
-  sessionId String?  @map("session_id") @db.VarChar(80)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String?   @map("user_id") @db.Uuid
+  sessionId      String?   @map("session_id") @db.VarChar(80)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  // When the last abandoned-cart recovery email was sent. Null until a reminder
+  // is sent; the cart becomes re-eligible once it changes after this time.
+  reminderSentAt DateTime? @map("reminder_sent_at") @db.Timestamptz
 
   user  User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
   items CartItem[]
