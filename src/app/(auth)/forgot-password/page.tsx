@@ -1,4 +1,9 @@
+import { Suspense } from 'react';
+import Link from 'next/link';
+
 import { buildMetadata } from '@/lib/seo/metadata';
+
+import { ForgotPasswordForm } from '@/features/auth/components/forgot-password-form';
 
 export const metadata = buildMetadata({
   title: 'Reset password',
@@ -16,9 +21,14 @@ export default function ForgotPasswordPage() {
           We&apos;ll email you a secure link to set a new one.
         </p>
       </header>
+      <Suspense fallback={<div className="h-40" />}>
+        <ForgotPasswordForm />
+      </Suspense>
       <p className="text-sm text-muted-foreground">
-        Form wired to <code className="font-mono text-xs">useForgotPasswordMutation</code> — extend
-        with the same RHF + Zod pattern as <code className="font-mono text-xs">LoginForm</code>.
+        Remembered it?{' '}
+        <Link href="/login" className="text-foreground underline underline-offset-4">
+          Back to sign in
+        </Link>
       </p>
     </div>
   );

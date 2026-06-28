@@ -21,12 +21,17 @@ export default function LoginPage() {
       <Suspense fallback={<div className="h-64" />}>
         <LoginForm />
       </Suspense>
-      <p className="text-sm text-muted-foreground">
-        New to Elviora?{' '}
-        <Link href="/register" className="text-foreground underline underline-offset-4">
-          Create an account
+      <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+        <Link href="/forgot-password" className="text-foreground underline underline-offset-4">
+          Forgot your password?
         </Link>
-      </p>
+        <p>
+          New to Elviora?{' '}
+          <Link href="/register" className="text-foreground underline underline-offset-4">
+            Create an account
+          </Link>
+        </p>
+      </div>
     </div>
   );
 }

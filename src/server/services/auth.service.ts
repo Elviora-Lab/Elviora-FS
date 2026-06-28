@@ -1,12 +1,18 @@
 import 'server-only';
 
+import { siteConfig } from '@/config/site';
+
 import {
   DUMMY_PASSWORD_HASH,
   hashPassword,
   issueSession,
   type SessionUser,
+  signPasswordResetToken,
   verifyPassword,
+  verifyPasswordResetToken,
 } from '@/server/auth';
+import { sendEmail } from '@/server/email';
+import { passwordResetEmail } from '@/server/email/templates/password-reset';
 import { events } from '@/server/events';
 import { ConflictError, UnauthorizedError } from '@/server/http/errors';
 import { usersRepo } from '@/server/repositories/users.repo';
@@ -51,6 +57,34 @@ export const authService = {
 
     const tokens = await issueSession(toSessionUser(user));
     return { user: publicUser(user), ...tokens };
+  },
+
+  /**
+   * Email a password-reset link. Always resolves the same way regardless of
+   * whether the email exists, so it can't be used to enumerate accounts.
+   */
+  async requestPasswordReset(email: string) {
+    const user = await usersRepo.findByEmail(email);
+    if (user) {
+      const token = await signPasswordResetToken(user.id);
+      const resetUrl = `${siteConfig.url}/reset-password?token=${encodeURIComponent(token)}`;
+      const { subject, html, text } = passwordResetEmail({ resetUrl });
+      await sendEmail({ to: user.email, subject, html, text });
+    }
+    return { ok: true as const };
+  },
+
+  async resetPassword(token: string, newPassword: string) {
+    let sub: string;
+    try {
+      ({ sub } = await verifyPasswordResetToken(token));
+    } catch {
+      throw new UnauthorizedError('This reset link is invalid or has expired');
+    }
+    const user = await usersRepo.findById(sub);
+    if (!user) throw new UnauthorizedError('This reset link is invalid or has expired');
+    await usersRepo.update(user.id, { passwordHash: await hashPassword(newPassword) });
+    return { ok: true as const };
   },
 
   async me(userId: string) {

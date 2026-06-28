@@ -6,10 +6,12 @@ import { serverEnv } from '@/config/env';
 
 const ACCESS_TTL_SECONDS = 60 * 15; // 15 minutes
 const REFRESH_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days
+const RESET_TTL_SECONDS = 60 * 30; // 30 minutes
 
 const ISSUER = 'elviora';
 const ACCESS_AUDIENCE = 'elviora:access';
 const REFRESH_AUDIENCE = 'elviora:refresh';
+const RESET_AUDIENCE = 'elviora:pwreset';
 
 export type AccessClaims = {
   sub: string; // user id
@@ -69,7 +71,31 @@ export async function verifyRefreshToken(token: string): Promise<RefreshClaims> 
   return payload as unknown as RefreshClaims;
 }
 
+/**
+ * Stateless password-reset token: a short-lived JWT bound to the user id with
+ * a dedicated audience so it can't be used as an access/refresh token.
+ */
+export async function signPasswordResetToken(userId: string): Promise<string> {
+  return new SignJWT({})
+    .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+    .setIssuedAt()
+    .setIssuer(ISSUER)
+    .setAudience(RESET_AUDIENCE)
+    .setSubject(userId)
+    .setExpirationTime(`${RESET_TTL_SECONDS}s`)
+    .sign(secret('access'));
+}
+
+export async function verifyPasswordResetToken(token: string): Promise<{ sub: string }> {
+  const { payload } = await jwtVerify(token, secret('access'), {
+    issuer: ISSUER,
+    audience: RESET_AUDIENCE,
+  });
+  return { sub: String(payload.sub) };
+}
+
 export const tokenTtl = {
   access: ACCESS_TTL_SECONDS,
   refresh: REFRESH_TTL_SECONDS,
+  reset: RESET_TTL_SECONDS,
 };

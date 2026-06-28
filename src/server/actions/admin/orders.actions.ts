@@ -9,9 +9,32 @@ import { prisma } from '@/lib/db';
 import { withAction } from '../_with-action';
 
 import { requireAdmin } from '@/server/auth/guards';
+import { sendEmail } from '@/server/email';
+import { shipmentEmail } from '@/server/email/templates/shipment';
 import { BadRequestError, NotFoundError } from '@/server/http/errors';
 import { ordersRepo } from '@/server/repositories/orders.repo';
 import { createPostExOrder, trackPostExOrder } from '@/server/shipping/postex';
+
+/** Best-effort "your order shipped" email with tracking, if we have one. */
+async function sendShipmentEmail(orderId: string) {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    select: {
+      orderNumber: true,
+      user: { select: { email: true } },
+      shipments: { orderBy: { shippedAt: 'desc' }, take: 1 },
+    },
+  });
+  const email = order?.user?.email;
+  if (!order || !email) return;
+  const shipment = order.shipments[0];
+  const { subject, html, text } = shipmentEmail({
+    orderNumber: order.orderNumber,
+    courierName: shipment?.courierName,
+    trackingNumber: shipment?.trackingNumber,
+  });
+  await sendEmail({ to: email, subject, html, text });
+}
 
 const statusValues = Object.values(OrderStatus) as [OrderStatus, ...OrderStatus[]];
 
@@ -25,6 +48,8 @@ export const updateOrderStatus = withAction(async (input: z.infer<typeof updateS
   const session = await requireAdmin();
   const { orderId, status, note } = updateStatusBody.parse(input);
   await ordersRepo.setStatus(orderId, status, note, session.sub);
+  // Notify the customer their order shipped (best-effort).
+  if (status === 'SHIPPED') await sendShipmentEmail(orderId).catch(() => {});
   revalidatePath('/admin/orders');
   revalidatePath(`/admin/orders/${orderId}`);
   return { orderId, status };
@@ -123,6 +148,7 @@ export const bookWithPostEx = withAction(async (input: { orderId: string }) => {
     `Booked with PostEx (${trackingNumber})`,
     session.sub,
   );
+  await sendShipmentEmail(order.id).catch(() => {});
 
   revalidatePath('/admin/orders');
   revalidatePath(`/admin/orders/${order.id}`);

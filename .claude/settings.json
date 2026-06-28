@@ -21,7 +21,11 @@
       "Bash(python3 -)",
       "Bash(grep -rln 'over [$]75' src/)",
       "Bash(grep -n 'over \\\\$75' \"src/app/\\(shop\\)/products/[slug]/page.tsx\" \"src/app/\\(shop\\)/products/[slug]/_components/product-purchase.tsx\")",
-      "Bash(grep -rn '\\\\$75' src/)"
+      "Bash(grep -rn '\\\\$75' src/)",
+      "Bash(npm run *)",
+      "Bash(echo \"tsc done\\($?\\)\")",
+      "Bash(awk '/adminProductsRepo = \\\\{/,/^};/' src/server/repositories/admin.repo.ts)",
+      "Bash(npx tsx -e ' *)"
     ],
     "additionalDirectories": [
       "/Users/hshahir/Desktop/Elviora/Elviora-FS/src/app/api/v1/products",
