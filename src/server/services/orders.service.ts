@@ -26,6 +26,13 @@ export const ordersService = {
     return order;
   },
 
+  /** Guest-safe confirmation fetch — the order id is an unguessable UUID. */
+  async getById(orderId: string) {
+    const order = await ordersRepo.findById(orderId);
+    if (!order) throw new NotFoundError('Order not found');
+    return order;
+  },
+
   /**
    * Create an order from a cart. Runs inside a single transaction so the cart
    * is cleared atomically with order creation — no risk of double-charge.
@@ -33,8 +40,13 @@ export const ordersService = {
    * printable even if the customer later edits the source UserAddress.
    */
   async createFromCart(opts: {
-    userId: string;
+    /** Null for a guest checkout. */
+    userId: string | null;
+    /** Guest cart owner — required to verify ownership when there's no userId. */
+    sessionId?: string | null;
     cartId: string;
+    /** Guest contact email (optional); used for the order-confirmation email. */
+    email?: string | null;
     shippingAddress: {
       fullName: string;
       phone: string | null;
@@ -56,7 +68,11 @@ export const ordersService = {
           include: { items: { include: { product: true, variant: true } } },
         });
         if (!cart) throw new NotFoundError('Cart not found');
-        if (cart.userId !== opts.userId) throw new NotFoundError('Cart not found');
+        // Ownership: a logged-in user owns by userId; a guest owns by sessionId.
+        const owns = opts.userId
+          ? cart.userId === opts.userId
+          : Boolean(opts.sessionId) && cart.sessionId === opts.sessionId;
+        if (!owns) throw new NotFoundError('Cart not found');
         if (cart.items.length === 0) throw new BadRequestError('Cart is empty');
 
         const currency = opts.currency ?? 'PKR';
@@ -88,6 +104,7 @@ export const ordersService = {
             currency,
             notes: opts.notes,
             shippingFullName: opts.shippingAddress.fullName,
+            shippingEmail: opts.email ?? null,
             shippingPhone: opts.shippingAddress.phone,
             shippingCountry: opts.shippingAddress.country,
             shippingCity: opts.shippingAddress.city,

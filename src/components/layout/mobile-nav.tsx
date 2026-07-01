@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Heart, Search, User } from 'lucide-react';
+import { Search } from 'lucide-react';
 
 import { mainNav } from '@/config/navigation';
 import { siteConfig } from '@/config/site';
@@ -78,16 +78,6 @@ export function MobileNav() {
             }}
           >
             <Search className="size-4" /> Search
-          </Button>
-          <Button asChild size="sm" variant="outline" aria-label="Account">
-            <Link href="/account" onClick={close}>
-              <User className="size-4" />
-            </Link>
-          </Button>
-          <Button asChild size="sm" variant="outline" aria-label="Wishlist">
-            <Link href="/account/wishlist" onClick={close}>
-              <Heart className="size-4" />
-            </Link>
           </Button>
         </div>
 

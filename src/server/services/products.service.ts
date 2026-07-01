@@ -23,9 +23,16 @@ export const productsService = {
     return { items: items.map(toProductCard), total };
   },
 
-  async getBySlug(slug: string, viewer: { userId?: string | null; track?: boolean } = {}) {
+  async getBySlug(
+    slug: string,
+    viewer: { userId?: string | null; track?: boolean; allowInactive?: boolean } = {},
+  ) {
     const product = await cache.wrap(`product:${slug}`, 120, () => productsRepo.findBySlug(slug));
     if (!product) throw new NotFoundError('Product not found');
+
+    // Hidden (isActive=false) products are not publicly reachable — treat them
+    // as not-found for the storefront. Admin preview passes `allowInactive`.
+    if (!product.isActive && !viewer.allowInactive) throw new NotFoundError('Product not found');
 
     // Count a view only for the actual page render — `generateMetadata` also
     // calls this and passes `track: false` to avoid double-counting.

@@ -10,7 +10,8 @@ import { prisma } from '@/lib/db';
 
 import { withAction } from './_with-action';
 
-import { requireUser } from '@/server/auth/guards';
+import { getSession } from '@/server/auth/get-session';
+import { getOrCreateGuestId } from '@/server/auth/guest-session';
 import { BadRequestError } from '@/server/http/errors';
 import { createPaymentIntent } from '@/server/payments/stripe';
 import { addressesService } from '@/server/services/addresses.service';
@@ -18,10 +19,12 @@ import { ordersService } from '@/server/services/orders.service';
 import { addressBody } from '@/server/validators/addresses.schema';
 
 const placeOrderInput = z.object({
-  /** Either an existing address id… */
+  /** Either an existing address id (logged-in users)… */
   addressId: z.string().uuid().optional(),
-  /** …or a new address payload to persist on the fly. */
+  /** …or a new address payload (the guest checkout path). */
   address: addressBody.optional(),
+  /** Guest contact email — optional; used for the confirmation email/receipt. */
+  email: z.string().email().max(255).optional(),
   paymentMethod: z.nativeEnum(PaymentMethod),
   notes: z.string().max(500).optional(),
   couponCode: z.string().min(1).max(64).optional(),
@@ -36,30 +39,52 @@ const placeOrderInput = z.object({
  * are reconciled by the webhook handler at /api/v1/webhooks/stripe.
  */
 export const placeOrder = withAction(async (raw: unknown) => {
-  const session = await requireUser();
+  // Guest checkout: no login required. A logged-in session is still honoured
+  // (saved addresses / account order history) when present.
+  const session = await getSession();
+  const sessionId = await getOrCreateGuestId();
   const input = placeOrderInput.parse(raw);
 
-  if (!input.addressId && !input.address) {
+  // Resolve the shipping address. Logged-in users may pick a saved address;
+  // everyone else supplies one inline. Phone is required, email optional.
+  let shippingAddress: {
+    fullName: string;
+    phone?: string | null;
+    country: string;
+    city: string;
+    area?: string | null;
+    addressLine1: string;
+    addressLine2?: string | null;
+    postalCode?: string | null;
+  };
+  if (input.addressId && session) {
+    shippingAddress = await addressesService.getOwned(input.addressId, session.sub);
+  } else if (input.address) {
+    if (!input.address.phone) throw new BadRequestError('A phone number is required');
+    // Persist to the account when logged in; guests just use the payload.
+    shippingAddress = session
+      ? await addressesService.create(session.sub, input.address)
+      : input.address;
+  } else {
     throw new BadRequestError('Provide a shipping address');
   }
 
-  // Resolve the shipping address.
-  const shippingAddress = input.addressId
-    ? await addressesService.getOwned(input.addressId, session.sub)
-    : await addressesService.create(session.sub, input.address!);
-
-  // Find the user's server cart.
+  // Find the cart: by user when logged in, else by guest session.
   const cart = await prisma.cart.findFirst({
-    where: { userId: session.sub },
+    where: session ? { userId: session.sub } : { sessionId },
     include: { items: true },
   });
   if (!cart || cart.items.length === 0) {
     throw new BadRequestError('Your bag is empty');
   }
 
+  const contactEmail = input.email ?? session?.email ?? null;
+
   const order = await ordersService.createFromCart({
-    userId: session.sub,
+    userId: session?.sub ?? null,
+    sessionId,
     cartId: cart.id,
+    email: contactEmail,
     notes: input.notes,
     couponCode: input.couponCode,
     shippingAddress: {
@@ -98,7 +123,7 @@ export const placeOrder = withAction(async (raw: unknown) => {
       amountMinor: Math.round(Number(order.totalAmount) * 100),
       currency: order.currency,
       metadata: { orderId: order.id, orderNumber: order.orderNumber },
-      customerEmail: session.email,
+      customerEmail: contactEmail ?? undefined,
     });
     clientSecret = intent.client_secret;
     await prisma.payment.update({

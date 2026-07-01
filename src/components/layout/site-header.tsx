@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Heart, Menu, Search, User } from 'lucide-react';
+import { Menu, Search } from 'lucide-react';
 
 import { mainNav } from '@/config/navigation';
 import { siteConfig } from '@/config/site';
@@ -64,16 +64,6 @@ export function SiteHeader({ className }: { className?: string }) {
             onClick={() => dispatch(openSearch())}
           >
             <Search className="size-5" />
-          </Button>
-          <Button asChild variant="ghost" size="icon" aria-label="Account">
-            <Link href="/account">
-              <User className="size-5" />
-            </Link>
-          </Button>
-          <Button asChild variant="ghost" size="icon" aria-label="Wishlist">
-            <Link href="/account/wishlist">
-              <Heart className="size-5" />
-            </Link>
           </Button>
           <Separator orientation="vertical" className="mx-2 h-6" />
           <CartDrawerTrigger />

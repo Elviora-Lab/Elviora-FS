@@ -39,6 +39,15 @@ async function verify(token: string) {
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  // Customer accounts and self-registration are disabled — the storefront is
+  // guest-only. Bounce these routes to the shop before any rendering (a real
+  // 307, no auth checks). Admin auth is unaffected.
+  if (pathname === '/account' || pathname.startsWith('/account/') || pathname === '/register') {
+    const url = req.nextUrl.clone();
+    url.pathname = '/';
+    return NextResponse.redirect(url);
+  }
+
   const token = req.cookies.get(ACCESS_COOKIE)?.value;
 
   const claims = token ? await verify(token) : null;
@@ -51,7 +60,8 @@ export async function middleware(req: NextRequest) {
 
   if (isAuthed && isAuthRoute) {
     const url = req.nextUrl.clone();
-    url.pathname = '/account';
+    // Only admins have a destination now (the customer /account is gone).
+    url.pathname = role && ADMIN_ROLES.has(role) ? '/admin' : '/';
     return NextResponse.redirect(url);
   }
 
