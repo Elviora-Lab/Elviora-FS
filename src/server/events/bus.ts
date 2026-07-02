@@ -16,6 +16,8 @@ export type DomainEvents = {
   'user.registered': { userId: string; email: string; name: string };
   'order.created': { orderId: string; userId: string | null; total: number; currency: string };
   'order.paid': { orderId: string };
+  'order.shipped': { orderId: string };
+  'order.delivered': { orderId: string };
   'order.cancelled': { orderId: string };
   'cart.line.added': { userId: string | null; productId: string; variantId: string | null };
   'review.created': { reviewId: string; productId: string; userId: string };

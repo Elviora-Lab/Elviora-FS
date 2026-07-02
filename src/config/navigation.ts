@@ -1,3 +1,5 @@
+import { CATEGORY_TREE, orderedChildren } from '@/config/taxonomy';
+
 export type NavItem = {
   label: string;
   href: string;
@@ -11,15 +13,18 @@ export const mainNav: NavItem[] = [
   {
     label: 'Makeup',
     // No `makeup` parent category exists in the DB — all current products are
-    // makeup, so the parent links to the full catalog and the children are the
-    // real `categories.slug` values (route is `/categories/[slug]`).
+    // makeup, so the parent links to the full catalog and the children come
+    // from the shared taxonomy (real `categories.slug` values, route
+    // `/categories/[slug]`), including one level of subcategories.
     href: '/products',
-    children: [
-      { label: 'Lips', href: '/categories/lips' },
-      { label: 'Eyes', href: '/categories/eyes' },
-      { label: 'Face', href: '/categories/face' },
-      { label: 'Nails', href: '/categories/nails' },
-    ],
+    children: CATEGORY_TREE.map((cat) => ({
+      label: cat.name,
+      href: `/categories/${cat.slug}`,
+      children: orderedChildren(cat).map((sub) => ({
+        label: sub.name,
+        href: `/categories/${sub.slug}`,
+      })),
+    })),
   },
   // Skincare isn't part of the current catalog yet.
   { label: 'Skincare', href: '/categories/skincare', comingSoon: true },
@@ -65,6 +70,7 @@ export const adminNav: NavItem[] = [
   { label: 'Dashboard', href: '/admin' },
   { label: 'Products', href: '/admin/products' },
   { label: 'Categories', href: '/admin/categories' },
+  { label: 'Brands', href: '/admin/brands' },
   { label: 'Orders', href: '/admin/orders' },
   { label: 'Returns', href: '/admin/returns' },
   { label: 'Reviews', href: '/admin/reviews' },

@@ -4,8 +4,8 @@
  * Builds a Pakistan-market luxury cosmetics + skincare demo catalog:
  *  • admin + demo customer (real bcrypt hashes)
  *  • 4 brands
- *  • category tree (Skincare → Cleansers/Serums/Moisturizers/Sunscreens/Masks
- *    · Makeup → Lip/Eye/Face/Nail · Body)
+ *  • category tree (Lips/Eyes/Face/Nails + their subcategories from the shared
+ *    `CATEGORY_TREE` taxonomy · Skincare → Cleansers/Serums/… · Body)
  *  • skincare concerns vocabulary
  *  • hero ingredients
  *  • ~17 products with variants + primary/hover images + ingredient + concern mappings
@@ -19,6 +19,8 @@
  */
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+
+import { CATEGORY_TREE } from '../src/config/taxonomy';
 
 const prisma = new PrismaClient();
 
@@ -381,7 +383,7 @@ const PRODUCTS: ProductSeed[] = [
     sku: 'ELV-LIP-VM-008',
     name: 'Velvet Matte Lipstick',
     brandSlug: 'maison-lumiere',
-    categorySlug: 'lip',
+    categorySlug: 'lipstick',
     shortDescription: 'Eight-hour velvet matte that wears like a stain.',
     fullDescription:
       'A bullet lipstick with cushioned jojoba esters and saturated, weightless colour. Six house shades, all buildable.',
@@ -402,7 +404,7 @@ const PRODUCTS: ProductSeed[] = [
     sku: 'ELV-LIP-LL-009',
     name: 'Liquid Lip Lacquer',
     brandSlug: 'maison-lumiere',
-    categorySlug: 'lip',
+    categorySlug: 'liquid-lipstick',
     shortDescription: 'High-shine liquid lacquer — colour with a wet-look finish.',
     fullDescription:
       'A featherweight liquid lipstick with a glassy, dimensional finish. Glides on, sets to a comfortable second-skin film.',
@@ -420,7 +422,7 @@ const PRODUCTS: ProductSeed[] = [
     sku: 'ELV-LIP-TB-010',
     name: 'Sheer Tint Lip Balm',
     brandSlug: 'studio-naturelle',
-    categorySlug: 'lip',
+    categorySlug: 'lips',
     shortDescription: 'Tinted balm with shea butter and a hint of editorial colour.',
     fullDescription:
       'Whipped shea and cupuaçu butter with a sheer wash of pigment. The everyday lip you reach for blind.',
@@ -439,7 +441,7 @@ const PRODUCTS: ProductSeed[] = [
     sku: 'ELV-EYE-MS-011',
     name: 'Couture Volume Mascara',
     brandSlug: 'maison-lumiere',
-    categorySlug: 'eye',
+    categorySlug: 'mascara',
     shortDescription: 'A buildable volumising mascara — no clumps, no flakes.',
     fullDescription:
       'A polymer brush, deeply pigmented black formula and a 16-hour wear. Builds from natural to sculpted in three coats.',
@@ -455,7 +457,7 @@ const PRODUCTS: ProductSeed[] = [
     sku: 'ELV-EYE-LE-012',
     name: 'Precision Liquid Eyeliner',
     brandSlug: 'maison-lumiere',
-    categorySlug: 'eye',
+    categorySlug: 'eyeliner',
     shortDescription: 'Felt-tip precision, intense pigment, all-day wear.',
     fullDescription:
       'A flexible felt tip lays down a sharp graphic line or a soft tightline. Smudge-proof for hours.',
@@ -468,7 +470,7 @@ const PRODUCTS: ProductSeed[] = [
     sku: 'ELV-EYE-PL-013',
     name: 'Editorial Nine-Pan Palette',
     brandSlug: 'maison-lumiere',
-    categorySlug: 'eye',
+    categorySlug: 'eyeshadow',
     shortDescription: 'Nine couture shadows, hand-pressed in small batches.',
     fullDescription:
       'Three mattes, three satins, three foiled — curated for an entire wardrobe of looks in one editorial case.',
@@ -486,7 +488,7 @@ const PRODUCTS: ProductSeed[] = [
     sku: 'ELV-FCE-FD-014',
     name: 'Silk Veil Foundation',
     brandSlug: 'maison-lumiere',
-    categorySlug: 'face',
+    categorySlug: 'foundation',
     shortDescription: 'A skin-like satin foundation in eight house shades.',
     fullDescription:
       'A buildable medium-coverage foundation that finishes like a second skin. Eight shades that span warm, cool and neutral undertones.',
@@ -509,7 +511,7 @@ const PRODUCTS: ProductSeed[] = [
     sku: 'ELV-FCE-BL-015',
     name: 'Soft Sculpt Powder Blush',
     brandSlug: 'maison-lumiere',
-    categorySlug: 'face',
+    categorySlug: 'blush',
     shortDescription: 'Silky, talc-free blush in three editorial shades.',
     fullDescription:
       'Finely milled, talc-free pigment with a soft-focus finish. Wear sheer for a flush, layer for sculpt.',
@@ -526,7 +528,7 @@ const PRODUCTS: ProductSeed[] = [
     sku: 'ELV-FCE-HL-016',
     name: 'Champagne Highlighter',
     brandSlug: 'maison-lumiere',
-    categorySlug: 'face',
+    categorySlug: 'highlighter-contour',
     shortDescription: 'A wet-look highlighter — strobe or veil, never glittery.',
     fullDescription:
       'Liquid-pressed champagne pearls deliver a wet-look glow. Tap onto cheekbones, brow bones and cupid’s bow.',
@@ -544,7 +546,7 @@ const PRODUCTS: ProductSeed[] = [
     sku: 'ELV-NL-LQ-017',
     name: 'Salon Lacquer Nail Polish',
     brandSlug: 'maison-lumiere',
-    categorySlug: 'nail',
+    categorySlug: 'nail-polish',
     shortDescription: 'Long-wear lacquer with a glassy salon finish.',
     fullDescription:
       'A 14-free formula, plant-based plasticizer, and a flat brush for streak-free application. Lasts 7+ days with base + top.',
@@ -634,9 +636,27 @@ async function main() {
   ]);
 
   // — Categories (parents first, then children)
-  await upsertCategory({ name: 'Skincare', slug: 'skincare', sortOrder: 1 });
-  await upsertCategory({ name: 'Makeup', slug: 'makeup', sortOrder: 2 });
-  await upsertCategory({ name: 'Body', slug: 'body', sortOrder: 3 });
+  // Makeup taxonomy — the same tree the header/mega-menu is built from, so
+  // seeded slugs always match the storefront links.
+  for (const [index, cat] of CATEGORY_TREE.entries()) {
+    await upsertCategory({
+      name: cat.name,
+      slug: cat.slug,
+      sortOrder: index + 1,
+      description: cat.description,
+    });
+    for (const sub of cat.children) {
+      await upsertCategory({
+        name: sub.name,
+        slug: sub.slug,
+        parentSlug: cat.slug,
+        sortOrder: sub.sortOrder,
+        description: sub.description,
+      });
+    }
+  }
+  await upsertCategory({ name: 'Skincare', slug: 'skincare', sortOrder: 5 });
+  await upsertCategory({ name: 'Body', slug: 'body', sortOrder: 6 });
 
   await upsertCategory({
     name: 'Cleansers',
@@ -658,11 +678,6 @@ async function main() {
     sortOrder: 4,
   });
   await upsertCategory({ name: 'Masks', slug: 'masks', parentSlug: 'skincare', sortOrder: 5 });
-
-  await upsertCategory({ name: 'Lip', slug: 'lip', parentSlug: 'makeup', sortOrder: 1 });
-  await upsertCategory({ name: 'Eye', slug: 'eye', parentSlug: 'makeup', sortOrder: 2 });
-  await upsertCategory({ name: 'Face', slug: 'face', parentSlug: 'makeup', sortOrder: 3 });
-  await upsertCategory({ name: 'Nail', slug: 'nail', parentSlug: 'makeup', sortOrder: 4 });
 
   // — Skincare concerns
   const concerns: Array<[string, string]> = [

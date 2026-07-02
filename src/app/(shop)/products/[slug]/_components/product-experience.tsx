@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
@@ -45,6 +46,7 @@ type Props = {
   productId: string;
   productName: string;
   brandName?: string;
+  brandSlug?: string;
   shortDescription?: string;
   fullDescription?: string;
   skinConcerns: { id: string; name: string }[];
@@ -61,6 +63,7 @@ export function ProductExperience({
   productId,
   productName,
   brandName,
+  brandSlug,
   shortDescription,
   fullDescription,
   skinConcerns,
@@ -181,7 +184,18 @@ export function ProductExperience({
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-2">
-            {brandName ? <span className="eyebrow">{brandName}</span> : null}
+            {brandName ? (
+              brandSlug ? (
+                <Link
+                  href={`/brands/${brandSlug}`}
+                  className="eyebrow w-fit transition-colors hover:text-foreground"
+                >
+                  {brandName}
+                </Link>
+              ) : (
+                <span className="eyebrow">{brandName}</span>
+              )
+            ) : null}
             <h1 className="editorial-heading text-display-md md:text-display-lg">{productName}</h1>
             {shortDescription ? (
               <p className="text-pretty leading-relaxed text-muted-foreground">

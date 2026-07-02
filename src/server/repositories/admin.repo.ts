@@ -274,6 +274,29 @@ export const adminCategoriesRepo = {
   },
 };
 
+// ---------- Brands ----------
+
+export const adminBrandsRepo = {
+  listAll() {
+    return prisma.brand.findMany({
+      orderBy: { name: 'asc' },
+      include: { _count: { select: { products: true } } },
+    });
+  },
+
+  create(data: Prisma.BrandCreateInput) {
+    return prisma.brand.create({ data });
+  },
+
+  update(id: string, data: Prisma.BrandUpdateInput) {
+    return prisma.brand.update({ where: { id }, data });
+  },
+
+  delete(id: string) {
+    return prisma.brand.delete({ where: { id } });
+  },
+};
+
 // ---------- Analytics ----------
 
 type ProductLite = { id: string; name: string; slug: string; imageUrl: string };

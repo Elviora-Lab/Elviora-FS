@@ -17,7 +17,11 @@ export const analyticsServer = {
 
   async search(keyword: string, resultCount: number, userId: string | null) {
     try {
-      await prisma.searchLog.create({ data: { keyword, resultCount, userId } });
+      // Column is VarChar(255) — clamp so a pathological query string can't
+      // make the (best-effort) insert fail.
+      await prisma.searchLog.create({
+        data: { keyword: keyword.slice(0, 255), resultCount, userId },
+      });
     } catch {
       /* best-effort */
     }

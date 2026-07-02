@@ -3,6 +3,7 @@ export const routes = {
   products: '/products',
   productDetail: (slug: string) => `/products/${slug}`,
   category: (slug: string) => `/categories/${slug}`,
+  brand: (slug: string) => `/brands/${slug}`,
   cart: '/cart',
   checkout: '/checkout',
   search: '/search',

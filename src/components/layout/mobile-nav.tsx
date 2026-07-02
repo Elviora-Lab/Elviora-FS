@@ -38,7 +38,9 @@ import {
  *  - via the standard Sheet close behaviour (overlay tap / Esc / X)
  *
  * Items with `children` collapse into an Accordion so the parent stays
- * tappable and sub-categories are one level deep.
+ * tappable. Children that have their own `children` (category →
+ * subcategories) nest a second Accordion, keeping every level a full-width
+ * tap target.
  */
 export function MobileNav() {
   const open = useAppSelector((s) => s.ui.mobileNavOpen);
@@ -117,28 +119,57 @@ export function MobileNav() {
                     {item.label}
                   </AccordionTrigger>
                   <AccordionContent className="pb-1 pl-3">
-                    <ul className="flex flex-col">
-                      {item.children.map((child) => (
-                        <li key={child.href}>
+                    <Accordion type="multiple" className="flex flex-col">
+                      {item.children.map((child) =>
+                        child.children?.length ? (
+                          <AccordionItem key={child.href} value={child.href} className="border-b-0">
+                            <AccordionTrigger className="rounded-md px-3 py-2.5 font-sans text-sm font-normal tracking-wide text-foreground hover:bg-muted hover:no-underline">
+                              {child.label}
+                            </AccordionTrigger>
+                            <AccordionContent className="pb-1 pl-3">
+                              <ul className="flex flex-col border-l border-border pl-1">
+                                {child.children.map((sub) => (
+                                  <li key={sub.href}>
+                                    <Link
+                                      href={sub.href}
+                                      onClick={close}
+                                      className="block rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+                                    >
+                                      {sub.label}
+                                    </Link>
+                                  </li>
+                                ))}
+                                <li>
+                                  <Link
+                                    href={child.href}
+                                    onClick={close}
+                                    className="block rounded-md px-3 py-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground hover:bg-muted hover:text-foreground"
+                                  >
+                                    Shop all {child.label} →
+                                  </Link>
+                                </li>
+                              </ul>
+                            </AccordionContent>
+                          </AccordionItem>
+                        ) : (
                           <Link
+                            key={child.href}
                             href={child.href}
                             onClick={close}
                             className="block rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
                           >
                             {child.label}
                           </Link>
-                        </li>
-                      ))}
-                      <li>
-                        <Link
-                          href={item.href}
-                          onClick={close}
-                          className="block rounded-md px-3 py-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground hover:bg-muted hover:text-foreground"
-                        >
-                          Shop all {item.label} →
-                        </Link>
-                      </li>
-                    </ul>
+                        ),
+                      )}
+                      <Link
+                        href={item.href}
+                        onClick={close}
+                        className="block rounded-md px-3 py-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground hover:bg-muted hover:text-foreground"
+                      >
+                        Shop all {item.label} →
+                      </Link>
+                    </Accordion>
                   </AccordionContent>
                 </AccordionItem>
               );

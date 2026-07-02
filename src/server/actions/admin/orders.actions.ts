@@ -10,7 +10,7 @@ import { withAction } from '../_with-action';
 
 import { requireAdmin } from '@/server/auth/guards';
 import { BadRequestError, NotFoundError } from '@/server/http/errors';
-import { ordersRepo } from '@/server/repositories/orders.repo';
+import { transitionOrder } from '@/server/services/order-transitions.service';
 import { createPostExOrder, trackPostExOrder } from '@/server/shipping/postex';
 
 const statusValues = Object.values(OrderStatus) as [OrderStatus, ...OrderStatus[]];
@@ -24,7 +24,7 @@ const updateStatusBody = z.object({
 export const updateOrderStatus = withAction(async (input: z.infer<typeof updateStatusBody>) => {
   const session = await requireAdmin();
   const { orderId, status, note } = updateStatusBody.parse(input);
-  await ordersRepo.setStatus(orderId, status, note, session.sub);
+  await transitionOrder(orderId, status, note, session.sub);
   revalidatePath('/admin/orders');
   revalidatePath(`/admin/orders/${orderId}`);
   return { orderId, status };
@@ -38,8 +38,9 @@ const bulkBody = z.object({
 
 /**
  * Apply the same status transition to many orders at once. Runs each
- * `setStatus` (order update + statusHistory insert) serially so each one
- * gets its own audit row with the correct actor.
+ * transition (order update + statusHistory insert + restock/notification
+ * side effects) serially so each one gets its own audit row with the
+ * correct actor.
  */
 export const bulkUpdateOrderStatus = withAction(async (input: z.infer<typeof bulkBody>) => {
   const session = await requireAdmin();
@@ -48,7 +49,7 @@ export const bulkUpdateOrderStatus = withAction(async (input: z.infer<typeof bul
   let updated = 0;
   for (const orderId of orderIds) {
     try {
-      await ordersRepo.setStatus(orderId, status, note, session.sub);
+      await transitionOrder(orderId, status, note, session.sub);
       updated += 1;
     } catch {
       // Skip individual failures (e.g. order deleted between selection
@@ -117,16 +118,118 @@ export const bookWithPostEx = withAction(async (input: { orderId: string }) => {
       shippedAt: new Date(),
     },
   });
-  await ordersRepo.setStatus(
-    order.id,
-    'SHIPPED',
-    `Booked with PostEx (${trackingNumber})`,
-    session.sub,
-  );
+  await transitionOrder(order.id, 'SHIPPED', `Booked with PostEx (${trackingNumber})`, session.sub);
 
   revalidatePath('/admin/orders');
   revalidatePath(`/admin/orders/${order.id}`);
   return { trackingNumber };
+});
+
+// ---------------------------------------------------------------------------
+// Manual shipment — any courier
+// ---------------------------------------------------------------------------
+
+const manualShipmentBody = z.object({
+  orderId: z.string().uuid(),
+  courierName: z.string().trim().min(2).max(120),
+  trackingNumber: z.string().trim().min(3).max(120),
+});
+
+/**
+ * Record a shipment booked outside the integrated courier (TCS, Leopards,
+ * a bike rider — anything). Stores the tracking number and marks the order
+ * shipped, which also notifies the customer.
+ */
+export const addManualShipment = withAction(async (input: z.infer<typeof manualShipmentBody>) => {
+  const session = await requireAdmin();
+  const { orderId, courierName, trackingNumber } = manualShipmentBody.parse(input);
+
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: { shipments: true },
+  });
+  if (!order) throw new NotFoundError('Order not found');
+  if (order.shipments.some((s) => s.trackingNumber)) {
+    throw new BadRequestError('This order already has a shipment recorded');
+  }
+
+  await prisma.shipment.create({
+    data: {
+      orderId,
+      courierName,
+      trackingNumber,
+      shipmentStatus: 'IN_TRANSIT',
+      shippedAt: new Date(),
+    },
+  });
+  await transitionOrder(
+    orderId,
+    'SHIPPED',
+    `Shipped via ${courierName} (${trackingNumber})`,
+    session.sub,
+  );
+
+  revalidatePath('/admin/orders');
+  revalidatePath(`/admin/orders/${orderId}`);
+  return { trackingNumber };
+});
+
+// ---------------------------------------------------------------------------
+// Payment reconciliation — COD / bank transfer
+// ---------------------------------------------------------------------------
+
+/**
+ * Mark an order's payment as received outside the gateway (cash on delivery,
+ * bank transfer). Settles existing payment rows or records a COD payment if
+ * none exist, and leaves an audit note in the status history.
+ */
+export const markPaymentReceived = withAction(async (input: { orderId: string }) => {
+  const session = await requireAdmin();
+  const orderId = z.string().uuid().parse(input.orderId);
+
+  await prisma.$transaction(async (tx) => {
+    const order = await tx.order.findUnique({
+      where: { id: orderId },
+      select: { orderStatus: true, paymentStatus: true, totalAmount: true },
+    });
+    if (!order) throw new NotFoundError('Order not found');
+    if (order.paymentStatus === 'PAID') {
+      throw new BadRequestError('This order is already marked paid');
+    }
+    if (order.paymentStatus === 'REFUNDED' || order.paymentStatus === 'PARTIALLY_REFUNDED') {
+      throw new BadRequestError('Refunded orders cannot be marked paid');
+    }
+
+    const settled = await tx.payment.updateMany({
+      where: { orderId, paymentStatus: { in: ['PENDING', 'AUTHORIZED', 'FAILED'] } },
+      data: { paymentStatus: 'PAID', paidAt: new Date() },
+    });
+    if (settled.count === 0) {
+      await tx.payment.create({
+        data: {
+          orderId,
+          paymentMethod: 'COD',
+          amount: order.totalAmount,
+          paymentStatus: 'PAID',
+          paidAt: new Date(),
+        },
+      });
+    }
+
+    await tx.order.update({ where: { id: orderId }, data: { paymentStatus: 'PAID' } });
+    await tx.orderStatusHistory.create({
+      data: {
+        orderId,
+        status: order.orderStatus,
+        note: 'Payment received (marked manually)',
+        changedBy: session.sub,
+      },
+    });
+  });
+
+  revalidatePath('/admin/orders');
+  revalidatePath(`/admin/orders/${orderId}`);
+  return { orderId };
 });
 
 /** Pull the latest PostEx status for a tracking number (best-effort). */

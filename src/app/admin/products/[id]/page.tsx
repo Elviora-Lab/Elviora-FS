@@ -5,17 +5,22 @@ import { buildMetadata } from '@/lib/seo/metadata';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
+import { getCategoryOptions } from '../_components/category-options';
 import { ProductForm } from '../_components/product-form';
-import { StockEditor } from '../_components/stock-editor';
+import { VariantsEditor } from '../_components/variants-editor';
 
-import { adminProductsRepo } from '@/server/repositories/admin.repo';
+import { adminBrandsRepo, adminProductsRepo } from '@/server/repositories/admin.repo';
 
 export const metadata = buildMetadata({ title: 'Admin · Edit product', noIndex: true });
 export const dynamic = 'force-dynamic';
 
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const product = await adminProductsRepo.findById(id);
+  const [product, categories, brands] = await Promise.all([
+    adminProductsRepo.findById(id),
+    getCategoryOptions(),
+    adminBrandsRepo.listAll(),
+  ]);
   if (!product) notFound();
 
   return (
@@ -35,6 +40,8 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
 
       <ProductForm
         mode="edit"
+        categories={categories}
+        brands={brands.map((b) => ({ id: b.id, name: b.name }))}
         defaultValues={{
           id: product.id,
           name: product.name,
@@ -47,23 +54,28 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
           costPrice: product.costPrice ? Number(product.costPrice) : undefined,
           isFeatured: product.isFeatured,
           isActive: product.isActive,
+          categoryId: product.categoryId,
+          brandId: product.brandId,
           images: product.images.filter((img) => !img.variantId).map((img) => img.imageUrl),
         }}
       />
 
       <Card>
         <CardHeader>
-          <CardTitle>Stock by variant</CardTitle>
+          <CardTitle>Variants & stock</CardTitle>
         </CardHeader>
         <CardContent>
-          <StockEditor
+          <VariantsEditor
+            productId={product.id}
             variants={product.variants.map((v) => ({
               id: v.id,
               sku: v.sku,
               size: v.size,
               shade: v.shade,
               fragrance: v.fragrance,
+              price: Number(v.price),
               stockQuantity: v.stockQuantity,
+              isActive: v.isActive,
             }))}
           />
         </CardContent>

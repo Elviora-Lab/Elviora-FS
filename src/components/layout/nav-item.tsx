@@ -83,6 +83,9 @@ export function NavItem({ item }: { item: NavItemType }) {
 
 function Panel({ item }: { item: NavItemType }) {
   const prefersReduced = useReducedMotion();
+  // Any grandchildren → render the wide mega-menu (one column per child
+  // category with its subcategories beneath); otherwise the compact list.
+  const isMega = item.children!.some((child) => child.children?.length);
 
   return (
     <motion.div
@@ -94,7 +97,10 @@ function Panel({ item }: { item: NavItemType }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
       className={cn(
-        'absolute left-1/2 top-full z-50 mt-3 w-[240px] -translate-x-1/2',
+        'absolute top-full z-50 mt-3',
+        // The mega panel is left-anchored (a centered one would overflow the
+        // viewport for triggers near the logo); the compact list stays centered.
+        isMega ? 'left-0 w-max max-w-[calc(100vw-3rem)]' : 'left-1/2 w-[240px] -translate-x-1/2',
         // Hover/focus visibility
         'pointer-events-none invisible opacity-0',
         'group-hover:pointer-events-auto group-hover:visible group-hover:opacity-100',
@@ -104,31 +110,87 @@ function Panel({ item }: { item: NavItemType }) {
         'rounded-md border border-border/70 bg-card/95 p-3 shadow-elevated backdrop-blur-md',
       )}
     >
-      <ul className="flex flex-col">
-        {item.children!.map((child) => (
-          <li key={child.href}>
-            <Link
-              href={child.href}
-              className="flex items-center justify-between rounded-md px-3 py-2 text-sm text-foreground/85 transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none"
-            >
-              <span>{child.label}</span>
-              {child.description ? (
-                <span className="ml-3 text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-                  {child.description}
-                </span>
-              ) : null}
-            </Link>
-          </li>
-        ))}
-        <li className="mt-1 border-t border-border/60 pt-2">
+      {isMega ? <MegaColumns item={item} /> : <SimpleList item={item} />}
+    </motion.div>
+  );
+}
+
+function SimpleList({ item }: { item: NavItemType }) {
+  return (
+    <ul className="flex flex-col">
+      {item.children!.map((child) => (
+        <li key={child.href}>
           <Link
-            href={item.href}
-            className="block rounded-md px-3 py-2 text-[10px] uppercase tracking-[0.16em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none"
+            href={child.href}
+            className="flex items-center justify-between rounded-md px-3 py-2 text-sm text-foreground/85 transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none"
           >
-            Shop all {item.label} →
+            <span>{child.label}</span>
+            {child.description ? (
+              <span className="ml-3 text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                {child.description}
+              </span>
+            ) : null}
           </Link>
         </li>
-      </ul>
-    </motion.div>
+      ))}
+      <li className="mt-1 border-t border-border/60 pt-2">
+        <ShopAllLink href={item.href} label={item.label} />
+      </li>
+    </ul>
+  );
+}
+
+function MegaColumns({ item }: { item: NavItemType }) {
+  return (
+    <div className="flex flex-col">
+      <div className="grid grid-cols-2 gap-x-6 gap-y-5 p-2 xl:grid-cols-4">
+        {item.children!.map((group) => (
+          <div key={group.href} className="min-w-[160px]">
+            <Link
+              href={group.href}
+              className="block rounded-md px-2 py-1.5 text-xs font-medium uppercase tracking-[0.14em] text-foreground transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
+            >
+              {group.label}
+            </Link>
+            {group.children?.length ? (
+              <ul className="mt-1 flex flex-col border-l border-border/60 pl-1">
+                {group.children.map((sub) => (
+                  <li key={sub.href}>
+                    <Link
+                      href={sub.href}
+                      className="block rounded-md px-2 py-1.5 text-sm text-foreground/75 transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none"
+                    >
+                      {sub.label}
+                    </Link>
+                  </li>
+                ))}
+                <li>
+                  <Link
+                    href={group.href}
+                    className="block rounded-md px-2 py-1.5 text-[10px] uppercase tracking-[0.14em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none"
+                  >
+                    All {group.label} →
+                  </Link>
+                </li>
+              </ul>
+            ) : null}
+          </div>
+        ))}
+      </div>
+      <div className="mt-1 border-t border-border/60 pt-2">
+        <ShopAllLink href={item.href} label={item.label} />
+      </div>
+    </div>
+  );
+}
+
+function ShopAllLink({ href, label }: { href: string; label: string }) {
+  return (
+    <Link
+      href={href}
+      className="block rounded-md px-3 py-2 text-[10px] uppercase tracking-[0.16em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none"
+    >
+      Shop all {label} →
+    </Link>
   );
 }

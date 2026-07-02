@@ -82,6 +82,7 @@ export async function ProductDetail({
           productId={product.id}
           productName={product.name}
           brandName={product.brand?.name ?? undefined}
+          brandSlug={product.brand?.slug ?? undefined}
           shortDescription={product.shortDescription ?? undefined}
           fullDescription={product.fullDescription ?? undefined}
           skinConcerns={product.skinConcerns.map((pc) => ({

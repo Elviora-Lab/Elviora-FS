@@ -13,8 +13,8 @@ import { sendEmail } from '@/server/email';
 import { returnUpdateEmail } from '@/server/email/templates/return-update';
 import { NotFoundError } from '@/server/http/errors';
 import { notifyUser } from '@/server/notifications';
-import { ordersRepo } from '@/server/repositories/orders.repo';
 import { returnsRepo } from '@/server/repositories/returns.repo';
+import { transitionOrder } from '@/server/services/order-transitions.service';
 
 const setStatusBody = z.object({
   id: z.string().uuid(),
@@ -33,9 +33,10 @@ export const setReturnStatus = withAction(async (input: z.infer<typeof setStatus
   await returnsRepo.setStatus(id, status, adminNote);
 
   // Marking the return refunded flips the order to REFUNDED, which deducts it
-  // from recognized revenue (orderStatus + paymentStatus both signal it).
+  // from recognized revenue (orderStatus + paymentStatus both signal it) and
+  // puts the returned units back in stock (idempotent — see transitionOrder).
   if (status === 'REFUNDED') {
-    await ordersRepo.setStatus(rr.orderId, 'REFUNDED', `Refunded via return request`, session.sub);
+    await transitionOrder(rr.orderId, 'REFUNDED', `Refunded via return request`, session.sub);
     await prisma.order.update({
       where: { id: rr.orderId },
       data: { paymentStatus: 'REFUNDED' },

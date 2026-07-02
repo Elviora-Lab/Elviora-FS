@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 import { CourierCard } from './courier-card';
+import { PaymentActions } from './payment-actions';
 import { StatusUpdater } from './status-updater';
 
 import { adminOrdersRepo } from '@/server/repositories/admin.repo';
@@ -209,6 +210,11 @@ export default async function AdminOrderDetailPage({
                   ))}
                 </ul>
               )}
+              {order.paymentStatus !== 'PAID' &&
+              order.paymentStatus !== 'REFUNDED' &&
+              order.paymentStatus !== 'PARTIALLY_REFUNDED' ? (
+                <PaymentActions orderId={order.id} />
+              ) : null}
             </CardContent>
           </Card>
         </div>

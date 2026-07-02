@@ -5,8 +5,13 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
-import { bookWithPostEx, refreshPostExTracking } from '@/server/actions/admin/orders.actions';
+import {
+  addManualShipment,
+  bookWithPostEx,
+  refreshPostExTracking,
+} from '@/server/actions/admin/orders.actions';
 
 type Shipment = { courierName: string; trackingNumber: string | null } | null;
 
@@ -68,16 +73,54 @@ export function CourierCard({
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      {!configured ? (
-        <p className="text-xs text-muted-foreground">
-          Set <code className="rounded bg-muted px-1">POSTEX_API_TOKEN</code> to enable courier
-          booking.
-        </p>
-      ) : null}
-      <Button loading={pending} disabled={!configured} onClick={book}>
-        Book with PostEx
-      </Button>
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2">
+        {!configured ? (
+          <p className="text-xs text-muted-foreground">
+            Set <code className="rounded bg-muted px-1">POSTEX_API_TOKEN</code> to enable courier
+            booking.
+          </p>
+        ) : null}
+        <Button loading={pending} disabled={!configured} onClick={book}>
+          Book with PostEx
+        </Button>
+      </div>
+      <ManualShipmentForm orderId={orderId} />
     </div>
+  );
+}
+
+/** Record a shipment booked with any other courier (TCS, Leopards, rider…). */
+function ManualShipmentForm({ orderId }: { orderId: string }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+
+  function onSubmit(formData: FormData) {
+    start(async () => {
+      const result = await addManualShipment({
+        orderId,
+        courierName: String(formData.get('courierName') ?? ''),
+        trackingNumber: String(formData.get('trackingNumber') ?? ''),
+      });
+      if (result.success) {
+        toast.success(`Shipment recorded — ${result.data.trackingNumber}`);
+        router.refresh();
+      } else {
+        toast.error(result.message);
+      }
+    });
+  }
+
+  return (
+    <form action={onSubmit} className="flex flex-col gap-2 border-t border-border/60 pt-3">
+      <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
+        Or record manually
+      </p>
+      <Input name="courierName" required placeholder="Courier (e.g. TCS)" className="h-9" />
+      <Input name="trackingNumber" required placeholder="Tracking number" className="h-9" />
+      <Button size="sm" variant="outline" type="submit" loading={pending}>
+        Save & mark shipped
+      </Button>
+    </form>
   );
 }

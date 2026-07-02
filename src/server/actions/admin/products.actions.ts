@@ -10,6 +10,7 @@ import { toSlug } from '@/utils/slug';
 import { withAction } from '../_with-action';
 
 import { requireAdmin } from '@/server/auth/guards';
+import { BadRequestError, NotFoundError } from '@/server/http/errors';
 import { adminProductsRepo } from '@/server/repositories/admin.repo';
 import { productsService } from '@/server/services/products.service';
 
@@ -24,8 +25,10 @@ const productBody = z.object({
   costPrice: z.coerce.number().min(0).optional(),
   isFeatured: z.coerce.boolean().optional(),
   isActive: z.coerce.boolean().optional(),
-  categoryId: z.string().uuid().optional(),
-  brandId: z.string().uuid().optional(),
+  // `null` clears the category (the form's "No category" option); `undefined`
+  // leaves it untouched.
+  categoryId: z.string().uuid().nullable().optional(),
+  brandId: z.string().uuid().nullable().optional(),
   // Product-level gallery image URLs (first = primary). Uploaded via the
   // presign flow or pasted directly.
   images: z.array(z.string().url()).max(20).optional(),
@@ -65,6 +68,19 @@ export const createProduct = withAction(async (input: z.infer<typeof productBody
     ...(data.brandId ? { brand: { connect: { id: data.brandId } } } : {}),
   });
   if (data.images?.length) await setProductImages(product.id, data.images);
+  // A product needs at least one variant to be purchasable — start with a
+  // default one mirroring the product SKU/price (stock 0 until set). Skipped
+  // silently on a variant-SKU collision; the operator can add variants below.
+  await prisma.productVariant
+    .create({
+      data: {
+        productId: product.id,
+        sku: `${product.sku}-V`.slice(0, 80),
+        price: data.price,
+        stockQuantity: 0,
+      },
+    })
+    .catch(() => {});
   revalidatePath('/admin/products');
   return product;
 });
@@ -73,11 +89,17 @@ export const updateProduct = withAction(
   async (input: { id: string } & Partial<z.infer<typeof productBody>>) => {
     await requireAdmin();
     const { id, ...rest } = input;
-    const { images, ...data } = productBody.partial().parse(rest);
+    // The scalar FKs must not leak into the checked update input — Prisma
+    // rejects `categoryId` alongside the nested `category` operation.
+    const { images, categoryId, brandId, ...data } = productBody.partial().parse(rest);
     const product = await adminProductsRepo.update(id, {
       ...data,
-      ...(data.categoryId ? { category: { connect: { id: data.categoryId } } } : {}),
-      ...(data.brandId ? { brand: { connect: { id: data.brandId } } } : {}),
+      ...(categoryId !== undefined
+        ? { category: categoryId ? { connect: { id: categoryId } } : { disconnect: true } }
+        : {}),
+      ...(brandId !== undefined
+        ? { brand: brandId ? { connect: { id: brandId } } : { disconnect: true } }
+        : {}),
     });
     if (images) await setProductImages(id, images);
     // Drop the cached PDP (Redis + in-process) so price/availability edits show
@@ -98,16 +120,82 @@ export const deleteProduct = withAction(async (input: { id: string }) => {
   return { id: input.id };
 });
 
-export const updateStock = withAction(
-  async (input: { variantId: string; stockQuantity: number }) => {
+// ---------------------------------------------------------------------------
+// Variants
+// ---------------------------------------------------------------------------
+
+/** '' → null so clearing a size/shade field actually clears the column. */
+const optionalLabel = z.preprocess(
+  (v) => (typeof v === 'string' && v.trim() === '' ? null : v),
+  z.string().trim().max(64).nullable().optional(),
+);
+
+const variantBody = z.object({
+  productId: z.string().uuid(),
+  sku: z.string().trim().min(2).max(80),
+  price: z.coerce.number().min(0),
+  size: optionalLabel,
+  shade: optionalLabel,
+  fragrance: optionalLabel,
+  stockQuantity: z.coerce.number().int().min(0).default(0),
+  isActive: z.coerce.boolean().optional(),
+});
+
+export const createVariant = withAction(async (input: z.infer<typeof variantBody>) => {
+  await requireAdmin();
+  const { productId, ...data } = variantBody.parse(input);
+  const product = await prisma.product.findUnique({
+    where: { id: productId },
+    select: { slug: true },
+  });
+  if (!product) throw new NotFoundError('Product not found');
+
+  const variant = await prisma.productVariant.create({ data: { productId, ...data } });
+  await productsService.invalidate(product.slug);
+  revalidatePath(`/admin/products/${productId}`);
+  revalidatePath(`/products/${product.slug}`);
+  return { id: variant.id };
+});
+
+const variantUpdateBody = variantBody.omit({ productId: true }).partial();
+
+export const updateVariant = withAction(
+  async (input: { id: string } & z.infer<typeof variantUpdateBody>) => {
     await requireAdmin();
-    const stockQuantity = Math.max(0, Math.floor(input.stockQuantity));
-    const variant = await adminProductsRepo.updateVariantStock(input.variantId, stockQuantity);
+    const { id, ...rest } = input;
+    const data = variantUpdateBody.parse(rest);
+    const variant = await prisma.productVariant.update({
+      where: { id },
+      data,
+      include: { product: { select: { slug: true } } },
+    });
     await productsService.invalidate(variant.product.slug);
-    revalidatePath('/admin/products');
-    return { variantId: input.variantId, stockQuantity };
+    revalidatePath(`/admin/products/${variant.productId}`);
+    revalidatePath(`/products/${variant.product.slug}`);
+    return { id: variant.id };
   },
 );
+
+export const deleteVariant = withAction(async (input: { id: string }) => {
+  await requireAdmin();
+  const id = z.string().uuid().parse(input.id);
+
+  // Variants referenced by past orders keep the sales history readable —
+  // deactivate those instead of deleting.
+  const orderRefs = await prisma.orderItem.count({ where: { variantId: id } });
+  if (orderRefs > 0) {
+    throw new BadRequestError('This variant has order history — deactivate it instead.');
+  }
+
+  const variant = await prisma.productVariant.delete({
+    where: { id },
+    include: { product: { select: { slug: true } } },
+  });
+  await productsService.invalidate(variant.product.slug);
+  revalidatePath(`/admin/products/${variant.productId}`);
+  revalidatePath(`/products/${variant.product.slug}`);
+  return { id };
+});
 
 // ---------------------------------------------------------------------------
 // Bulk operations

@@ -1,6 +1,8 @@
 import Image from 'next/image';
 import Link from 'next/link';
 
+import { routes } from '@/config/routes';
+
 import { buildMetadata } from '@/lib/seo/metadata';
 
 import { ProductCard } from '@/design-system/patterns/product-card';
@@ -10,6 +12,7 @@ import { Button } from '@/components/ui/button';
 
 import { HeroShowcase } from './_components/hero-showcase';
 
+import { categoriesService } from '@/server/services/categories.service';
 import { productsService } from '@/server/services/products.service';
 
 export const metadata = buildMetadata({
@@ -26,41 +29,25 @@ export const revalidate = 300;
 const EDITORIAL_IMAGE =
   'https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&w=1600&q=85';
 
-// Category tiles use real product imagery from the catalog.
-const CATEGORIES = [
-  {
-    name: 'Lips',
-    href: '/categories/lips',
-    blurb: 'High-pigment colour',
-    img: 'https://cdn.shopify.com/s/files/1/0727/6701/3161/files/LiquidLipstick-terracota-rose-16_ce627aa1-9e61-423c-8b10-2240990461f7.jpg?v=1711142141',
-  },
-  {
-    name: 'Eyes',
-    href: '/categories/eyes',
-    blurb: 'Define & line',
-    img: 'https://cdn.shopify.com/s/files/1/0727/6701/3161/files/Liquid_Eyeliner_Image_1_-_WEBP.webp?v=1736921602',
-  },
-  {
-    name: 'Face',
-    href: '/categories/face',
-    blurb: 'Glow & base',
-    img: 'https://cdn.shopify.com/s/files/1/0727/6701/3161/files/Highlighter_SP-03.png?v=1777577801',
-  },
-  {
-    name: 'Nails',
-    href: '/categories/nails',
-    blurb: 'Glass finish',
-    img: 'https://cdn.shopify.com/s/files/1/0727/6701/3161/files/ST-40_1.webp?v=1739441174',
-  },
-];
-
 export default async function HomePage() {
   // Resilient at build/runtime: a DB hiccup yields an empty edit rather than a
   // crashed render; ISR repopulates on the next successful revalidate.
-  const bestsellers = await productsService
-    .list({}, 'popular', 1, 8)
-    .then((r) => r.items)
-    .catch(() => []);
+  const [{ items: bestsellers, total: productCount }, categoryTree] = await Promise.all([
+    productsService.list({}, 'popular', 1, 8).catch(() => ({ items: [], total: 0 })),
+    categoriesService.tree().catch(() => []),
+  ]);
+
+  // The merchandising categories (those with subcategories) drive the hero
+  // chips and the tiles — name, blurb, and banner image all live on the
+  // `categories` rows, so the edit follows the catalog.
+  const categories = categoryTree
+    .filter((c) => c.children.length > 0)
+    .map((c) => ({
+      name: c.name,
+      href: routes.category(c.slug),
+      blurb: c.description,
+      img: c.image,
+    }));
 
   // Real, shoppable products power the animated hero showcase.
   const heroProducts = bestsellers
@@ -107,7 +94,7 @@ export default async function HomePage() {
             </div>
             {/* Quick category jump-off */}
             <div className="flex flex-wrap gap-2">
-              {CATEGORIES.map((c) => (
+              {categories.map((c) => (
                 <Link
                   key={c.href}
                   href={c.href}
@@ -119,7 +106,9 @@ export default async function HomePage() {
             </div>
             <dl className="mt-4 flex gap-8 text-sm">
               <div>
-                <dt className="font-serif text-2xl font-light text-foreground">266</dt>
+                <dt className="font-serif text-2xl font-light text-foreground">
+                  {productCount > 0 ? productCount : '—'}
+                </dt>
                 <dd className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
                   Shades & finishes
                 </dd>
@@ -145,45 +134,53 @@ export default async function HomePage() {
       </Section>
 
       {/* — Shop by category — */}
-      <Section>
-        <div className="container">
-          <SectionHeading
-            eyebrow="The Edit"
-            title="Find your finish"
-            description="Four ways to play — lips, eyes, face, and nails."
-          />
-          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {CATEGORIES.map((c, i) => (
-              <Reveal key={c.href} inView delay={i * 0.06}>
-                <Link
-                  href={c.href}
-                  className="group relative block aspect-[4/5] overflow-hidden rounded-md bg-muted"
-                >
-                  <Image
-                    src={c.img}
-                    alt={c.name}
-                    fill
-                    sizes="(min-width:1024px) 25vw, (min-width:640px) 50vw, 100vw"
-                    className="object-cover transition-transform duration-700 ease-editorial group-hover:scale-[1.05]"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-brand-noir/70 via-brand-noir/10 to-transparent" />
-                  <div className="absolute inset-x-5 bottom-5 flex items-end justify-between text-brand-ivory">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] uppercase tracking-[0.18em] opacity-80">
-                        {c.blurb}
+      {categories.length > 0 && (
+        <Section>
+          <div className="container">
+            <SectionHeading
+              eyebrow="The Edit"
+              title="Find your finish"
+              description="Four ways to play — lips, eyes, face, and nails."
+            />
+            <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              {categories.map((c, i) => (
+                <Reveal key={c.href} inView delay={i * 0.06}>
+                  <Link
+                    href={c.href}
+                    className="group relative block aspect-[4/5] overflow-hidden rounded-md bg-muted"
+                  >
+                    {c.img ? (
+                      <Image
+                        src={c.img}
+                        alt={c.name}
+                        fill
+                        sizes="(min-width:1024px) 25vw, (min-width:640px) 50vw, 100vw"
+                        className="object-cover transition-transform duration-700 ease-editorial group-hover:scale-[1.05]"
+                      />
+                    ) : (
+                      <div className="surface-pearl absolute inset-0" />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-brand-noir/70 via-brand-noir/10 to-transparent" />
+                    <div className="absolute inset-x-5 bottom-5 flex items-end justify-between text-brand-ivory">
+                      <div className="flex flex-col">
+                        {c.blurb ? (
+                          <span className="text-[10px] uppercase tracking-[0.18em] opacity-80">
+                            {c.blurb}
+                          </span>
+                        ) : null}
+                        <span className="font-serif text-2xl font-light">{c.name}</span>
+                      </div>
+                      <span className="text-xs uppercase tracking-[0.14em] opacity-90 transition-opacity group-hover:opacity-100">
+                        Shop →
                       </span>
-                      <span className="font-serif text-2xl font-light">{c.name}</span>
                     </div>
-                    <span className="text-xs uppercase tracking-[0.14em] opacity-90 transition-opacity group-hover:opacity-100">
-                      Shop →
-                    </span>
-                  </div>
-                </Link>
-              </Reveal>
-            ))}
+                  </Link>
+                </Reveal>
+              ))}
+            </div>
           </div>
-        </div>
-      </Section>
+        </Section>
+      )}
 
       {/* — Bestsellers — */}
       {bestsellers.length > 0 && (

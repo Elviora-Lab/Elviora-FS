@@ -5,8 +5,10 @@ import { z } from 'zod';
 import { paginationQuerySchema } from '@/server/http/pagination';
 
 export const productListQuery = paginationQuerySchema.extend({
-  category: z.string().optional(),
-  q: z.string().optional(),
+  category: z.string().max(180).optional(),
+  brand: z.string().max(180).optional(),
+  // Longest real product name is well under this; caps pathological inputs.
+  q: z.string().trim().max(200).optional(),
   sort: z.enum(['newest', 'price-asc', 'price-desc', 'popular', 'rating']).default('newest'),
   priceMin: z.coerce.number().min(0).optional(),
   priceMax: z.coerce.number().min(0).optional(),

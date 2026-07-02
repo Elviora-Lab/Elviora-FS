@@ -17,6 +17,7 @@ export const GET = createHandler(async (req) => {
   const { items, total } = await productsService.list(
     {
       category: q.category,
+      brand: q.brand,
       q: q.q,
       priceMin: q.priceMin,
       priceMax: q.priceMax,

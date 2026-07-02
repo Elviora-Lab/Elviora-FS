@@ -6,6 +6,7 @@ import { prisma } from '@/lib/db';
 
 export type ProductListFilters = {
   category?: string; // slug
+  brand?: string; // slug
   q?: string; // free-text
   priceMin?: number;
   priceMax?: number;
@@ -16,24 +17,46 @@ export type ProductListFilters = {
 
 export type ProductListSort = 'newest' | 'price-asc' | 'price-desc' | 'popular' | 'rating';
 
-const SORT_MAP: Record<ProductListSort, Prisma.ProductOrderByWithRelationInput> = {
-  newest: { createdAt: 'desc' },
-  'price-asc': { price: 'asc' },
-  'price-desc': { price: 'desc' },
-  popular: { createdAt: 'desc' }, // replace with view-count when materialized
-  rating: { createdAt: 'desc' }, // replace with rating avg when materialized
+/**
+ * Escape LIKE/ILIKE wildcards in user search input — Prisma's `contains`
+ * passes `%`/`_` through, so an unescaped `%` would match the entire catalog.
+ */
+function escapeLike(input: string): string {
+  return input.replace(/[\\%_]/g, '\\$&');
+}
+
+const SORT_MAP: Record<ProductListSort, Prisma.ProductOrderByWithRelationInput[]> = {
+  newest: [{ createdAt: 'desc' }],
+  'price-asc': [{ price: 'asc' }],
+  'price-desc': [{ price: 'desc' }],
+  // Real engagement first (tracked product views), then the merchandised
+  // bestseller flag, then recency as a stable tiebreak.
+  popular: [{ viewLogs: { _count: 'desc' } }, { isFeatured: 'desc' }, { createdAt: 'desc' }],
+  // Review volume as the rating proxy — Prisma can't order by relation
+  // average; switch to a materialized rating column if one lands.
+  rating: [{ reviews: { _count: 'desc' } }, { createdAt: 'desc' }],
 };
 
 export const productsRepo = {
   async list(filters: ProductListFilters, sort: ProductListSort, skip: number, take: number) {
     const where: Prisma.ProductWhereInput = {
       isActive: true,
-      ...(filters.category ? { category: { slug: filters.category } } : {}),
+      // Match the category itself OR its direct parent, so a top-level page
+      // (e.g. /categories/lips) rolls up products assigned to subcategories
+      // (lipstick, liquid-lipstick). The taxonomy is one level deep.
+      ...(filters.category
+        ? {
+            category: {
+              OR: [{ slug: filters.category }, { parent: { slug: filters.category } }],
+            },
+          }
+        : {}),
+      ...(filters.brand ? { brand: { slug: filters.brand } } : {}),
       ...(filters.q
         ? {
             OR: [
-              { name: { contains: filters.q, mode: 'insensitive' } },
-              { shortDescription: { contains: filters.q, mode: 'insensitive' } },
+              { name: { contains: escapeLike(filters.q), mode: 'insensitive' } },
+              { shortDescription: { contains: escapeLike(filters.q), mode: 'insensitive' } },
             ],
           }
         : {}),

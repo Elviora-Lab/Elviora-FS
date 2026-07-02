@@ -6,6 +6,7 @@ import { ProductFilters } from '@/features/products/components/product-filters';
 import { ProductResults } from '@/features/products/components/product-results';
 
 import { type ProductListSort } from '@/server/repositories/products.repo';
+import { brandsService } from '@/server/services/brands.service';
 import { productsService } from '@/server/services/products.service';
 
 export const metadata = buildMetadata({
@@ -29,7 +30,10 @@ export default async function ProductsPage({
     : 'newest';
   const page = Math.max(1, Number(str(sp.page)) || 1);
 
-  const { items } = await productsService.list({ q: str(sp.q) }, sort, page, 24);
+  const [{ items }, brands] = await Promise.all([
+    productsService.list({ q: str(sp.q), brand: str(sp.brand) }, sort, page, 24),
+    brandsService.list().catch(() => []),
+  ]);
 
   return (
     <Section>
@@ -38,7 +42,7 @@ export default async function ProductsPage({
           <span className="eyebrow">The Edit</span>
           <h1 className="editorial-heading text-display-lg">All products</h1>
         </header>
-        <ProductFilters />
+        <ProductFilters brands={brands.map((b) => ({ name: b.name, slug: b.slug }))} />
         <ProductResults products={items} />
       </div>
     </Section>

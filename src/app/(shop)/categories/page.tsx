@@ -1,10 +1,14 @@
+import Image from 'next/image';
 import Link from 'next/link';
 
 import { mainNav } from '@/config/navigation';
+import { routes } from '@/config/routes';
 
 import { buildMetadata } from '@/lib/seo/metadata';
 
 import { Section, SectionHeading } from '@/design-system/primitives/section';
+
+import { categoriesService } from '@/server/services/categories.service';
 
 export const metadata = buildMetadata({
   title: 'Shop by category',
@@ -12,20 +16,35 @@ export const metadata = buildMetadata({
   path: '/categories',
 });
 
-type CategoryCard = { label: string; href: string; comingSoon: boolean };
+export const revalidate = 300;
 
-export default function CategoriesIndexPage() {
-  // Derive the category grid from the nav config: flatten the makeup children
-  // into their own cards and carry any "coming soon" top-level items through.
-  const cards: CategoryCard[] = mainNav.flatMap((n): CategoryCard[] => {
-    if (n.comingSoon) return [{ label: n.label, href: n.href, comingSoon: true }];
-    if (n.children?.length) {
-      return n.children.map((c) => ({ label: c.label, href: c.href, comingSoon: false }));
-    }
-    if (n.href.startsWith('/categories'))
-      return [{ label: n.label, href: n.href, comingSoon: false }];
-    return [];
-  });
+type CategoryCard = {
+  label: string;
+  href: string;
+  comingSoon: boolean;
+  image?: string | null;
+  subLabels?: string[];
+};
+
+export default async function CategoriesIndexPage() {
+  // Merchandising categories (those with subcategories) come from the DB —
+  // name, banner image, and subcategory names all live on `categories` rows.
+  // "Coming soon" placeholders stay in the nav config until they exist.
+  const tree = await categoriesService.tree().catch(() => []);
+  const cards: CategoryCard[] = [
+    ...tree
+      .filter((c) => c.children.length > 0)
+      .map((c) => ({
+        label: c.name,
+        href: routes.category(c.slug),
+        comingSoon: false,
+        image: c.image,
+        subLabels: c.children.map((child) => child.name),
+      })),
+    ...mainNav
+      .filter((n) => n.comingSoon)
+      .map((n) => ({ label: n.label, href: n.href, comingSoon: true })),
+  ];
 
   return (
     <Section>
@@ -52,12 +71,41 @@ export default function CategoriesIndexPage() {
               <Link
                 key={cat.href}
                 href={cat.href}
-                className="surface-pearl group relative flex aspect-[4/5] flex-col justify-end overflow-hidden rounded-md p-6 transition-shadow hover:shadow-card"
+                className="group relative flex aspect-[4/5] flex-col justify-end overflow-hidden rounded-md p-6 transition-shadow hover:shadow-card"
               >
-                <div className="absolute inset-0 bg-gradient-to-t from-foreground/15 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-                <div className="relative flex flex-col gap-1">
-                  <span className="eyebrow">Discover</span>
+                {cat.image ? (
+                  <>
+                    <Image
+                      src={cat.image}
+                      alt={cat.label}
+                      fill
+                      sizes="(min-width:1024px) 25vw, (min-width:768px) 50vw, 100vw"
+                      className="object-cover transition-transform duration-700 ease-editorial group-hover:scale-[1.05]"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-brand-noir/75 via-brand-noir/15 to-transparent" />
+                  </>
+                ) : (
+                  <>
+                    <div className="surface-pearl absolute inset-0" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-foreground/15 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+                  </>
+                )}
+                <div
+                  className={`relative flex flex-col gap-1 ${cat.image ? 'text-brand-ivory' : ''}`}
+                >
+                  <span className={`eyebrow ${cat.image ? 'text-brand-ivory/80' : ''}`}>
+                    Discover
+                  </span>
                   <h3 className="font-serif text-2xl font-light">{cat.label}</h3>
+                  {cat.subLabels?.length ? (
+                    <p
+                      className={`text-xs leading-relaxed ${
+                        cat.image ? 'text-brand-ivory/80' : 'text-muted-foreground'
+                      }`}
+                    >
+                      {cat.subLabels.join(' · ')}
+                    </p>
+                  ) : null}
                 </div>
               </Link>
             ),

@@ -43,14 +43,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // build — fall back to the static routes if the DB is unavailable.
   let products: Array<{ slug: string; updatedAt: Date }> = [];
   let categories: Array<{ slug: string }> = [];
+  let brands: Array<{ slug: string }> = [];
   let posts: Array<{ slug: string; publishedAt: Date | null }> = [];
   try {
-    [products, categories, posts] = await Promise.all([
+    [products, categories, brands, posts] = await Promise.all([
       prisma.product.findMany({
         where: { isActive: true },
         select: { slug: true, updatedAt: true },
       }),
       prisma.category.findMany({ where: { isActive: true }, select: { slug: true } }),
+      prisma.brand.findMany({ where: { isActive: true }, select: { slug: true } }),
       prisma.blogPost.findMany({
         where: { isPublished: true },
         select: { slug: true, publishedAt: true },
@@ -74,6 +76,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.6,
   }));
 
+  const brandRoutes: MetadataRoute.Sitemap = brands.map((b) => ({
+    url: `${base}/brands/${b.slug}`,
+    lastModified: now,
+    changeFrequency: 'weekly',
+    priority: 0.6,
+  }));
+
   const postRoutes: MetadataRoute.Sitemap = posts.map((p) => ({
     url: `${base}/blog/${p.slug}`,
     lastModified: p.publishedAt ?? now,
@@ -81,5 +90,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.5,
   }));
 
-  return [...staticRoutes, ...productRoutes, ...categoryRoutes, ...postRoutes];
+  return [...staticRoutes, ...productRoutes, ...categoryRoutes, ...brandRoutes, ...postRoutes];
 }

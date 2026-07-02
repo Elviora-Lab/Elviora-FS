@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
+import type { CategoryOptionGroup } from './category-options';
 import { ImageUploader } from './image-uploader';
 
 import {
@@ -28,15 +29,23 @@ type Values = {
   costPrice?: number;
   isFeatured?: boolean;
   isActive?: boolean;
+  categoryId?: string | null;
+  brandId?: string | null;
   images?: string[];
 };
+
+export type BrandOption = { id: string; name: string };
 
 export function ProductForm({
   mode,
   defaultValues,
+  categories = [],
+  brands = [],
 }: {
   mode: 'create' | 'edit';
   defaultValues?: Values;
+  categories?: CategoryOptionGroup[];
+  brands?: BrandOption[];
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -55,6 +64,9 @@ export function ProductForm({
       costPrice: formData.get('costPrice') ? Number(formData.get('costPrice')) : undefined,
       isFeatured: formData.get('isFeatured') === 'on',
       isActive: formData.get('isActive') === 'on',
+      // Empty select value = "No category / brand" → null clears it server-side.
+      categoryId: String(formData.get('categoryId') ?? '') || null,
+      brandId: String(formData.get('brandId') ?? '') || null,
       images,
     };
 
@@ -103,6 +115,42 @@ export function ProductForm({
         </Field>
         <Field label="Slug (auto from name when empty)">
           <Input name="slug" defaultValue={defaultValues?.slug} />
+        </Field>
+      </div>
+
+      <div className="grid gap-5 md:grid-cols-2">
+        <Field label="Category">
+          <select
+            name="categoryId"
+            defaultValue={defaultValues?.categoryId ?? ''}
+            className="flex h-10 w-full rounded-md border border-input bg-transparent px-3.5 py-2 text-sm focus-visible:border-foreground/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            <option value="">— No category —</option>
+            {categories.map((group) => (
+              <optgroup key={group.id} label={group.name}>
+                <option value={group.id}>All {group.name}</option>
+                {group.children.map((child) => (
+                  <option key={child.id} value={child.id}>
+                    {child.name}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        </Field>
+        <Field label="Brand">
+          <select
+            name="brandId"
+            defaultValue={defaultValues?.brandId ?? ''}
+            className="flex h-10 w-full rounded-md border border-input bg-transparent px-3.5 py-2 text-sm focus-visible:border-foreground/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            <option value="">— No brand —</option>
+            {brands.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
         </Field>
       </div>
 

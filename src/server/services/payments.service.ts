@@ -1,26 +1,8 @@
 import 'server-only';
 
-import { type Prisma } from '@prisma/client';
-
 import { prisma } from '@/lib/db';
 
-type Tx = Prisma.TransactionClient;
-
-/** Re-increment variant stock for every line on an order (used on refund). */
-async function restoreStock(tx: Tx, orderId: string) {
-  const items = await tx.orderItem.findMany({
-    where: { orderId },
-    select: { variantId: true, quantity: true },
-  });
-  for (const item of items) {
-    if (item.variantId) {
-      await tx.productVariant.update({
-        where: { id: item.variantId },
-        data: { stockQuantity: { increment: item.quantity } },
-      });
-    }
-  }
-}
+import { restoreOrderStockOnce } from './order-transitions.service';
 
 /**
  * Payment-state transitions driven by the Stripe webhook. Every method is
@@ -100,7 +82,10 @@ export const paymentsService = {
           statusHistory: { create: { status: 'REFUNDED', note: 'Refund processed (Stripe)' } },
         },
       });
-      await restoreStock(tx, payment.orderId);
+      // Idempotent claim — the admin cancel/return paths restock through the
+      // same gate, so a webhook redelivery or overlapping admin action can't
+      // double-increment.
+      await restoreOrderStockOnce(payment.orderId, tx);
       return { transitioned: true };
     });
   },

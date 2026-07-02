@@ -1,0 +1,17 @@
+import 'server-only';
+
+import { siteConfig } from '@/config/site';
+
+export function orderDeliveredEmail({ orderNumber }: { orderNumber: string }) {
+  const subject = `Your ${siteConfig.name} order ${orderNumber} has arrived`;
+  const html = `
+    <div style="font-family: Georgia, serif; max-width: 560px; margin: 0 auto; padding: 32px; color: #15171B;">
+      <h1 style="font-weight: 300; letter-spacing: 0.12em; text-transform: uppercase; font-size: 18px;">${siteConfig.name}</h1>
+      <h2 style="font-weight: 300; font-size: 28px; margin: 24px 0 8px;">Delivered, with care.</h2>
+      <p style="line-height: 1.6;">Order <strong>${orderNumber}</strong> has been delivered. We hope it wears like light.</p>
+      <p style="line-height: 1.6; margin-top: 16px;">If anything isn't perfect, you can request a return from your orders page within the return window.</p>
+      <p style="margin-top: 32px;"><a href="${siteConfig.url}/account/orders" style="color: #15171B; font-weight: 600;">View your orders →</a></p>
+    </div>
+  `;
+  return { subject, html };
+}

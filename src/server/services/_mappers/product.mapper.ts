@@ -13,9 +13,13 @@ type PrismaProductForCard = {
   price: unknown; // Prisma.Decimal
   comparePrice?: unknown | null;
   isFeatured?: boolean;
+  createdAt?: Date | string;
   brand?: { name?: string | null } | null;
   images?: Array<{ imageUrl: string | null }> | null;
 };
+
+/** Products published within this window get the "New" badge. */
+const NEW_BADGE_WINDOW_MS = 90 * 24 * 60 * 60 * 1000;
 
 /**
  * Map a Prisma product row to the `ProductCardData` shape the UI expects.
@@ -32,7 +36,7 @@ export function toProductCard(p: PrismaProductForCard): ProductCardData {
     price: toNumber(p.price),
     compareAt: p.comparePrice != null ? toNumber(p.comparePrice) : undefined,
     currency: 'PKR',
-    isNew: false,
+    isNew: p.createdAt ? Date.now() - new Date(p.createdAt).getTime() < NEW_BADGE_WINDOW_MS : false,
     isBestseller: Boolean(p.isFeatured),
   };
 }

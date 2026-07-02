@@ -61,6 +61,8 @@ type SourceProduct = {
   meta_description: string | null;
   bestseller: boolean | null;
   featured: boolean | null;
+  published_at: string | null;
+  created_at: string | null;
   variants: SourceVariant[];
   images: SourceImage[];
   reviews: SourceReview[];
@@ -92,6 +94,65 @@ function pickCategory(categories: string[] | null): string | null {
   return CATEGORY_PRIORITY.find((c) => categories.includes(c)) ?? categories[0] ?? null;
 }
 
+const parseDate = (s: string | null | undefined) => {
+  if (!s) return null;
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? null : d;
+};
+
+// Minimal CSV line parser (quoted fields, "" escapes) — enough for the small
+// crawl-metadata files in data/.
+function parseCsvLine(line: string): string[] {
+  const out: string[] = [];
+  let field = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"' && line[i + 1] === '"') {
+        field += '"';
+        i++;
+      } else if (ch === '"') {
+        inQuotes = false;
+      } else {
+        field += ch;
+      }
+    } else if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === ',') {
+      out.push(field);
+      field = '';
+    } else {
+      field += ch;
+    }
+  }
+  out.push(field);
+  return out;
+}
+
+/** handle → banner image URL from the scraped collections metadata. */
+function loadCategoryImages(): Map<string, string> {
+  const images = new Map<string, string>();
+  let csv: string;
+  try {
+    csv = readFileSync(join(process.cwd(), 'data', 'collections.csv'), 'utf8');
+  } catch {
+    return images; // optional file — categories just stay imageless
+  }
+  const [header, ...rows] = csv.split(/\r?\n/).filter(Boolean);
+  const cols = parseCsvLine(header);
+  const handleIdx = cols.indexOf('handle');
+  const imageIdx = cols.indexOf('image_url');
+  if (handleIdx === -1 || imageIdx === -1) return images;
+  for (const row of rows) {
+    const fields = parseCsvLine(row);
+    const handle = fields[handleIdx]?.trim();
+    const url = fields[imageIdx]?.trim();
+    if (handle && url) images.set(slugify(handle), url);
+  }
+  return images;
+}
+
 // ---------------------------------------------------------------------------
 // Import
 // ---------------------------------------------------------------------------
@@ -107,15 +168,18 @@ async function main() {
     create: { name: 'She Beauty', slug: 'she-beauty', isActive: true },
   });
 
-  // 2. Categories — one per distinct category string in the dataset.
+  // 2. Categories — one per distinct category string in the dataset, with the
+  // source collection banner (when the crawl captured one) as the image.
+  const categoryImages = loadCategoryImages();
   const categoryNames = [...new Set(products.flatMap((p) => p.categories ?? []))];
   const categoryIdBySlug = new Map<string, string>();
   for (const [i, name] of categoryNames.entries()) {
     const slug = slugify(name);
+    const image = categoryImages.get(slug);
     const cat = await prisma.category.upsert({
       where: { slug },
-      update: { name },
-      create: { name, slug, sortOrder: i, isActive: true },
+      update: { name, ...(image ? { image } : {}) },
+      create: { name, slug, sortOrder: i, isActive: true, image },
     });
     categoryIdBySlug.set(name, cat.id);
   }
@@ -158,6 +222,10 @@ async function main() {
         ? dec(p.compare_at_price)
         : null;
 
+    // Source publish date → createdAt, so "newest" sorting and the "New"
+    // badge reflect the shop's real timeline instead of the import moment.
+    const publishedAt = parseDate(p.published_at) ?? parseDate(p.created_at);
+
     const productData = {
       name: truncate(p.product_name, 255) ?? p.handle,
       shortDescription: truncate(p.meta_description ?? p.description_plain, 500),
@@ -165,17 +233,19 @@ async function main() {
       price,
       comparePrice: compareAt,
       isFeatured: Boolean(p.bestseller || p.featured),
-      isActive: true,
       seoTitle: truncate(p.meta_title, 255),
       seoDescription: truncate(p.meta_description, 500),
       brandId: brand.id,
       categoryId: categoryId ?? null,
+      ...(publishedAt ? { createdAt: publishedAt } : {}),
     };
 
     const product = await prisma.product.upsert({
       where: { slug },
+      // `isActive` is admin-managed (operators hide products from the
+      // storefront) — set it on create only so re-imports never unhide.
       update: productData,
-      create: { ...productData, slug, sku: `SB-P-${p.product_id}` },
+      create: { ...productData, isActive: true, slug, sku: `SB-P-${p.product_id}` },
     });
     pCount++;
 
@@ -252,6 +322,10 @@ async function main() {
   console.log(
     `Imported: ${pCount} products, ${vCount} variants, ${iCount} images, ${rCount} reviews ` +
       `(across ${userIdByKey.size} synthetic reviewers)`,
+  );
+  console.log(
+    'Note: products are (re)assigned to top-level categories — run ' +
+      '`npm run db:seed:subcategories` to distribute them into subcategories.',
   );
 }
 

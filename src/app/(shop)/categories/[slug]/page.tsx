@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 
+import { routes } from '@/config/routes';
+
 import { breadcrumbJsonLd } from '@/lib/seo/json-ld';
 import { JsonLd } from '@/lib/seo/json-ld-component';
 import { buildMetadata } from '@/lib/seo/metadata';
@@ -7,10 +9,16 @@ import { buildMetadata } from '@/lib/seo/metadata';
 import { Breadcrumb } from '@/design-system/primitives/breadcrumb';
 import { Section } from '@/design-system/primitives/section';
 
+import {
+  type SubcategoryChip,
+  SubcategoryNav,
+} from '@/features/categories/components/subcategory-nav';
 import { ProductFilters } from '@/features/products/components/product-filters';
 import { ProductResults } from '@/features/products/components/product-results';
 
 import { type ProductListSort } from '@/server/repositories/products.repo';
+import { brandsService } from '@/server/services/brands.service';
+import { categoriesService } from '@/server/services/categories.service';
 import { productsService } from '@/server/services/products.service';
 
 type Params = Promise<{ slug: string }>;
@@ -28,10 +36,11 @@ function prettify(slug: string) {
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { slug } = await params;
-  const name = prettify(slug);
+  const category = await categoriesService.getBySlug(slug);
+  const name = category?.name ?? prettify(slug);
   return buildMetadata({
     title: name,
-    description: `Shop ${name} from Elviora — refined, ritual-led colour.`,
+    description: category?.description ?? `Shop ${name} from Elviora — refined, ritual-led colour.`,
     path: `/categories/${slug}`,
   });
 }
@@ -45,7 +54,6 @@ export default async function CategoryPage({
 }) {
   const { slug } = await params;
   const sp = await searchParams;
-  const name = prettify(slug);
 
   const sortParam = str(sp.sort);
   const sort: ProductListSort = SORTS.includes(sortParam as ProductListSort)
@@ -53,30 +61,68 @@ export default async function CategoryPage({
     : 'newest';
   const page = Math.max(1, Number(str(sp.page)) || 1);
 
-  const { items } = await productsService.list({ category: slug }, sort, page, 24);
+  // The category row drives the display name, description, and subcategory
+  // chips; unknown slugs still render a (likely empty) product listing.
+  const [category, { items }, brands] = await Promise.all([
+    categoriesService.getBySlug(slug),
+    productsService.list({ category: slug, brand: str(sp.brand) }, sort, page, 24),
+    brandsService.list().catch(() => []),
+  ]);
+
+  const name = category?.name ?? prettify(slug);
+  const parent = category?.parent ?? null;
+  const children = category?.children ?? [];
+  const siblings = parent?.children ?? [];
+
+  // Parent page → chips for its subcategories ("All" = the page itself).
+  // Subcategory page → chips for its siblings, current one highlighted.
+  const chips: SubcategoryChip[] = children.length
+    ? [
+        { label: `All ${name}`, href: routes.category(slug), active: true },
+        ...children.map((c) => ({ label: c.name, href: routes.category(c.slug) })),
+      ]
+    : parent
+      ? [
+          { label: `All ${parent.name}`, href: routes.category(parent.slug) },
+          ...siblings.map((c) => ({
+            label: c.name,
+            href: routes.category(c.slug),
+            active: c.slug === slug,
+          })),
+        ]
+      : [];
+
+  const crumbs = [
+    { label: 'Home', href: '/' },
+    { label: 'Categories', href: '/categories' },
+    ...(parent ? [{ label: parent.name, href: routes.category(parent.slug) }] : []),
+    { label: name },
+  ];
 
   return (
     <Section>
-      <div className="container flex flex-col gap-8">
-        <Breadcrumb
-          items={[
-            { label: 'Home', href: '/' },
-            { label: 'Categories', href: '/categories' },
-            { label: name },
-          ]}
-        />
+      <div className="container flex flex-col gap-6 sm:gap-8">
+        <Breadcrumb items={crumbs} />
         <header className="flex flex-col gap-2">
-          <span className="eyebrow">Category</span>
+          <span className="eyebrow">{parent ? parent.name : 'Category'}</span>
           <h1 className="editorial-heading text-display-lg">{name}</h1>
+          {category?.description ? (
+            <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
+              {category.description}
+            </p>
+          ) : null}
         </header>
 
-        <ProductFilters />
+        <SubcategoryNav chips={chips} />
+
+        <ProductFilters brands={brands.map((b) => ({ name: b.name, slug: b.slug }))} />
         <ProductResults products={items} />
 
         <JsonLd
           data={breadcrumbJsonLd([
             { label: 'Home', href: '/' },
             { label: 'Categories', href: '/categories' },
+            ...(parent ? [{ label: parent.name, href: routes.category(parent.slug) }] : []),
             { label: name, href: `/categories/${slug}` },
           ])}
         />

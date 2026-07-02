@@ -6,9 +6,32 @@ import { events } from './bus';
 
 import { analyticsServer } from '@/server/analytics';
 import { sendEmail } from '@/server/email';
+import { orderCancelledEmail } from '@/server/email/templates/order-cancelled';
 import { orderConfirmationEmail } from '@/server/email/templates/order-confirmation';
+import { orderDeliveredEmail } from '@/server/email/templates/order-delivered';
+import { orderShippedEmail } from '@/server/email/templates/order-shipped';
 import { welcomeEmail } from '@/server/email/templates/welcome';
 import { notifyUser } from '@/server/notifications';
+
+/** Order fields the fulfilment emails need, with the guest-email fallback. */
+async function orderRecipient(orderId: string) {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    select: {
+      orderNumber: true,
+      userId: true,
+      shippingEmail: true,
+      user: { select: { email: true } },
+      shipments: {
+        orderBy: { shippedAt: 'desc' },
+        take: 1,
+        select: { courierName: true, trackingNumber: true },
+      },
+    },
+  });
+  if (!order) return null;
+  return { ...order, email: order.user?.email ?? order.shippingEmail };
+}
 
 // Registration guard on globalThis so listeners attach exactly once per
 // process even if this module is evaluated in more than one bundle context.
@@ -85,5 +108,63 @@ export function registerEventListeners() {
       title: 'Payment confirmed',
       message: `Payment for order ${order.orderNumber} was received. Thank you!`,
     });
+  });
+
+  events.on('order.shipped', async ({ orderId }) => {
+    const order = await orderRecipient(orderId);
+    if (!order) return;
+    const shipment = order.shipments[0];
+    if (order.userId) {
+      await notifyUser({
+        userId: order.userId,
+        type: 'ORDER_UPDATE',
+        title: 'Order shipped',
+        message: `Order ${order.orderNumber} is on its way${
+          shipment?.trackingNumber ? ` — tracking ${shipment.trackingNumber}` : ''
+        }.`,
+      });
+    }
+    if (order.email) {
+      const { subject, html } = orderShippedEmail({
+        orderNumber: order.orderNumber,
+        courierName: shipment?.courierName,
+        trackingNumber: shipment?.trackingNumber,
+      });
+      await sendEmail({ to: order.email, subject, html });
+    }
+  });
+
+  events.on('order.delivered', async ({ orderId }) => {
+    const order = await orderRecipient(orderId);
+    if (!order) return;
+    if (order.userId) {
+      await notifyUser({
+        userId: order.userId,
+        type: 'ORDER_UPDATE',
+        title: 'Order delivered',
+        message: `Order ${order.orderNumber} has been delivered. Enjoy!`,
+      });
+    }
+    if (order.email) {
+      const { subject, html } = orderDeliveredEmail({ orderNumber: order.orderNumber });
+      await sendEmail({ to: order.email, subject, html });
+    }
+  });
+
+  events.on('order.cancelled', async ({ orderId }) => {
+    const order = await orderRecipient(orderId);
+    if (!order) return;
+    if (order.userId) {
+      await notifyUser({
+        userId: order.userId,
+        type: 'ORDER_UPDATE',
+        title: 'Order cancelled',
+        message: `Order ${order.orderNumber} was cancelled.`,
+      });
+    }
+    if (order.email) {
+      const { subject, html } = orderCancelledEmail({ orderNumber: order.orderNumber });
+      await sendEmail({ to: order.email, subject, html });
+    }
   });
 }
