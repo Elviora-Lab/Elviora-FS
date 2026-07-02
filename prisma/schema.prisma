@@ -589,6 +589,7 @@ model Order {
   // for backward-compat with historic test orders placed before this column
   // set existed; new orders populate them via `placeOrder`.
   shippingFullName     String? @map("shipping_full_name") @db.VarChar(160)
+  shippingEmail        String? @map("shipping_email") @db.VarChar(255)
   shippingPhone        String? @map("shipping_phone") @db.VarChar(32)
   shippingCountry      String? @map("shipping_country") @db.VarChar(2)
   shippingCity         String? @map("shipping_city") @db.VarChar(120)

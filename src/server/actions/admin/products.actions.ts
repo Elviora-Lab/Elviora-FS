@@ -128,6 +128,9 @@ export const bulkSetProductActive = withAction(async (input: z.infer<typeof bulk
   await Promise.all(slugs.map((s) => productsService.invalidate(s.slug)));
   revalidatePath('/admin/products');
   revalidatePath('/products');
+  // Bust each product's ISR page cache too, so hiding 404s immediately and
+  // re-activating makes it publicly visible without waiting out the revalidate.
+  for (const s of slugs) revalidatePath(`/products/${s.slug}`);
   return { count, isActive };
 });
 

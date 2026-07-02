@@ -1,13 +1,11 @@
-import { serverEnv } from '@/config/env';
-
 import { buildMetadata } from '@/lib/seo/metadata';
 
 import { Section } from '@/design-system/primitives/section';
 
 import { CheckoutClient } from './checkout-client';
 
-import { requireUser } from '@/server/auth/guards';
-import { getOrCreateGuestId } from '@/server/auth/guest-session';
+import { getSession } from '@/server/auth/get-session';
+import { getGuestId } from '@/server/auth/guest-session';
 import { addressesService } from '@/server/services/addresses.service';
 import { cartService } from '@/server/services/cart.service';
 
@@ -15,14 +13,19 @@ export const metadata = buildMetadata({ title: 'Checkout', path: '/checkout', no
 export const dynamic = 'force-dynamic';
 
 export default async function CheckoutPage() {
-  // Middleware already forces a login before /checkout, but enforce again
-  // at the page so we have a typed session.
-  const session = await requireUser();
-  const sessionId = await getOrCreateGuestId();
+  // Guest checkout: no login required. A session, if present, unlocks saved
+  // addresses; guests just fill the inline form. Read the guest id only — a
+  // Server Component can't mint the cookie (that happens on add-to-cart).
+  const session = await getSession();
+  const guestId = await getGuestId();
 
   const [addresses, cart] = await Promise.all([
-    addressesService.list(session.sub),
-    cartService.getCart({ userId: session.sub, sessionId }),
+    session ? addressesService.list(session.sub) : Promise.resolve([]),
+    // No identity yet → the bag is necessarily empty; skip cart lookup so we
+    // don't try to create a cart for a non-existent session.
+    session || guestId
+      ? cartService.getCart({ userId: session?.sub ?? null, sessionId: guestId ?? '' })
+      : Promise.resolve({ lines: [], subtotal: 0, currency: 'PKR' }),
   ]);
 
   return (
@@ -50,7 +53,6 @@ export default async function CheckoutPage() {
             subtotal: cart.subtotal,
             currency: cart.currency,
           }}
-          stripeEnabled={Boolean(serverEnv.STRIPE_SECRET_KEY)}
         />
       </div>
     </Section>

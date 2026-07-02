@@ -50,15 +50,7 @@ type CartProp = {
 
 type PaymentMethod = 'COD' | 'CARD' | 'BANK_TRANSFER';
 
-export function CheckoutClient({
-  addresses,
-  cart,
-  stripeEnabled,
-}: {
-  addresses: Address[];
-  cart: CartProp;
-  stripeEnabled: boolean;
-}) {
+export function CheckoutClient({ addresses, cart }: { addresses: Address[]; cart: CartProp }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const { clear: clearLocalCart, cart: clientCart } = useCart();
@@ -71,13 +63,14 @@ export function CheckoutClient({
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('COD');
   const [notes, setNotes] = useState('');
+  const [email, setEmail] = useState('');
 
   const [newAddress, setNewAddress] = useState({
     fullName: '',
     phone: '',
-    country: 'US',
+    country: 'PK', // Pakistan by default — no country picker on the form.
     city: '',
-    area: '',
+    area: '', // used for the "Nearby" landmark field
     addressLine1: '',
     addressLine2: '',
     postalCode: '',
@@ -102,14 +95,24 @@ export function CheckoutClient({
     const usingNewAddress = addressId === 'new';
     if (usingNewAddress) {
       if (!newAddress.fullName || !newAddress.addressLine1 || !newAddress.city) {
-        toast.error('Please fill in full name, address line 1 and city');
+        toast.error('Please fill in full name, address and city');
         return;
       }
+      if (!newAddress.phone) {
+        toast.error('Please provide a phone number so we can reach you about delivery');
+        return;
+      }
+    }
+    const trimmedEmail = email.trim();
+    if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      toast.error('Please enter a valid email address, or leave it blank');
+      return;
     }
 
     start(async () => {
       const result = await placeOrder({
         ...(usingNewAddress ? { address: newAddress } : { addressId }),
+        email: trimmedEmail || undefined,
         paymentMethod,
         notes: notes || undefined,
         couponCode: clientCart.couponCode ?? undefined,
@@ -133,6 +136,16 @@ export function CheckoutClient({
             <CardTitle>Shipping address</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
+            <Field label="Email (optional)">
+              <Input
+                type="email"
+                inputMode="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </Field>
+
             {addresses.length > 0 ? (
               <div className="flex flex-col gap-2">
                 {addresses.map((a) => (
@@ -158,19 +171,12 @@ export function CheckoutClient({
                     onChange={(e) => setNewAddress({ ...newAddress, fullName: e.target.value })}
                   />
                 </Field>
-                <Field label="Phone">
+                <Field label="Phone *">
                   <Input
+                    type="tel"
+                    inputMode="tel"
                     value={newAddress.phone}
                     onChange={(e) => setNewAddress({ ...newAddress, phone: e.target.value })}
-                  />
-                </Field>
-                <Field label="Country (ISO-2) *">
-                  <Input
-                    maxLength={2}
-                    value={newAddress.country}
-                    onChange={(e) =>
-                      setNewAddress({ ...newAddress, country: e.target.value.toUpperCase() })
-                    }
                   />
                 </Field>
                 <Field label="City *">
@@ -179,39 +185,39 @@ export function CheckoutClient({
                     onChange={(e) => setNewAddress({ ...newAddress, city: e.target.value })}
                   />
                 </Field>
-                <Field label="Area">
-                  <Input
-                    value={newAddress.area}
-                    onChange={(e) => setNewAddress({ ...newAddress, area: e.target.value })}
-                  />
-                </Field>
                 <Field label="Postal code">
                   <Input
                     value={newAddress.postalCode}
                     onChange={(e) => setNewAddress({ ...newAddress, postalCode: e.target.value })}
                   />
                 </Field>
-                <Field label="Address line 1 *" className="md:col-span-2">
+                <Field label="Address *" className="md:col-span-2">
                   <Input
+                    placeholder="House / street / area"
                     value={newAddress.addressLine1}
                     onChange={(e) => setNewAddress({ ...newAddress, addressLine1: e.target.value })}
                   />
                 </Field>
-                <Field label="Address line 2" className="md:col-span-2">
+                <Field label="Nearby (landmark)" className="md:col-span-2">
                   <Input
-                    value={newAddress.addressLine2}
-                    onChange={(e) => setNewAddress({ ...newAddress, addressLine2: e.target.value })}
+                    placeholder="e.g. near Allah Wala Chowk"
+                    value={newAddress.area}
+                    onChange={(e) => setNewAddress({ ...newAddress, area: e.target.value })}
                   />
                 </Field>
-                <label className="flex items-center gap-2 text-sm md:col-span-2">
-                  <input
-                    type="checkbox"
-                    checked={newAddress.isDefault}
-                    onChange={(e) => setNewAddress({ ...newAddress, isDefault: e.target.checked })}
-                    className="size-4 rounded border-border accent-foreground"
-                  />
-                  Make this my default address
-                </label>
+                {addresses.length > 0 ? (
+                  <label className="flex items-center gap-2 text-sm md:col-span-2">
+                    <input
+                      type="checkbox"
+                      checked={newAddress.isDefault}
+                      onChange={(e) =>
+                        setNewAddress({ ...newAddress, isDefault: e.target.checked })
+                      }
+                      className="size-4 rounded border-border accent-foreground"
+                    />
+                    Make this my default address
+                  </label>
+                ) : null}
               </div>
             ) : null}
           </CardContent>
@@ -228,17 +234,6 @@ export function CheckoutClient({
               onSelect={() => setPaymentMethod('COD')}
               title="Cash on delivery"
               hint="Pay when your order arrives. Available in supported regions."
-            />
-            <PaymentOption
-              active={paymentMethod === 'CARD'}
-              onSelect={() => stripeEnabled && setPaymentMethod('CARD')}
-              disabled={!stripeEnabled}
-              title="Card (Stripe)"
-              hint={
-                stripeEnabled
-                  ? 'A secure Stripe Elements form will appear on the next step.'
-                  : 'Add STRIPE_SECRET_KEY and NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY to your env to enable card payments.'
-              }
             />
             <PaymentOption
               active={paymentMethod === 'BANK_TRANSFER'}

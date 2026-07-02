@@ -48,7 +48,7 @@ export function registerEventListeners() {
   events.on('order.created', async ({ orderId, userId, total, currency }) => {
     const order = await prisma.order.findUnique({
       where: { id: orderId },
-      select: { orderNumber: true, user: { select: { email: true } } },
+      select: { orderNumber: true, shippingEmail: true, user: { select: { email: true } } },
     });
     if (!order) return;
 
@@ -61,13 +61,15 @@ export function registerEventListeners() {
       });
     }
 
-    if (order.user?.email) {
+    // Prefer the account email; fall back to the guest's checkout email.
+    const recipient = order.user?.email ?? order.shippingEmail;
+    if (recipient) {
       const { subject, html } = orderConfirmationEmail({
         orderNumber: order.orderNumber,
         total,
         currency,
       });
-      await sendEmail({ to: order.user.email, subject, html });
+      await sendEmail({ to: recipient, subject, html });
     }
   });
 

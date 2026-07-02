@@ -25,6 +25,15 @@ export const ordersRepo = {
     });
   },
 
+  /** Fetch by id alone — used for the post-checkout confirmation page, which a
+   *  guest reaches via the unguessable order UUID right after placing. */
+  findById(orderId: string) {
+    return prisma.order.findUnique({
+      where: { id: orderId },
+      include: { items: true },
+    });
+  },
+
   create(data: Prisma.OrderCreateInput) {
     return prisma.order.create({ data, include: { items: true } });
   },

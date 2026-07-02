@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Star } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -17,7 +16,6 @@ import { submitReview } from '@/server/actions/review.actions';
 
 export function ReviewForm({ productId }: { productId: string }) {
   const { isAuthenticated } = useAuth();
-  const pathname = usePathname();
   const router = useRouter();
 
   const [rating, setRating] = useState(0);
@@ -26,19 +24,9 @@ export function ReviewForm({ productId }: { productId: string }) {
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  if (!isAuthenticated) {
-    return (
-      <div className="rounded-md border border-border bg-muted/40 p-5 text-sm text-muted-foreground">
-        <Link
-          href={`/login?redirect=${encodeURIComponent(pathname)}`}
-          className="font-medium text-foreground underline underline-offset-4"
-        >
-          Sign in
-        </Link>{' '}
-        to write a review.
-      </div>
-    );
-  }
+  // Customer accounts are disabled, so guests can't post reviews — the form is
+  // simply hidden (reviews stay read-only). Signed-in staff still see it.
+  if (!isAuthenticated) return null;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();

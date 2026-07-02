@@ -3,11 +3,12 @@
 import { useState, useTransition } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
+import { cn } from '@/lib/cn';
 import { formatMoney } from '@/utils/format';
 
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -16,6 +17,9 @@ import { bulkSetProductActive } from '@/server/actions/admin/products.actions';
 export type ProductRow = {
   id: string;
   name: string;
+  slug: string;
+  shade: string;
+  shadeColor: string | null;
   sku: string;
   categoryName: string | null;
   price: number;
@@ -24,9 +28,19 @@ export type ProductRow = {
   imageUrl: string | null;
 };
 
-export function ProductsTable({ rows }: { rows: ProductRow[] }) {
+export function ProductsTable({
+  rows,
+  hasFilters = false,
+}: {
+  rows: ProductRow[];
+  hasFilters?: boolean;
+}) {
+  const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pending, start] = useTransition();
+  // Optimistic per-row active state + which rows have a toggle in flight.
+  const [activeOverride, setActiveOverride] = useState<Record<string, boolean>>({});
+  const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
 
   const allSelected = rows.length > 0 && selected.size === rows.length;
 
@@ -40,6 +54,28 @@ export function ProductsTable({ rows }: { rows: ProductRow[] }) {
   }
   function toggleAll() {
     setSelected(allSelected ? new Set() : new Set(rows.map((r) => r.id)));
+  }
+
+  // Quick per-row toggle between active and hidden. Reuses the bulk action with
+  // a single id, so PDP cache invalidation stays in one place.
+  function toggleActive(id: string, currentActive: boolean) {
+    const next = !currentActive;
+    setActiveOverride((o) => ({ ...o, [id]: next }));
+    setTogglingIds((s) => new Set(s).add(id));
+    start(async () => {
+      const res = await bulkSetProductActive({ ids: [id], isActive: next });
+      setTogglingIds((s) => {
+        const n = new Set(s);
+        n.delete(id);
+        return n;
+      });
+      if (res.success) {
+        toast.success(next ? 'Product set active' : 'Product hidden');
+      } else {
+        setActiveOverride((o) => ({ ...o, [id]: currentActive })); // revert
+        toast.error(res.message);
+      }
+    });
   }
 
   function setActive(isActive: boolean) {
@@ -113,16 +149,24 @@ export function ProductsTable({ rows }: { rows: ProductRow[] }) {
               {rows.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="px-4 py-10 text-center text-muted-foreground">
-                    No products yet. Create or import some.
+                    {hasFilters
+                      ? 'No products match your filters.'
+                      : 'No products yet. Create or import some.'}
                   </td>
                 </tr>
               ) : (
                 rows.map((p) => (
                   <tr
                     key={p.id}
-                    className={`border-b border-border/60 last:border-b-0 ${selected.has(p.id) ? 'bg-muted/40' : ''}`}
+                    onClick={() => {
+                      // Active → public page; hidden → admin-only preview (the
+                      // public page 404s for hidden products).
+                      const active = activeOverride[p.id] ?? p.isActive;
+                      router.push(active ? `/products/${p.slug}` : `/products/${p.slug}/preview`);
+                    }}
+                    className={`cursor-pointer border-b border-border/60 transition-colors last:border-b-0 hover:bg-muted/30 ${selected.has(p.id) ? 'bg-muted/40' : ''}`}
                   >
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
                         aria-label={`Select ${p.name}`}
@@ -143,7 +187,10 @@ export function ProductsTable({ rows }: { rows: ProductRow[] }) {
                         ) : null}
                       </div>
                     </td>
-                    <td className="px-4 py-3 font-medium">{p.name}</td>
+                    <td className="px-4 py-3">
+                      <div className="font-medium">{p.name}</div>
+                      <ShadeTag shade={p.shade} color={p.shadeColor} />
+                    </td>
                     <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{p.sku}</td>
                     <td className="px-4 py-3 text-muted-foreground">{p.categoryName ?? '—'}</td>
                     <td className="px-4 py-3">{formatMoney(p.price)}</td>
@@ -156,12 +203,13 @@ export function ProductsTable({ rows }: { rows: ProductRow[] }) {
                         {p.stock}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
-                      {p.isActive ? (
-                        <Badge variant="success">Active</Badge>
-                      ) : (
-                        <Badge variant="muted">Hidden</Badge>
-                      )}
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      <StatusToggle
+                        active={activeOverride[p.id] ?? p.isActive}
+                        pending={togglingIds.has(p.id)}
+                        label={p.name}
+                        onToggle={() => toggleActive(p.id, activeOverride[p.id] ?? p.isActive)}
+                      />
                     </td>
                     <td className="px-4 py-3 text-right">
                       <Link
@@ -179,5 +227,69 @@ export function ProductsTable({ rows }: { rows: ProductRow[] }) {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+/** Shade label + colour swatch shown under a product name. */
+function ShadeTag({ shade, color }: { shade: string; color: string | null }) {
+  return (
+    <div className="mt-0.5 flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
+      {color ? (
+        <span
+          aria-hidden
+          className="inline-block size-2.5 shrink-0 rounded-full ring-1 ring-border"
+          style={{ backgroundColor: color }}
+        />
+      ) : null}
+      {shade}
+    </div>
+  );
+}
+
+/** Inline switch that flips a product between active and hidden. */
+function StatusToggle({
+  active,
+  pending,
+  label,
+  onToggle,
+}: {
+  active: boolean;
+  pending: boolean;
+  label: string;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={active}
+      aria-label={`${active ? 'Hide' : 'Activate'} ${label}`}
+      title={active ? 'Active — click to hide' : 'Hidden — click to activate'}
+      disabled={pending}
+      onClick={onToggle}
+      className="inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      <span
+        className={cn(
+          'relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-colors',
+          active ? 'border-success/30 bg-success/70' : 'border-border bg-muted',
+        )}
+      >
+        <span
+          className={cn(
+            'inline-block size-3.5 rounded-full bg-background shadow-sm transition-transform',
+            active ? 'translate-x-4' : 'translate-x-0.5',
+          )}
+        />
+      </span>
+      <span
+        className={cn(
+          'text-[10px] font-medium uppercase tracking-[0.12em]',
+          active ? 'text-success' : 'text-muted-foreground',
+        )}
+      >
+        {active ? 'Active' : 'Hidden'}
+      </span>
+    </button>
   );
 }

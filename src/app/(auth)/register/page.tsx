@@ -1,8 +1,6 @@
-import Link from 'next/link';
+import { redirect } from 'next/navigation';
 
 import { buildMetadata } from '@/lib/seo/metadata';
-
-import { RegisterForm } from '@/features/auth/components/register-form';
 
 export const metadata = buildMetadata({
   title: 'Create account',
@@ -10,20 +8,8 @@ export const metadata = buildMetadata({
   noIndex: true,
 });
 
+// Customer self-registration is disabled — the storefront is guest-only.
+// Admin accounts are provisioned directly, so there's no public sign-up.
 export default function RegisterPage() {
-  return (
-    <div className="flex flex-col gap-8">
-      <header className="flex flex-col gap-2">
-        <span className="eyebrow">Begin your ritual</span>
-        <h1 className="editorial-heading text-display-md">Create your Elviora account</h1>
-      </header>
-      <RegisterForm />
-      <p className="text-sm text-muted-foreground">
-        Already a member?{' '}
-        <Link href="/login" className="text-foreground underline underline-offset-4">
-          Sign in
-        </Link>
-      </p>
-    </div>
-  );
+  redirect('/');
 }

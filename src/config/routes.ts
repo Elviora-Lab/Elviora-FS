@@ -33,6 +33,8 @@ export const routes = {
   },
 } as const;
 
-export const PROTECTED_PREFIXES = ['/account', '/checkout'] as const;
+// Guest checkout is enabled, so /checkout is public. /account is no longer a
+// customer surface (redirects home). Only /admin remains gated.
+export const PROTECTED_PREFIXES = [] as const;
 export const ADMIN_PREFIXES = ['/admin'] as const;
 export const AUTH_ROUTES = ['/login', '/register', '/forgot-password'] as const;

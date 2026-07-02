@@ -11,7 +11,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 
-import { requireUser } from '@/server/auth/guards';
 import { ordersService } from '@/server/services/orders.service';
 
 export const metadata = buildMetadata({
@@ -24,12 +23,11 @@ export const dynamic = 'force-dynamic';
 type Params = Promise<{ orderId: string }>;
 
 export default async function OrderSuccessPage({ params }: { params: Params }) {
-  const session = await requireUser();
   const { orderId } = await params;
 
   let order;
   try {
-    order = await ordersService.getDetail(orderId, session.sub);
+    order = await ordersService.getById(orderId);
   } catch {
     notFound();
   }
@@ -43,8 +41,8 @@ export default async function OrderSuccessPage({ params }: { params: Params }) {
         <span className="eyebrow">Order confirmed</span>
         <h1 className="editorial-heading text-display-lg">Thank you for your order.</h1>
         <p className="text-pretty leading-relaxed text-muted-foreground">
-          We&apos;ve received your order and a confirmation has been sent to your inbox. You can
-          track its progress from your account at any time.
+          We&apos;ve received your order. If you gave us an email, a confirmation is on its way —
+          please keep your order number for reference.
         </p>
 
         <Card className="w-full text-left">
@@ -87,9 +85,6 @@ export default async function OrderSuccessPage({ params }: { params: Params }) {
 
         <div className="flex flex-wrap justify-center gap-3">
           <Button asChild>
-            <Link href={`/account/orders`}>View my orders</Link>
-          </Button>
-          <Button asChild variant="outline">
             <Link href="/products">Continue shopping</Link>
           </Button>
         </div>

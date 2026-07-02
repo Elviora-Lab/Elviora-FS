@@ -99,15 +99,30 @@ function startOfWeek() {
 // ---------- Products ----------
 
 export const adminProductsRepo = {
-  list(opts: { skip?: number; take?: number; q?: string } = {}) {
-    const where: Prisma.ProductWhereInput = opts.q
-      ? {
-          OR: [
-            { name: { contains: opts.q, mode: 'insensitive' } },
-            { sku: { contains: opts.q, mode: 'insensitive' } },
-          ],
-        }
-      : {};
+  list(
+    opts: {
+      skip?: number;
+      take?: number;
+      q?: string;
+      categoryId?: string;
+      status?: 'active' | 'hidden';
+    } = {},
+  ) {
+    const where: Prisma.ProductWhereInput = {
+      ...(opts.q
+        ? {
+            OR: [
+              { name: { contains: opts.q, mode: 'insensitive' } },
+              { sku: { contains: opts.q, mode: 'insensitive' } },
+              // slug carries the shade token (e.g. "…-cs-40"), so this lets
+              // operators search a specific shade.
+              { slug: { contains: opts.q, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+      ...(opts.categoryId ? { categoryId: opts.categoryId } : {}),
+      ...(opts.status ? { isActive: opts.status === 'active' } : {}),
+    };
     return prisma.$transaction([
       prisma.product.findMany({
         where,
@@ -118,7 +133,7 @@ export const adminProductsRepo = {
           brand: { select: { name: true } },
           category: { select: { name: true } },
           images: { where: { isPrimary: true }, take: 1 },
-          variants: { select: { stockQuantity: true } },
+          variants: { select: { stockQuantity: true, shade: true } },
         },
       }),
       prisma.product.count({ where }),
