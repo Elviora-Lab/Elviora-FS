@@ -21,7 +21,7 @@ export default function AboutPage() {
 
         <div className="flex flex-col gap-6 text-pretty leading-relaxed text-muted-foreground">
           <p>
-            Founded in Lahore, Elviora is a house of refined cosmetics made for people who notice
+            Founded in Karachi, Elviora is a house of refined cosmetics made for people who notice
             the details. Every shade, texture, and finish is developed slowly — tested, adjusted,
             and tested again — until it feels effortless on the skin.
           </p>

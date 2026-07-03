@@ -21,7 +21,7 @@ export default function PressPage() {
 
         <div className="flex flex-col gap-6 text-pretty leading-relaxed text-muted-foreground">
           <p>
-            Elviora is a luxury beauty house founded in Lahore, built on considered formulas and a
+            Elviora is a luxury beauty house founded in Karachi, built on considered formulas and a
             quiet sense of ritual. We welcome conversations with editors, stylists, and storytellers
             who share our love of craft.
           </p>
