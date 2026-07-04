@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 import { customAlphabet } from 'nanoid';
 
 import { prisma } from '@/lib/db';
+import { computeCheckoutTotals } from '@/lib/shipping';
 
 import { events } from '@/server/events';
 import { BadRequestError, NotFoundError } from '@/server/http/errors';
@@ -60,6 +61,8 @@ export const ordersService = {
     currency?: string;
     notes?: string;
     couponCode?: string;
+    /** Chosen payment method — COD adds the 4% COD tax. */
+    paymentMethod: string;
   }) {
     return prisma
       .$transaction(async (tx) => {
@@ -92,13 +95,28 @@ export const ordersService = {
           discount = evaluation.discount;
           appliedCoupon = { id: evaluation.coupon.id };
         }
-        const totalAmount = subtotal.minus(discount);
+
+        // Shipping + tax from the PostEx rate card. Same helper the checkout UI
+        // uses, so the stored charge matches the quoted total exactly.
+        const totalQuantity = cart.items.reduce((sum, item) => sum + item.quantity, 0);
+        const totals = computeCheckoutTotals({
+          subtotal: subtotal.toNumber(),
+          discount: discount.toNumber(),
+          city: opts.shippingAddress.city,
+          quantity: totalQuantity,
+          paymentMethod: opts.paymentMethod,
+        });
+        const shippingFee = new Prisma.Decimal(totals.shippingFee);
+        const taxAmount = new Prisma.Decimal(totals.taxAmount);
+        const totalAmount = new Prisma.Decimal(totals.total);
 
         const order = await tx.order.create({
           data: {
             userId: opts.userId,
             orderNumber: newOrderNumber(),
             subtotal,
+            shippingFee,
+            taxAmount,
             discountAmount: discount,
             totalAmount,
             currency,

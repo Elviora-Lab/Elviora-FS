@@ -74,6 +74,32 @@ export default async function OrderSuccessPage({ params }: { params: Params }) {
             <div className="luxe-divider" />
 
             <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Subtotal</span>
+              <Price amount={Number(order.subtotal)} currency={order.currency} size="sm" />
+            </div>
+            {Number(order.discountAmount) > 0 ? (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Discount</span>
+                <span className="tabular-nums">
+                  −
+                  <Price
+                    amount={Number(order.discountAmount)}
+                    currency={order.currency}
+                    size="sm"
+                  />
+                </span>
+              </div>
+            ) : null}
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Shipping</span>
+              <Price amount={Number(order.shippingFee)} currency={order.currency} size="sm" />
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Tax</span>
+              <Price amount={Number(order.taxAmount)} currency={order.currency} size="sm" />
+            </div>
+
+            <div className="flex items-center justify-between border-t border-border pt-2 text-sm">
               <span className="eyebrow">Total</span>
               <Price amount={Number(order.totalAmount)} currency={order.currency} size="lg" />
             </div>

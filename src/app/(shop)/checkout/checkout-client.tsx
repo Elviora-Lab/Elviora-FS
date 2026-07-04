@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { useAppSelector } from '@/store/hooks';
 
 import { cn } from '@/lib/cn';
+import { computeCheckoutTotals } from '@/lib/shipping';
 
 import { EmptyState } from '@/design-system/primitives/empty-state';
 import { Price } from '@/design-system/primitives/price';
@@ -56,7 +57,6 @@ export function CheckoutClient({ addresses, cart }: { addresses: Address[]; cart
   const { clear: clearLocalCart, cart: clientCart } = useCart();
   const { couponCode, couponDiscount } = useAppSelector(selectCart);
   const discount = couponDiscount ?? 0;
-  const total = Math.max(0, cart.subtotal - discount);
 
   const initialAddressId = addresses.find((a) => a.isDefault)?.id ?? addresses[0]?.id ?? 'new';
   const [addressId, setAddressId] = useState<string>(initialAddressId);
@@ -76,6 +76,22 @@ export function CheckoutClient({ addresses, cart }: { addresses: Address[]; cart
     postalCode: '',
     isDefault: addresses.length === 0,
   });
+
+  // Live shipping + tax estimate from the PostEx rate card. Destination city
+  // comes from the selected saved address or the new-address form; both update
+  // the quote as the customer changes them. Uses the same helper as the server,
+  // so the quote equals the charged total.
+  const destinationCity =
+    addressId === 'new' ? newAddress.city : (addresses.find((a) => a.id === addressId)?.city ?? '');
+  const totalQuantity = cart.lines.reduce((sum, l) => sum + l.quantity, 0);
+  const totals = computeCheckoutTotals({
+    subtotal: cart.subtotal,
+    discount,
+    city: destinationCity,
+    quantity: totalQuantity,
+    paymentMethod,
+  });
+  const total = totals.total;
 
   if (cart.lines.length === 0) {
     return (
@@ -287,12 +303,23 @@ export function CheckoutClient({ addresses, cart }: { addresses: Address[]; cart
             </span>
           </div>
         ) : null}
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">Shipping</span>
+          <Price amount={totals.shippingFee} currency={cart.currency} size="sm" />
+        </div>
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">
+            Tax{paymentMethod === 'COD' ? ' (incl. COD)' : ''}
+          </span>
+          <Price amount={totals.taxAmount} currency={cart.currency} size="sm" />
+        </div>
         <div className="flex items-center justify-between border-t border-border pt-3">
           <span className="eyebrow">Total</span>
           <Price amount={total} currency={cart.currency} size="lg" />
         </div>
         <p className="text-xs text-muted-foreground">
-          Shipping &amp; taxes calculated after placement.
+          Shipping &amp; tax for delivery to {destinationCity.trim() || 'your city'}, incl. 35% fuel
+          &amp; 15% GST{paymentMethod === 'COD' ? ' and 4% COD tax' : ''}.
         </p>
         <Button size="lg" variant="gold" uppercase loading={pending} onClick={handlePlaceOrder}>
           Place order

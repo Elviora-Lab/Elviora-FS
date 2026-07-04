@@ -1,3 +1,4 @@
+import { PaymentMethod } from '@prisma/client';
 import { z } from 'zod';
 
 import { requireUser } from '@/server/auth/guards';
@@ -23,6 +24,7 @@ const createOrderBody = z.object({
   currency: z.string().length(3).optional(),
   notes: z.string().max(500).optional(),
   couponCode: z.string().min(1).max(64).optional(),
+  paymentMethod: z.nativeEnum(PaymentMethod).default(PaymentMethod.COD),
 });
 
 export const POST = createHandler(async (req) => {
@@ -39,6 +41,7 @@ export const POST = createHandler(async (req) => {
     currency: body.currency,
     notes: body.notes,
     couponCode: body.couponCode,
+    paymentMethod: body.paymentMethod ?? PaymentMethod.COD,
     shippingAddress: {
       fullName: address.fullName,
       phone: address.phone ?? null,

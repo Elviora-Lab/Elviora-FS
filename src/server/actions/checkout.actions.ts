@@ -87,6 +87,7 @@ export const placeOrder = withAction(async (raw: unknown) => {
     email: contactEmail,
     notes: input.notes,
     couponCode: input.couponCode,
+    paymentMethod: input.paymentMethod,
     shippingAddress: {
       fullName: shippingAddress.fullName,
       phone: shippingAddress.phone ?? null,

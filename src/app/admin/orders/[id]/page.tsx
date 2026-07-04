@@ -93,6 +93,14 @@ export default async function AdminOrderDetailPage({
                       {formatMoney(Number(order.shippingFee), order.currency)}
                     </td>
                   </tr>
+                  <tr>
+                    <td colSpan={3} className="text-right text-sm text-muted-foreground">
+                      Tax
+                    </td>
+                    <td className="text-right">
+                      {formatMoney(Number(order.taxAmount), order.currency)}
+                    </td>
+                  </tr>
                   {Number(order.discountAmount) > 0 && (
                     <tr>
                       <td colSpan={3} className="text-right text-sm text-muted-foreground">
