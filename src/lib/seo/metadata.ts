@@ -53,10 +53,8 @@ export function buildMetadata({
           follow: true,
           googleBot: { index: true, follow: true, 'max-image-preview': 'large' },
         },
-    icons: {
-      icon: '/favicon.ico',
-      apple: '/apple-touch-icon.png',
-    },
+    // Icons are provided by the app/ file convention (icon.svg, icon.png,
+    // apple-icon.png), which Next injects into every page automatically.
   };
 }
 
