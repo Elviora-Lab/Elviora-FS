@@ -27,10 +27,13 @@ function client(): S3Client {
 }
 
 export function publicUrlFor(key: string): string {
+  // Trim first: a stray trailing newline/space in the env var would otherwise
+  // land inside the URL (e.g. ".../bucket\n/key") and break every image.
+  const cleanKey = key.trim().replace(/^\/+/, '');
   if (serverEnv.S3_PUBLIC_URL) {
-    return `${serverEnv.S3_PUBLIC_URL.replace(/\/+$/, '')}/${key}`;
+    return `${serverEnv.S3_PUBLIC_URL.trim().replace(/\/+$/, '')}/${cleanKey}`;
   }
-  return `https://${serverEnv.S3_BUCKET}.s3.${serverEnv.S3_REGION}.amazonaws.com/${key}`;
+  return `https://${serverEnv.S3_BUCKET}.s3.${serverEnv.S3_REGION}.amazonaws.com/${cleanKey}`;
 }
 
 export async function presignUpload({
