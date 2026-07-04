@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { buildMetadata } from '@/lib/seo/metadata';
 
 import { Section, SectionHeading } from '@/design-system/primitives/section';
+import { ContactLink } from '@/components/analytics/pixel-trackers';
 
 export const metadata = buildMetadata({
   title: 'Contact',
@@ -25,12 +26,12 @@ export default function ContactPage() {
           <h2 className="editorial-heading text-display-sm">Email us</h2>
           <p className="text-pretty leading-relaxed text-muted-foreground">
             Write to{' '}
-            <a
+            <ContactLink
               className="font-medium text-foreground underline underline-offset-4"
               href="mailto:hello@elviora.com"
             >
               hello@elviora.com
-            </a>{' '}
+            </ContactLink>{' '}
             and a member of our client care team will reply within one business day.
           </p>
         </div>

@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { buildMetadata } from '@/lib/seo/metadata';
 
 import { Section, SectionHeading } from '@/design-system/primitives/section';
+import { SkincareViewTracker } from '@/components/analytics/pixel-trackers';
 import { Button } from '@/components/ui/button';
 
 export const metadata = buildMetadata({
@@ -15,6 +16,7 @@ export const metadata = buildMetadata({
 export default function BeautyConciergePage() {
   return (
     <Section>
+      <SkincareViewTracker />
       <div className="container flex max-w-3xl flex-col gap-12">
         <SectionHeading
           eyebrow="Beauty Concierge"

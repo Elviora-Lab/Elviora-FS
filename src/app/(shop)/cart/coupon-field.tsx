@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 
+import { metaPixel } from '@/lib/analytics/meta-pixel';
 import { formatMoney } from '@/utils/format';
 
 import { Button } from '@/components/ui/button';
@@ -59,6 +60,7 @@ export function CouponField() {
       const res = await validateCoupon({ code: trimmed });
       if (res.success) {
         dispatch(applyCouponLocal({ code: res.data.code, discount: res.data.discount }));
+        metaPixel.couponApplied(res.data.code);
         toast.success(`Coupon ${res.data.code} applied`);
         setCode('');
       } else {

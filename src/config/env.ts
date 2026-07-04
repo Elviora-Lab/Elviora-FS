@@ -43,6 +43,10 @@ const serverEnvSchema = z.object({
   // S3-compatible endpoint (Supabase Storage, R2, MinIO…). Omit for AWS S3.
   S3_ENDPOINT: optionalUrl,
   OPENAI_API_KEY: optionalStr,
+  // Meta Conversions API — server-side event token (Events Manager → Settings).
+  // Optional test-event code routes events to the "Test events" tab while wiring.
+  META_CAPI_ACCESS_TOKEN: optionalStr,
+  META_CAPI_TEST_EVENT_CODE: optionalStr,
   // PostEx courier (Pakistan) — merchant API token + optional pickup address code.
   POSTEX_API_TOKEN: optionalStr,
   POSTEX_PICKUP_ADDRESS_CODE: optionalStr,
@@ -115,6 +119,8 @@ export const serverEnv = (() => {
     S3_PUBLIC_URL: process.env.S3_PUBLIC_URL,
     S3_ENDPOINT: process.env.S3_ENDPOINT,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    META_CAPI_ACCESS_TOKEN: process.env.META_CAPI_ACCESS_TOKEN,
+    META_CAPI_TEST_EVENT_CODE: process.env.META_CAPI_TEST_EVENT_CODE,
     POSTEX_API_TOKEN: process.env.POSTEX_API_TOKEN,
     POSTEX_PICKUP_ADDRESS_CODE: process.env.POSTEX_PICKUP_ADDRESS_CODE,
     CRON_SECRET: process.env.CRON_SECRET,

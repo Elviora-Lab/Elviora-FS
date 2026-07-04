@@ -8,6 +8,7 @@ import { buildMetadata } from '@/lib/seo/metadata';
 
 import { Breadcrumb } from '@/design-system/primitives/breadcrumb';
 import { Section } from '@/design-system/primitives/section';
+import { CategoryViewTracker } from '@/components/analytics/pixel-trackers';
 
 import {
   type SubcategoryChip,
@@ -101,6 +102,7 @@ export default async function CategoryPage({
 
   return (
     <Section>
+      <CategoryViewTracker slug={slug} name={name} />
       <div className="container flex flex-col gap-6 sm:gap-8">
         <Breadcrumb items={crumbs} />
         <header className="flex flex-col gap-2">

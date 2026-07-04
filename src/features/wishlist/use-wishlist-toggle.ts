@@ -5,6 +5,8 @@ import { toast } from 'sonner';
 
 import { useAppDispatch } from '@/store/hooks';
 
+import { metaPixel } from '@/lib/analytics/meta-pixel';
+
 import { wishlistApi } from './wishlist-api';
 import { wishlistActions } from './wishlist-slice';
 
@@ -40,6 +42,8 @@ export function useWishlistToggle() {
           toast.error(result.message || 'Sign in to save items to your wishlist');
           return;
         }
+        // Meta Pixel: only when the item was added (not removed).
+        if (result.data.wishlisted) metaPixel.addToWishlist({ id: productId });
         dispatch(wishlistApi.util.invalidateTags(['Wishlist']));
       });
     },

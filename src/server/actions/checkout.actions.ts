@@ -1,15 +1,17 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { cookies, headers } from 'next/headers';
 import { PaymentMethod, Prisma } from '@prisma/client';
 import { z } from 'zod';
 
-import { serverEnv } from '@/config/env';
+import { publicEnv, serverEnv } from '@/config/env';
 
 import { prisma } from '@/lib/db';
 
 import { withAction } from './_with-action';
 
+import { sendCapiEvent } from '@/server/analytics/meta-capi';
 import { getSession } from '@/server/auth/get-session';
 import { getOrCreateGuestId } from '@/server/auth/guest-session';
 import { BadRequestError } from '@/server/http/errors';
@@ -135,6 +137,44 @@ export const placeOrder = withAction(async (raw: unknown) => {
 
   // `order.created` is emitted once by ordersService.createFromCart — do not
   // re-emit here, or every order would trigger its side effects twice.
+
+  // Meta Conversions API: server-side Purchase, deduplicated against the browser
+  // Purchase via event_id = order.id. Advanced matching from the order + the
+  // pixel cookies/headers. Best-effort — never blocks or fails the checkout.
+  try {
+    const [cookieStore, headerStore] = await Promise.all([cookies(), headers()]);
+    const [firstName, ...rest] = (shippingAddress.fullName ?? '').trim().split(/\s+/);
+    const contentIds = order.items
+      .map((i) => i.productId)
+      .filter((id): id is string => Boolean(id));
+    await sendCapiEvent({
+      eventName: 'Purchase',
+      eventId: order.id,
+      eventSourceUrl: `${publicEnv.NEXT_PUBLIC_SITE_URL}/checkout/success/${order.id}`,
+      userData: {
+        email: contactEmail,
+        phone: shippingAddress.phone,
+        firstName: firstName || null,
+        lastName: rest.length ? rest.join(' ') : null,
+        city: shippingAddress.city,
+        country: shippingAddress.country,
+        externalId: session?.sub ?? sessionId,
+        clientIp: headerStore.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null,
+        userAgent: headerStore.get('user-agent'),
+        fbp: cookieStore.get('_fbp')?.value ?? null,
+        fbc: cookieStore.get('_fbc')?.value ?? null,
+      },
+      customData: {
+        value: Number(order.totalAmount),
+        currency: order.currency,
+        num_items: order.items.reduce((sum, i) => sum + i.quantity, 0),
+        content_type: 'product',
+        content_ids: contentIds,
+      },
+    });
+  } catch {
+    // Tracking must never break checkout.
+  }
 
   revalidatePath('/account/orders');
   return { orderId: order.id, orderNumber: order.orderNumber, clientSecret };

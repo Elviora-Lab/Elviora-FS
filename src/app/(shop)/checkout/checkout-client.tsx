@@ -115,6 +115,12 @@ export function CheckoutClient({ addresses, cart }: { addresses: Address[]; cart
     );
   }
 
+  function choosePayment(method: PaymentMethod) {
+    setPaymentMethod(method);
+    // Meta Pixel: selecting a method is "adding payment info" for COD/bank.
+    metaPixel.addPaymentInfo({ value: total, currency: cart.currency, method });
+  }
+
   function handlePlaceOrder() {
     const usingNewAddress = addressId === 'new';
     if (usingNewAddress) {
@@ -255,13 +261,13 @@ export function CheckoutClient({ addresses, cart }: { addresses: Address[]; cart
           <CardContent className="flex flex-col gap-2">
             <PaymentOption
               active={paymentMethod === 'COD'}
-              onSelect={() => setPaymentMethod('COD')}
+              onSelect={() => choosePayment('COD')}
               title="Cash on delivery"
               hint="Pay when your order arrives. Available in supported regions."
             />
             <PaymentOption
               active={paymentMethod === 'BANK_TRANSFER'}
-              onSelect={() => setPaymentMethod('BANK_TRANSFER')}
+              onSelect={() => choosePayment('BANK_TRANSFER')}
               title="Bank transfer"
               hint="Order is placed as pending. Wire instructions are emailed."
             />
