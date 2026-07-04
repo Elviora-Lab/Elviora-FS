@@ -211,7 +211,7 @@ export function ProductsTable({
                         onToggle={() => toggleActive(p.id, activeOverride[p.id] ?? p.isActive)}
                       />
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                       <Link
                         href={`/admin/products/${p.id}`}
                         className="text-xs uppercase tracking-[0.12em] text-muted-foreground hover:text-foreground"
