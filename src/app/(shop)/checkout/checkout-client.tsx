@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
 import { useAppSelector } from '@/store/hooks';
 
+import { metaPixel } from '@/lib/analytics/meta-pixel';
 import { cn } from '@/lib/cn';
 import { computeCheckoutTotals } from '@/lib/shipping';
 
@@ -92,6 +93,13 @@ export function CheckoutClient({ addresses, cart }: { addresses: Address[]; cart
     paymentMethod,
   });
   const total = totals.total;
+
+  // Meta Pixel: fire InitiateCheckout once when the checkout loads with items.
+  useEffect(() => {
+    if (cart.lines.length === 0) return;
+    metaPixel.initiateCheckout({ value: total, currency: cart.currency, items: totalQuantity });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (cart.lines.length === 0) {
     return (

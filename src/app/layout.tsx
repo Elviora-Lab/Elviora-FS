@@ -7,6 +7,8 @@ import { organizationJsonLd, websiteJsonLd } from '@/lib/seo/json-ld';
 import { JsonLd } from '@/lib/seo/json-ld-component';
 import { defaultMetadata } from '@/lib/seo/metadata';
 
+import { MetaPixel } from '@/components/analytics/meta-pixel';
+
 import '@/styles/globals.css';
 
 const serif = Cormorant_Garamond({
@@ -37,6 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning className={`${serif.variable} ${sans.variable}`}>
       <body className="min-h-screen bg-background text-foreground antialiased">
+        <MetaPixel />
         <AppProviders>{children}</AppProviders>
         <JsonLd data={organizationJsonLd()} />
         <JsonLd data={websiteJsonLd()} />

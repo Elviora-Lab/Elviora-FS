@@ -11,6 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 
+import { PurchaseTracker } from './_purchase-tracker';
+
 import { ordersService } from '@/server/services/orders.service';
 
 export const metadata = buildMetadata({
@@ -34,6 +36,12 @@ export default async function OrderSuccessPage({ params }: { params: Params }) {
 
   return (
     <Section>
+      <PurchaseTracker
+        orderId={order.id}
+        value={Number(order.totalAmount)}
+        currency={order.currency}
+        items={order.items.reduce((sum, i) => sum + i.quantity, 0)}
+      />
       <div className="container flex max-w-2xl flex-col items-center gap-6 text-center">
         <span className="grid size-14 place-items-center rounded-full bg-success/15 text-success">
           <Check className="size-7" />
