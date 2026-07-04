@@ -32,22 +32,38 @@ const EDITORIAL_IMAGE =
 export default async function HomePage() {
   // Resilient at build/runtime: a DB hiccup yields an empty edit rather than a
   // crashed render; ISR repopulates on the next successful revalidate.
-  const [{ items: bestsellers, total: productCount }, categoryTree] = await Promise.all([
-    productsService.list({}, 'popular', 1, 8).catch(() => ({ items: [], total: 0 })),
-    categoriesService.tree().catch(() => []),
-  ]);
+  const [{ items: bestsellers, total: productCount }, categoryTree, { items: bundles }] =
+    await Promise.all([
+      productsService.list({}, 'popular', 1, 8).catch(() => ({ items: [], total: 0 })),
+      categoriesService.tree().catch(() => []),
+      // Curated sets live in the "Best Selling" merchandising category.
+      productsService
+        .list({ category: 'best-selling' }, 'newest', 1, 4)
+        .catch(() => ({ items: [], total: 0 })),
+    ]);
 
   // The merchandising categories (those with subcategories) drive the hero
   // chips and the tiles — name, blurb, and banner image all live on the
-  // `categories` rows, so the edit follows the catalog.
-  const categories = categoryTree
-    .filter((c) => c.children.length > 0)
-    .map((c) => ({
-      name: c.name,
-      href: routes.category(c.slug),
-      blurb: c.description,
-      img: c.image,
-    }));
+  // `categories` rows, so the edit follows the catalog. When a category has no
+  // banner image set, fall back to a representative product image from that
+  // category so the tiles never render blank.
+  const merchandising = categoryTree.filter((c) => c.children.length > 0);
+  const categoryImages = await Promise.all(
+    merchandising.map((c) =>
+      c.image
+        ? Promise.resolve(c.image)
+        : productsService
+            .list({ category: c.slug }, 'popular', 1, 1)
+            .then((r) => r.items[0]?.imageUrl ?? null)
+            .catch(() => null),
+    ),
+  );
+  const categories = merchandising.map((c, i) => ({
+    name: c.name,
+    href: routes.category(c.slug),
+    blurb: c.description,
+    img: categoryImages[i],
+  }));
 
   // Real, shoppable products power the animated hero showcase.
   const heroProducts = bestsellers
@@ -177,6 +193,31 @@ export default async function HomePage() {
                   </Link>
                 </Reveal>
               ))}
+            </div>
+          </div>
+        </Section>
+      )}
+
+      {/* — Sets & Bundles — */}
+      {bundles.length > 0 && (
+        <Section className="border-t border-border/60">
+          <div className="container">
+            <SectionHeading
+              eyebrow="Save together"
+              title="Sets & Bundles"
+              description="Our best-selling pairings, curated together for less."
+            />
+            <div className="mt-12 grid grid-cols-2 gap-x-5 gap-y-10 md:grid-cols-3 lg:grid-cols-4">
+              {bundles.slice(0, 4).map((product, i) => (
+                <Reveal key={product.id} inView delay={(i % 4) * 0.05}>
+                  <ProductCard product={product} />
+                </Reveal>
+              ))}
+            </div>
+            <div className="mt-12 flex justify-center">
+              <Button asChild size="lg" variant="outline" uppercase>
+                <Link href={routes.category('best-selling')}>View all sets</Link>
+              </Button>
             </div>
           </div>
         </Section>

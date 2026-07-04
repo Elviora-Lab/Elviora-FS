@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { useAppDispatch } from '@/store/hooks';
 import { openCart } from '@/store/slices/ui-slice';
 
+import { metaPixel } from '@/lib/analytics/meta-pixel';
 import { cn } from '@/lib/cn';
 
 import { Price } from '@/design-system/primitives/price';
@@ -100,6 +101,12 @@ export function ProductExperience({
   const active = images[activeIndex];
   const go = (dir: 1 | -1) => setActiveIndex((i) => (i + dir + total) % total);
 
+  // Meta Pixel: fire ViewContent once per product view.
+  useEffect(() => {
+    metaPixel.viewContent({ id: productId, name: productName, price: currentPrice, currency });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productId]);
+
   function selectVariant(id: string) {
     setVariantId(id);
     const idx = images.findIndex((im) => im.variantId === id);
@@ -117,6 +124,13 @@ export function ProductExperience({
       unitPrice: selected.price,
       currency,
       quantity,
+    });
+    metaPixel.addToCart({
+      id: productId,
+      name: selected.name,
+      quantity,
+      price: selected.price,
+      currency,
     });
     start(async () => {
       const result = await addToCart({ variantId: selected.id, quantity });
@@ -144,7 +158,7 @@ export function ProductExperience({
             fill
             priority
             sizes="(min-width:1024px) 50vw, 100vw"
-            className="object-cover"
+            className="object-contain"
           />
         ) : (
           <span
