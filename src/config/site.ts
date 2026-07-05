@@ -13,7 +13,6 @@ export const siteConfig = {
     'Elviora — the art of radiant beauty. A luxury house of skincare and cosmetics, formulated with rare botanicals and clinical precision.',
   meaning:
     'Elviora — from the Latin elvīra, "she who illuminates", softened with the lyrical Italian ending -iora.',
-  ogImage: '/og.jpg',
   locale: 'en-PK',
   defaultCurrency: 'PKR',
   social: {

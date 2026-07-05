@@ -23,7 +23,13 @@ export function buildMetadata({
     ? `${title} — ${siteConfig.name}`
     : `${siteConfig.name} — ${siteConfig.tagline}`;
   const canonical = new URL(path, siteConfig.url).toString();
-  const ogImage = image ?? siteConfig.ogImage;
+  // Only set an explicit image (e.g. a product photo). When none is given we
+  // omit `images` so Next's file-based `opengraph-image` (the branded card)
+  // supplies it — pointing at a hardcoded path that doesn't exist just yields
+  // broken share previews.
+  const explicitImages = image
+    ? [{ url: image, width: 1200, height: 630, alt: fullTitle }]
+    : undefined;
 
   return {
     metadataBase: new URL(siteConfig.url),
@@ -38,13 +44,13 @@ export function buildMetadata({
       description,
       url: canonical,
       locale: siteConfig.locale,
-      images: [{ url: ogImage, width: 1200, height: 630, alt: siteConfig.name }],
+      ...(explicitImages ? { images: explicitImages } : {}),
     },
     twitter: {
       card: 'summary_large_image',
       title: fullTitle,
       description,
-      images: [ogImage],
+      ...(image ? { images: [image] } : {}),
     },
     robots: noIndex
       ? { index: false, follow: false }

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-import { buildMetadata } from '@/lib/seo/metadata';
+import { articleJsonLd, buildMetadata, JsonLd } from '@/lib/seo';
 import { formatDate } from '@/utils/format';
 
 import { Section } from '@/design-system/primitives/section';
@@ -29,6 +29,15 @@ export default async function BlogPostPage({ params }: { params: Params }) {
 
   return (
     <Section>
+      <JsonLd
+        data={articleJsonLd({
+          title: post.title,
+          description: post.seoDescription ?? post.content.slice(0, 160),
+          slug,
+          image: post.thumbnail,
+          publishedAt: post.publishedAt,
+        })}
+      />
       <article className="container flex max-w-3xl flex-col gap-6">
         <Link
           href="/blog"

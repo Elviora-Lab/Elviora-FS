@@ -73,6 +73,50 @@ export function productJsonLd(p: Product) {
   } as const;
 }
 
+type Article = {
+  title: string;
+  description: string;
+  slug: string;
+  image?: string | null;
+  publishedAt?: Date | null;
+  modifiedAt?: Date | null;
+};
+
+export function articleJsonLd(a: Article) {
+  const url = `${siteConfig.url}/blog/${a.slug}`;
+  const published = a.publishedAt?.toISOString();
+  const modified = (a.modifiedAt ?? a.publishedAt)?.toISOString();
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: a.title,
+    description: a.description,
+    ...(a.image ? { image: [a.image] } : {}),
+    ...(published ? { datePublished: published } : {}),
+    ...(modified ? { dateModified: modified } : {}),
+    author: { '@type': 'Organization', name: siteConfig.name, url: siteConfig.url },
+    publisher: {
+      '@type': 'Organization',
+      name: siteConfig.name,
+      logo: { '@type': 'ImageObject', url: `${siteConfig.url}/logo.png` },
+    },
+    mainEntityOfPage: { '@type': 'WebPage', '@id': url },
+    url,
+  } as const;
+}
+
+export function faqJsonLd(items: { question: string; answer: string }[]) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: items.map((i) => ({
+      '@type': 'Question',
+      name: i.question,
+      acceptedAnswer: { '@type': 'Answer', text: i.answer },
+    })),
+  } as const;
+}
+
 export function breadcrumbJsonLd(items: { label: string; href: string }[]) {
   return {
     '@context': 'https://schema.org',
