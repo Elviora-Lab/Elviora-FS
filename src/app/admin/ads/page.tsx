@@ -1,14 +1,18 @@
 import Link from 'next/link';
+import { ArrowDown, ArrowRight, ArrowUp } from 'lucide-react';
 
 import { cn } from '@/lib/cn';
 import { buildMetadata } from '@/lib/seo/metadata';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
+import { BreakdownTabs } from './breakdown-tabs';
+import { CampaignsTable } from './campaigns-table';
+import { deltaPct, intText, money, roasText } from './format';
+
 import {
   AD_DATE_PRESET_LABELS,
   type AdDatePreset,
-  type AdsInsight,
   adsInsightsEnabled,
   type AdsOverview,
   getAdsOverview,
@@ -20,8 +24,6 @@ export const dynamic = 'force-dynamic';
 
 type Props = { searchParams: Promise<{ range?: string }> };
 
-// The presets we surface as quick filters (Meta supports more; these cover the
-// day-to-day questions).
 const RANGE_TABS: AdDatePreset[] = [
   'today',
   'last_7d',
@@ -33,21 +35,6 @@ const RANGE_TABS: AdDatePreset[] = [
 ];
 
 const DEFAULT_RANGE: AdDatePreset = 'last_30d';
-
-function money(value: number, currency: string) {
-  try {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency,
-      maximumFractionDigits: value >= 1000 ? 0 : 2,
-    }).format(value);
-  } catch {
-    // Unknown/invalid currency code — fall back to a plain number + code.
-    return `${value.toLocaleString('en-US', { maximumFractionDigits: 2 })} ${currency}`;
-  }
-}
-
-const roasText = (roas: number) => `${roas.toFixed(2)}×`;
 
 export default async function AdminAdsPage({ searchParams }: Props) {
   const { range: rawRange } = await searchParams;
@@ -62,12 +49,11 @@ export default async function AdminAdsPage({ searchParams }: Props) {
         <div>
           <h1 className="editorial-heading text-display-md">Ad Performance</h1>
           <p className="text-sm text-muted-foreground">
-            Spend, ROAS and conversions from Meta Ads
+            Spend, ROAS, funnel and conversions from Meta Ads
             {result?.ok ? ` · ${result.data.accountName}` : ''}.
           </p>
         </div>
 
-        {/* Date-range tabs — plain links so the page stays a server component. */}
         {configured ? (
           <nav className="flex flex-wrap gap-1.5" aria-label="Date range">
             {RANGE_TABS.map((preset) => (
@@ -113,37 +99,73 @@ export default async function AdminAdsPage({ searchParams }: Props) {
   );
 }
 
+function DeltaBadge({
+  current,
+  previous,
+  goodDirection = 'up',
+}: {
+  current: number;
+  previous: number | null | undefined;
+  goodDirection?: 'up' | 'none';
+}) {
+  const pct = deltaPct(current, previous);
+  if (pct === null) return null;
+  const up = pct >= 0;
+  const good = goodDirection === 'none' ? null : up === (goodDirection === 'up');
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-0.5 text-xs font-medium tabular-nums',
+        good === null ? 'text-muted-foreground' : good ? 'text-success' : 'text-destructive',
+      )}
+    >
+      {up ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />}
+      {Math.abs(pct).toFixed(0)}%
+    </span>
+  );
+}
+
 function Overview({ data, range }: { data: AdsOverview; range: AdDatePreset }) {
-  const { account, campaigns, currency } = data;
+  const { account, previous, previousLabel, campaigns, currency, breakdowns, topAds } = data;
 
   const tiles = [
     {
       label: 'Amount spent',
       value: money(account.spend, currency),
-      sub: AD_DATE_PRESET_LABELS[range],
+      delta: <DeltaBadge current={account.spend} previous={previous?.spend} goodDirection="none" />,
+      sub: previousLabel,
     },
     {
       label: 'Purchase revenue',
       value: money(account.revenue, currency),
-      sub: `${account.purchases.toLocaleString()} purchase${account.purchases === 1 ? '' : 's'}`,
+      delta: <DeltaBadge current={account.revenue} previous={previous?.revenue} />,
+      sub: `${intText(account.purchases)} purchase${account.purchases === 1 ? '' : 's'}`,
     },
     {
       label: 'ROAS',
       value: roasText(account.roas),
+      delta: <DeltaBadge current={account.roas} previous={previous?.roas} />,
       sub: account.roas >= 1 ? 'Profitable on ad spend' : 'Below break-even',
-      highlight: account.roas < 1 ? 'bad' : 'good',
+      danger: account.roas < 1,
     },
     {
       label: 'Cost per purchase',
       value: account.purchases > 0 ? money(account.costPerPurchase, currency) : '—',
+      delta: (
+        <DeltaBadge
+          current={account.costPerPurchase}
+          previous={previous?.costPerPurchase}
+          goodDirection="none"
+        />
+      ),
       sub: 'Spend ÷ purchases',
     },
-  ] as const;
+  ];
 
-  const secondary: { label: string; value: string }[] = [
-    { label: 'Impressions', value: account.impressions.toLocaleString() },
-    { label: 'Reach', value: account.reach.toLocaleString() },
-    { label: 'Clicks', value: account.clicks.toLocaleString() },
+  const secondary = [
+    { label: 'Impressions', value: intText(account.impressions) },
+    { label: 'Reach', value: intText(account.reach) },
+    { label: 'Clicks', value: intText(account.clicks) },
     { label: 'CTR', value: `${account.ctr.toFixed(2)}%` },
     { label: 'CPC', value: money(account.cpc, currency) },
     { label: 'CPM', value: money(account.cpm, currency) },
@@ -157,19 +179,25 @@ function Overview({ data, range }: { data: AdsOverview; range: AdDatePreset }) {
           <Card key={t.label}>
             <CardHeader>
               <CardDescription>{t.label}</CardDescription>
-              <CardTitle
-                className={cn(
-                  'text-3xl tabular-nums',
-                  'highlight' in t && t.highlight === 'bad' ? 'text-destructive' : '',
-                )}
-              >
-                {t.value}
-              </CardTitle>
+              <div className="flex items-baseline gap-2">
+                <CardTitle
+                  className={cn(
+                    'text-3xl tabular-nums',
+                    'danger' in t && t.danger ? 'text-destructive' : '',
+                  )}
+                >
+                  {t.value}
+                </CardTitle>
+                {t.delta}
+              </div>
               <p className="text-xs text-muted-foreground">{t.sub}</p>
             </CardHeader>
           </Card>
         ))}
       </div>
+
+      {/* Funnel */}
+      <FunnelStrip data={data} />
 
       {/* Delivery metrics */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
@@ -183,71 +211,134 @@ function Overview({ data, range }: { data: AdsOverview; range: AdDatePreset }) {
         ))}
       </div>
 
-      {/* Per-campaign breakdown */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-xl">Campaigns</CardTitle>
-          <CardDescription>
-            Ranked by spend over {AD_DATE_PRESET_LABELS[range].toLowerCase()}.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-0">
-          {campaigns.length === 0 ? (
-            <p className="px-6 pb-6 text-sm text-muted-foreground">
-              No campaigns had delivery in this window.
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[640px] text-sm">
-                <thead>
-                  <tr className="border-b border-border/60 text-left text-xs uppercase tracking-wide text-muted-foreground">
-                    <th className="px-4 py-3 font-medium">Campaign</th>
-                    <th className="px-4 py-3 text-right font-medium">Spend</th>
-                    <th className="px-4 py-3 text-right font-medium">Revenue</th>
-                    <th className="px-4 py-3 text-right font-medium">ROAS</th>
-                    <th className="px-4 py-3 text-right font-medium">Purchases</th>
-                    <th className="px-4 py-3 text-right font-medium">CPA</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/60">
-                  {campaigns.map((c) => (
-                    <CampaignRow key={c.campaignId || c.campaignName} c={c} currency={currency} />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Breakdowns + Top ads */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <section className="flex flex-col gap-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Breakdowns
+          </h2>
+          <BreakdownTabs breakdowns={breakdowns} currency={currency} />
+        </section>
+        <section className="flex flex-col gap-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Top ads by spend
+          </h2>
+          <TopAds ads={topAds} currency={currency} />
+        </section>
+      </div>
+
+      {/* Campaigns */}
+      <section className="flex flex-col gap-3">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Campaigns
+          </h2>
+          <span className="text-xs text-muted-foreground">{AD_DATE_PRESET_LABELS[range]}</span>
+        </div>
+        <CampaignsTable campaigns={campaigns} currency={currency} />
+      </section>
     </>
   );
 }
 
-function CampaignRow({
-  c,
-  currency,
-}: {
-  c: AdsInsight & { campaignName: string };
-  currency: string;
-}) {
+function FunnelStrip({ data }: { data: AdsOverview }) {
+  const f = data.account.funnel;
+  const stages = [
+    { label: 'Link clicks', value: f.linkClicks || data.account.clicks },
+    { label: 'View content', value: f.viewContent },
+    { label: 'Add to cart', value: f.addToCart },
+    { label: 'Checkout', value: f.checkout },
+    { label: 'Purchases', value: f.purchases },
+  ];
+
   return (
-    <tr className="transition-colors hover:bg-muted/50">
-      <td className="max-w-[280px] truncate px-4 py-3 font-medium">{c.campaignName}</td>
-      <td className="px-4 py-3 text-right tabular-nums">{money(c.spend, currency)}</td>
-      <td className="px-4 py-3 text-right tabular-nums">{money(c.revenue, currency)}</td>
-      <td
-        className={cn(
-          'px-4 py-3 text-right font-medium tabular-nums',
-          c.roas < 1 ? 'text-destructive' : '',
-        )}
-      >
-        {roasText(c.roas)}
-      </td>
-      <td className="px-4 py-3 text-right tabular-nums">{c.purchases.toLocaleString()}</td>
-      <td className="px-4 py-3 text-right tabular-nums">
-        {c.purchases > 0 ? money(c.costPerPurchase, currency) : '—'}
-      </td>
-    </tr>
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-xl">Conversion funnel</CardTitle>
+        <CardDescription>
+          Where ad-driven visitors drop off, from click to purchase.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
+          {stages.map((s, i) => {
+            const prev = i > 0 ? (stages[i - 1]?.value ?? null) : null;
+            const rate = prev && prev > 0 ? (s.value / prev) * 100 : null;
+            return (
+              <div key={s.label} className="flex flex-1 items-stretch gap-3">
+                {i > 0 ? (
+                  <div className="hidden flex-col items-center justify-center sm:flex">
+                    <ArrowRight className="size-4 text-muted-foreground" />
+                    {rate !== null ? (
+                      <span
+                        className={cn(
+                          'mt-0.5 text-[10px] font-medium tabular-nums',
+                          rate < 20 ? 'text-destructive' : 'text-muted-foreground',
+                        )}
+                      >
+                        {rate.toFixed(0)}%
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
+                <div className="flex-1 rounded-lg border border-border bg-muted/30 px-4 py-3">
+                  <div className="text-xs text-muted-foreground">{s.label}</div>
+                  <div className="mt-1 text-2xl font-semibold tabular-nums">{intText(s.value)}</div>
+                  {i > 0 && rate !== null ? (
+                    <div className="text-[11px] text-muted-foreground">
+                      {rate.toFixed(1)}% of prev
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function TopAds({ ads, currency }: { ads: AdsOverview['topAds']; currency: string }) {
+  if (!ads.length) {
+    return (
+      <div className="rounded-lg border border-border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
+        No ad-level data for this window.
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col divide-y divide-border/60 rounded-lg border border-border bg-card">
+      {ads.map((ad) => (
+        <div key={ad.adId} className="flex items-center gap-3 p-3">
+          <span className="relative size-12 shrink-0 overflow-hidden rounded bg-muted">
+            {ad.thumbnailUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- Meta fbcdn thumbnails, not app assets
+              <img src={ad.thumbnailUrl} alt="" className="size-full object-cover" />
+            ) : null}
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-medium" title={ad.adName}>
+              {ad.adName}
+            </div>
+            <div className="truncate text-xs text-muted-foreground" title={ad.campaignName}>
+              {ad.campaignName}
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-sm font-medium tabular-nums">{money(ad.spend, currency)}</div>
+            <div
+              className={cn(
+                'text-xs tabular-nums',
+                ad.spend > 0 && ad.roas < 1 ? 'text-destructive' : 'text-muted-foreground',
+              )}
+            >
+              {roasText(ad.roas)} · {intText(ad.purchases)} sales
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -286,7 +377,7 @@ function SetupCard() {
         <p>
           Same permissions wall as the Conversions API token — you need an admin role on the
           Business and ad account to generate it. Until both variables are set, this page stays
-          exactly as it is now.
+          exactly as it is now. Full walkthrough in <code>docs/meta-ads-dashboard.md</code>.
         </p>
       </CardContent>
     </Card>

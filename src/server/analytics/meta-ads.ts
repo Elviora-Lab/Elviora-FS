@@ -5,10 +5,10 @@ import { serverEnv } from '@/config/env';
 /**
  * Meta Marketing API — read-only ad performance (Insights).
  *
- * Pulls spend, ROAS, revenue and delivery metrics for the configured ad
- * account so the admin can see campaign performance without leaving the app.
- * The conversions that feed ROAS here are the same Purchase events the pixel +
- * Conversions API report.
+ * Pulls spend, ROAS, revenue, funnel drop-off and delivery metrics for the
+ * configured ad account so the admin can see campaign performance without
+ * leaving the app. The conversions that feed ROAS here are the same Purchase
+ * events the pixel + Conversions API report.
  *
  * Read-only: needs a System User token with `ads_read` (no write scope). Stays
  * completely inert unless `META_ADS_ACCESS_TOKEN` and `META_ADS_ACCOUNT_ID`
@@ -58,6 +58,32 @@ export function isAdDatePreset(value: string | undefined): value is AdDatePreset
   return Boolean(value) && (AD_DATE_PRESETS as readonly string[]).includes(value as string);
 }
 
+// Fixed-length day windows we can build a fair "previous period" for. Presets
+// like this_month / maximum have no clean equivalent prior window, so their
+// tiles simply show no delta.
+const PRESET_DAYS: Partial<Record<AdDatePreset, number>> = {
+  today: 1,
+  yesterday: 1,
+  last_7d: 7,
+  last_14d: 14,
+  last_30d: 30,
+  last_90d: 90,
+};
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+export type AdsFunnel = {
+  /** Outbound/link clicks to the site. */
+  linkClicks: number;
+  landingPageViews: number;
+  viewContent: number;
+  addToCart: number;
+  checkout: number;
+  purchases: number;
+};
+
 export type AdsInsight = {
   spend: number;
   revenue: number;
@@ -75,21 +101,60 @@ export type AdsInsight = {
   cpc: number;
   /** Cost per 1,000 impressions. */
   cpm: number;
+  funnel: AdsFunnel;
 };
 
 export type CampaignInsight = AdsInsight & {
   campaignId: string;
   campaignName: string;
+  /** Raw Meta effective_status (ACTIVE, PAUSED, ARCHIVED…). '' if unknown. */
+  status: string;
+  isActive: boolean;
+  objective: string;
+};
+
+export type BreakdownRow = {
+  label: string;
+  spend: number;
+  revenue: number;
+  roas: number;
+  purchases: number;
+};
+
+export type AdsBreakdowns = {
+  placement: BreakdownRow[];
+  demographic: BreakdownRow[];
+  device: BreakdownRow[];
+};
+
+export type TopAd = {
+  adId: string;
+  adName: string;
+  campaignName: string;
+  spend: number;
+  revenue: number;
+  roas: number;
+  purchases: number;
+  thumbnailUrl: string | null;
 };
 
 export type AdsOverview = {
   currency: string;
   accountName: string;
   account: AdsInsight;
+  /** Prior equal-length window for delta indicators; null when not applicable. */
+  previous: AdsInsight | null;
+  previousLabel: string | null;
   campaigns: CampaignInsight[];
+  breakdowns: AdsBreakdowns;
+  topAds: TopAd[];
 };
 
 export type AdsOverviewResult = { ok: true; data: AdsOverview } | { ok: false; error: string };
+
+// ---------------------------------------------------------------------------
+// Action-type parsing
+// ---------------------------------------------------------------------------
 
 type ActionRow = { action_type: string; value: string };
 
@@ -106,21 +171,43 @@ type InsightRow = {
   purchase_roas?: ActionRow[];
   campaign_id?: string;
   campaign_name?: string;
+  ad_id?: string;
+  ad_name?: string;
+  publisher_platform?: string;
+  age?: string;
+  gender?: string;
+  impression_device?: string;
 };
 
-// Meta reports a purchase under several action types depending on channel and
-// attribution. Prefer the deduplicated omni_ metric, then the pixel-specific
-// one, then the generic — pick ONE (never sum, or the same purchase is counted
-// two or three times).
-const PURCHASE_ACTION_PRIORITY = [
+// Meta reports each conversion under several action types depending on channel
+// and attribution. Prefer the deduplicated omni_ metric, then the pixel one,
+// then the generic — pick ONE (never sum, or the same event is double-counted).
+const PURCHASE_TYPES = [
   'omni_purchase',
   'offsite_conversion.fb_pixel_purchase',
   'purchase',
 ] as const;
+const VIEW_CONTENT_TYPES = [
+  'omni_view_content',
+  'offsite_conversion.fb_pixel_view_content',
+  'view_content',
+] as const;
+const ADD_TO_CART_TYPES = [
+  'omni_add_to_cart',
+  'offsite_conversion.fb_pixel_add_to_cart',
+  'add_to_cart',
+] as const;
+const CHECKOUT_TYPES = [
+  'omni_initiated_checkout',
+  'offsite_conversion.fb_pixel_initiate_checkout',
+  'initiate_checkout',
+] as const;
+const LPV_TYPES = ['landing_page_view'] as const;
+const LINK_CLICK_TYPES = ['link_click'] as const;
 
-function pickPurchaseValue(rows: ActionRow[] | undefined): number {
+function pick(rows: ActionRow[] | undefined, priority: readonly string[]): number {
   if (!rows?.length) return 0;
-  for (const type of PURCHASE_ACTION_PRIORITY) {
+  for (const type of priority) {
     const row = rows.find((r) => r.action_type === type);
     if (row) return Number(row.value) || 0;
   }
@@ -132,11 +219,22 @@ function num(value: string | undefined): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+function toFunnel(row: InsightRow | undefined): AdsFunnel {
+  return {
+    linkClicks: pick(row?.actions, LINK_CLICK_TYPES),
+    landingPageViews: pick(row?.actions, LPV_TYPES),
+    viewContent: pick(row?.actions, VIEW_CONTENT_TYPES),
+    addToCart: pick(row?.actions, ADD_TO_CART_TYPES),
+    checkout: pick(row?.actions, CHECKOUT_TYPES),
+    purchases: pick(row?.actions, PURCHASE_TYPES),
+  };
+}
+
 function toInsight(row: InsightRow | undefined): AdsInsight {
   const spend = num(row?.spend);
-  const revenue = pickPurchaseValue(row?.action_values);
-  const purchases = pickPurchaseValue(row?.actions);
-  const attributedRoas = pickPurchaseValue(row?.purchase_roas);
+  const revenue = pick(row?.action_values, PURCHASE_TYPES);
+  const purchases = pick(row?.actions, PURCHASE_TYPES);
+  const attributedRoas = pick(row?.purchase_roas, PURCHASE_TYPES);
   return {
     spend,
     revenue,
@@ -149,11 +247,22 @@ function toInsight(row: InsightRow | undefined): AdsInsight {
     ctr: num(row?.ctr),
     cpc: num(row?.cpc),
     cpm: num(row?.cpm),
+    funnel: toFunnel(row),
   };
 }
 
+function toBreakdownRow(row: InsightRow, label: string): BreakdownRow {
+  const i = toInsight(row);
+  return { label, spend: i.spend, revenue: i.revenue, roas: i.roas, purchases: i.purchases };
+}
+
+// ---------------------------------------------------------------------------
+// Fetch helpers
+// ---------------------------------------------------------------------------
+
 const INSIGHT_FIELDS =
   'spend,impressions,reach,clicks,ctr,cpc,cpm,actions,action_values,purchase_roas';
+const BREAKDOWN_FIELDS = 'spend,actions,action_values,purchase_roas';
 
 async function graphGet<T>(path: string, params: Record<string, string>): Promise<T> {
   const token = serverEnv.META_ADS_ACCESS_TOKEN as string;
@@ -174,10 +283,76 @@ async function graphGet<T>(path: string, params: Record<string, string>): Promis
   return body as T;
 }
 
+/** Supplementary calls degrade gracefully — a failure returns the fallback. */
+function safe<T>(promise: Promise<T>, fallback: T): Promise<T> {
+  return promise.catch(() => fallback);
+}
+
+function fmtDate(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+/** The equal-length window immediately before the selected preset, or null. */
+function previousWindow(
+  preset: AdDatePreset,
+): { since: string; until: string; label: string } | null {
+  const days = PRESET_DAYS[preset];
+  if (!days) return null;
+  const now = new Date();
+  const until = new Date(now);
+  until.setUTCDate(until.getUTCDate() - days);
+  const since = new Date(now);
+  since.setUTCDate(since.getUTCDate() - 2 * days + 1);
+  return {
+    since: fmtDate(since),
+    until: fmtDate(until),
+    label: days === 1 ? 'vs prior day' : `vs prior ${days} days`,
+  };
+}
+
+async function fetchBreakdown(
+  act: string,
+  datePreset: AdDatePreset,
+  breakdowns: string,
+  toLabel: (row: InsightRow) => string,
+): Promise<BreakdownRow[]> {
+  const res = await graphGet<{ data?: InsightRow[] }>(`${act}/insights`, {
+    fields: BREAKDOWN_FIELDS,
+    date_preset: datePreset,
+    level: 'account',
+    breakdowns,
+    limit: '50',
+  });
+  return (res.data ?? [])
+    .map((row) => toBreakdownRow(row, toLabel(row)))
+    .filter((r) => r.spend > 0)
+    .sort((a, b) => b.spend - a.spend);
+}
+
+const titleCase = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+
+/** Fetch thumbnails for the given ad ids in one batched call. */
+async function fetchAdThumbnails(ids: string[]): Promise<Record<string, string | null>> {
+  if (!ids.length) return {};
+  const res = await graphGet<Record<string, { creative?: { thumbnail_url?: string } }>>('', {
+    ids: ids.join(','),
+    fields: 'creative{thumbnail_url}',
+  });
+  const map: Record<string, string | null> = {};
+  for (const id of ids) map[id] = res?.[id]?.creative?.thumbnail_url ?? null;
+  return map;
+}
+
+// ---------------------------------------------------------------------------
+// Main entry point
+// ---------------------------------------------------------------------------
+
 /**
- * Fetch the account summary plus per-campaign breakdown for a date range.
- * Never throws — Graph/permission errors come back as `{ ok: false, error }`
- * so the dashboard can render a message instead of crashing.
+ * Fetch the account summary, per-campaign breakdown (with live status), the
+ * prior-period comparison, placement/demographic/device breakdowns and the top
+ * ads for a date range. Never throws: the two core insights calls failing
+ * returns `{ ok: false, error }`; every richer section degrades to empty on its
+ * own error so one missing feature can't blank the whole page.
  */
 export async function getAdsOverview(datePreset: AdDatePreset): Promise<AdsOverviewResult> {
   if (!adsInsightsEnabled()) {
@@ -185,9 +360,21 @@ export async function getAdsOverview(datePreset: AdDatePreset): Promise<AdsOverv
   }
 
   const act = accountPath();
+  const prev = previousWindow(datePreset);
 
   try {
-    const [meta, accountInsights, campaignInsights] = await Promise.all([
+    const [
+      meta,
+      accountInsights,
+      campaignInsights,
+      previousInsights,
+      campaignMeta,
+      placement,
+      demographic,
+      device,
+      topAdRows,
+    ] = await Promise.all([
+      // --- Core (failure ⇒ error card) ---
       graphGet<{ name?: string; currency?: string }>(act, { fields: 'name,currency' }),
       graphGet<{ data?: InsightRow[] }>(`${act}/insights`, {
         fields: INSIGHT_FIELDS,
@@ -198,17 +385,99 @@ export async function getAdsOverview(datePreset: AdDatePreset): Promise<AdsOverv
         fields: `${INSIGHT_FIELDS},campaign_id,campaign_name`,
         date_preset: datePreset,
         level: 'campaign',
-        limit: '100',
+        limit: '200',
       }),
+      // --- Supplementary (failure ⇒ graceful empty) ---
+      prev
+        ? safe(
+            graphGet<{ data?: InsightRow[] }>(`${act}/insights`, {
+              fields: INSIGHT_FIELDS,
+              time_range: JSON.stringify({ since: prev.since, until: prev.until }),
+              level: 'account',
+            }),
+            { data: [] },
+          )
+        : Promise.resolve<{ data?: InsightRow[] }>({ data: [] }),
+      safe(
+        graphGet<{ data?: { id: string; effective_status?: string; objective?: string }[] }>(
+          `${act}/campaigns`,
+          { fields: 'id,effective_status,objective', limit: '500' },
+        ),
+        { data: [] },
+      ),
+      safe(
+        fetchBreakdown(act, datePreset, 'publisher_platform', (r) =>
+          titleCase(r.publisher_platform ?? 'Unknown'),
+        ),
+        [],
+      ),
+      safe(
+        fetchBreakdown(
+          act,
+          datePreset,
+          'age,gender',
+          (r) => `${r.age ?? '?'} · ${titleCase(r.gender ?? 'unknown')}`,
+        ),
+        [],
+      ),
+      safe(
+        fetchBreakdown(act, datePreset, 'impression_device', (r) =>
+          titleCase(r.impression_device ?? 'Unknown'),
+        ),
+        [],
+      ),
+      safe(
+        graphGet<{ data?: InsightRow[] }>(`${act}/insights`, {
+          fields: 'ad_id,ad_name,campaign_name,spend,actions,action_values,purchase_roas',
+          date_preset: datePreset,
+          level: 'ad',
+          sort: 'spend_descending',
+          limit: '8',
+        }),
+        { data: [] },
+      ),
     ]);
 
+    // Join campaign status onto the insight rows.
+    const statusMap = new Map((campaignMeta.data ?? []).map((c) => [c.id, c] as const));
     const campaigns: CampaignInsight[] = (campaignInsights.data ?? [])
-      .map((row) => ({
-        ...toInsight(row),
-        campaignId: row.campaign_id ?? '',
-        campaignName: row.campaign_name ?? 'Untitled campaign',
-      }))
+      .map((row) => {
+        const cid = row.campaign_id ?? '';
+        const meta = statusMap.get(cid);
+        const status = meta?.effective_status ?? '';
+        return {
+          ...toInsight(row),
+          campaignId: cid,
+          campaignName: row.campaign_name ?? 'Untitled campaign',
+          status,
+          isActive: status === 'ACTIVE',
+          objective: meta?.objective ?? '',
+        };
+      })
       .sort((a, b) => b.spend - a.spend);
+
+    // Top ads + thumbnails (second, dependent call).
+    const topAdInsights = (topAdRows.data ?? []).filter((r) => r.ad_id);
+    const thumbnails = await safe(
+      fetchAdThumbnails(topAdInsights.map((r) => r.ad_id as string)),
+      {} as Record<string, string | null>,
+    );
+    const topAds: TopAd[] = topAdInsights.map((row) => {
+      const i = toInsight(row);
+      return {
+        adId: row.ad_id as string,
+        adName: row.ad_name ?? 'Untitled ad',
+        campaignName: row.campaign_name ?? '',
+        spend: i.spend,
+        revenue: i.revenue,
+        roas: i.roas,
+        purchases: i.purchases,
+        thumbnailUrl: thumbnails[row.ad_id as string] ?? null,
+      };
+    });
+
+    const previousInsight =
+      prev && previousInsights.data?.length ? toInsight(previousInsights.data[0]) : null;
 
     return {
       ok: true,
@@ -216,7 +485,11 @@ export async function getAdsOverview(datePreset: AdDatePreset): Promise<AdsOverv
         currency: meta.currency ?? 'USD',
         accountName: meta.name ?? 'Ad account',
         account: toInsight(accountInsights.data?.[0]),
+        previous: previousInsight,
+        previousLabel: prev?.label ?? null,
         campaigns,
+        breakdowns: { placement, demographic, device },
+        topAds,
       },
     };
   } catch (error) {
