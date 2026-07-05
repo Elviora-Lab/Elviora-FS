@@ -379,6 +379,33 @@ export const adminAnalyticsRepo = {
     ]);
     return { views, cartAdds, orders };
   },
+
+  /**
+   * Recognized store sales (real orders) in an explicit date range — used to
+   * reconcile against Meta's *attributed* numbers on the ads dashboard. Uses the
+   * same REVENUE_WHERE exclusions as the rest of the admin dashboard so the
+   * figure matches what operators see elsewhere.
+   */
+  async salesForRange(sinceDate: Date, untilDate: Date) {
+    const where: Prisma.OrderWhereInput = {
+      ...REVENUE_WHERE,
+      createdAt: { gte: sinceDate, lte: untilDate },
+    };
+    const [agg, orders, latest] = await Promise.all([
+      prisma.order.aggregate({ _sum: { totalAmount: true }, where }),
+      prisma.order.count({ where }),
+      prisma.order.findFirst({
+        where,
+        select: { currency: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+    return {
+      revenue: Number(agg._sum.totalAmount ?? 0),
+      orders,
+      currency: latest?.currency ?? 'PKR',
+    };
+  },
 };
 
 // ---------- Users ----------

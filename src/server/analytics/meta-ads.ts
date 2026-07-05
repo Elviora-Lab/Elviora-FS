@@ -138,6 +138,13 @@ export type TopAd = {
   thumbnailUrl: string | null;
 };
 
+export type DailyPoint = {
+  date: string;
+  spend: number;
+  revenue: number;
+  roas: number;
+};
+
 export type AdsOverview = {
   currency: string;
   accountName: string;
@@ -148,6 +155,8 @@ export type AdsOverview = {
   campaigns: CampaignInsight[];
   breakdowns: AdsBreakdowns;
   topAds: TopAd[];
+  /** Per-day spend/revenue/ROAS for the trend chart. */
+  daily: DailyPoint[];
 };
 
 export type AdsOverviewResult = { ok: true; data: AdsOverview } | { ok: false; error: string };
@@ -177,6 +186,7 @@ type InsightRow = {
   age?: string;
   gender?: string;
   impression_device?: string;
+  date_start?: string;
 };
 
 // Meta reports each conversion under several action types depending on channel
@@ -310,6 +320,51 @@ function previousWindow(
   };
 }
 
+/**
+ * Explicit {since, until} dates for a preset, for querying the store DB so the
+ * order window lines up with Meta's. Approximate (Meta uses the ad-account
+ * timezone; we use the server's) — fine for a reconciliation view.
+ */
+export function presetToDateRange(preset: AdDatePreset): { since: Date; until: Date } {
+  const until = new Date();
+  const since = new Date();
+  since.setUTCHours(0, 0, 0, 0);
+  switch (preset) {
+    case 'today':
+      break;
+    case 'yesterday':
+      since.setUTCDate(since.getUTCDate() - 1);
+      until.setUTCDate(until.getUTCDate() - 1);
+      until.setUTCHours(23, 59, 59, 999);
+      break;
+    case 'last_7d':
+      since.setUTCDate(since.getUTCDate() - 7);
+      break;
+    case 'last_14d':
+      since.setUTCDate(since.getUTCDate() - 14);
+      break;
+    case 'last_30d':
+      since.setUTCDate(since.getUTCDate() - 30);
+      break;
+    case 'last_90d':
+      since.setUTCDate(since.getUTCDate() - 90);
+      break;
+    case 'this_month':
+      since.setUTCDate(1);
+      break;
+    case 'last_month':
+      since.setUTCDate(1);
+      since.setUTCMonth(since.getUTCMonth() - 1);
+      until.setUTCDate(0); // last day of previous month
+      until.setUTCHours(23, 59, 59, 999);
+      break;
+    case 'maximum':
+      since.setUTCFullYear(2000, 0, 1);
+      break;
+  }
+  return { since, until };
+}
+
 async function fetchBreakdown(
   act: string,
   datePreset: AdDatePreset,
@@ -373,6 +428,7 @@ export async function getAdsOverview(datePreset: AdDatePreset): Promise<AdsOverv
       demographic,
       device,
       topAdRows,
+      dailyRows,
     ] = await Promise.all([
       // --- Core (failure ⇒ error card) ---
       graphGet<{ name?: string; currency?: string }>(act, { fields: 'name,currency' }),
@@ -436,6 +492,16 @@ export async function getAdsOverview(datePreset: AdDatePreset): Promise<AdsOverv
         }),
         { data: [] },
       ),
+      safe(
+        graphGet<{ data?: InsightRow[] }>(`${act}/insights`, {
+          fields: 'spend,action_values,purchase_roas',
+          date_preset: datePreset,
+          level: 'account',
+          time_increment: '1',
+          limit: '200',
+        }),
+        { data: [] },
+      ),
     ]);
 
     // Join campaign status onto the insight rows.
@@ -479,6 +545,11 @@ export async function getAdsOverview(datePreset: AdDatePreset): Promise<AdsOverv
     const previousInsight =
       prev && previousInsights.data?.length ? toInsight(previousInsights.data[0]) : null;
 
+    const daily: DailyPoint[] = (dailyRows.data ?? []).map((row) => {
+      const i = toInsight(row);
+      return { date: row.date_start ?? '', spend: i.spend, revenue: i.revenue, roas: i.roas };
+    });
+
     return {
       ok: true,
       data: {
@@ -490,6 +561,7 @@ export async function getAdsOverview(datePreset: AdDatePreset): Promise<AdsOverv
         campaigns,
         breakdowns: { placement, demographic, device },
         topAds,
+        daily,
       },
     };
   } catch (error) {

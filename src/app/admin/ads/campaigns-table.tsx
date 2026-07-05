@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, Search } from 'lucide-react';
+import { ArrowDown, ArrowUp, Download, Search } from 'lucide-react';
 
 import { cn } from '@/lib/cn';
 
@@ -11,6 +11,54 @@ import type { CampaignInsight } from '@/server/analytics/meta-ads';
 
 type StatusFilter = 'all' | 'active' | 'paused';
 type SortKey = 'name' | 'spend' | 'revenue' | 'roas' | 'addToCart' | 'checkout' | 'purchases';
+
+const CSV_HEADERS = [
+  'Campaign',
+  'Status',
+  'Objective',
+  'Spend',
+  'Revenue',
+  'ROAS',
+  'AddToCart',
+  'Checkout',
+  'Purchases',
+  'CostPerPurchase',
+] as const;
+
+/** Escape a CSV field: wrap in quotes and double any embedded quotes. */
+function csvCell(value: string | number): string {
+  const s = String(value);
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function exportCsv(rows: CampaignInsight[]) {
+  const lines = [
+    CSV_HEADERS.join(','),
+    ...rows.map((c) =>
+      [
+        c.campaignName,
+        c.status || '—',
+        c.objective || '—',
+        c.spend.toFixed(2),
+        c.revenue.toFixed(2),
+        c.roas.toFixed(2),
+        c.funnel.addToCart,
+        c.funnel.checkout,
+        c.purchases,
+        c.costPerPurchase.toFixed(2),
+      ]
+        .map(csvCell)
+        .join(','),
+    ),
+  ];
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'meta-ads-campaigns.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 const NUMERIC_COLS: { key: SortKey; label: string }[] = [
   { key: 'spend', label: 'Spend' },
@@ -151,15 +199,26 @@ export function CampaignsTable({
             Hide zero-spend
           </label>
         </div>
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search campaigns…"
-            className="w-full rounded-md border border-border bg-background py-1.5 pl-8 pr-3 text-sm sm:w-56"
-          />
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search campaigns…"
+              className="w-full rounded-md border border-border bg-background py-1.5 pl-8 pr-3 text-sm sm:w-56"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => exportCsv(rows)}
+            disabled={rows.length === 0}
+            title="Export the current view to CSV"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-muted disabled:opacity-50"
+          >
+            <Download className="size-3.5" /> CSV
+          </button>
         </div>
       </div>
 

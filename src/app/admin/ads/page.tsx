@@ -9,15 +9,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { BreakdownTabs } from './breakdown-tabs';
 import { CampaignsTable } from './campaigns-table';
 import { deltaPct, intText, money, roasText } from './format';
+import { TrendChart } from './trend-chart';
 
 import {
   AD_DATE_PRESET_LABELS,
   type AdDatePreset,
+  type AdsInsight,
   adsInsightsEnabled,
   type AdsOverview,
   getAdsOverview,
   isAdDatePreset,
+  presetToDateRange,
 } from '@/server/analytics/meta-ads';
+import { adminAnalyticsRepo } from '@/server/repositories/admin.repo';
+
+type StoreSales = { revenue: number; orders: number; currency: string };
 
 export const metadata = buildMetadata({ title: 'Admin · Ad Performance', noIndex: true });
 export const dynamic = 'force-dynamic';
@@ -42,6 +48,18 @@ export default async function AdminAdsPage({ searchParams }: Props) {
 
   const configured = adsInsightsEnabled();
   const result = configured ? await getAdsOverview(range) : null;
+
+  // Real store sales for the same window — to reconcile against Meta's
+  // attributed numbers. Best-effort: never let it break the ads page.
+  let storeSales: StoreSales | null = null;
+  if (result?.ok) {
+    try {
+      const { since, until } = presetToDateRange(range);
+      storeSales = await adminAnalyticsRepo.salesForRange(since, until);
+    } catch {
+      storeSales = null;
+    }
+  }
 
   return (
     <div className="flex flex-col gap-8">
@@ -94,7 +112,7 @@ export default async function AdminAdsPage({ searchParams }: Props) {
         </Card>
       ) : null}
 
-      {result?.ok ? <Overview data={result.data} range={range} /> : null}
+      {result?.ok ? <Overview data={result.data} range={range} storeSales={storeSales} /> : null}
     </div>
   );
 }
@@ -125,8 +143,16 @@ function DeltaBadge({
   );
 }
 
-function Overview({ data, range }: { data: AdsOverview; range: AdDatePreset }) {
-  const { account, previous, previousLabel, campaigns, currency, breakdowns, topAds } = data;
+function Overview({
+  data,
+  range,
+  storeSales,
+}: {
+  data: AdsOverview;
+  range: AdDatePreset;
+  storeSales: StoreSales | null;
+}) {
+  const { account, previous, previousLabel, campaigns, currency, breakdowns, topAds, daily } = data;
 
   const tiles = [
     {
@@ -196,6 +222,19 @@ function Overview({ data, range }: { data: AdsOverview; range: AdDatePreset }) {
         ))}
       </div>
 
+      {/* True performance: Meta's attributed numbers vs real store orders */}
+      {storeSales ? (
+        <Reconciliation account={account} storeSales={storeSales} metaCurrency={currency} />
+      ) : null}
+
+      {/* Trend */}
+      <section className="flex flex-col gap-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Spend &amp; ROAS over time
+        </h2>
+        <TrendChart daily={daily} currency={currency} />
+      </section>
+
       {/* Funnel */}
       <FunnelStrip data={data} />
 
@@ -238,6 +277,80 @@ function Overview({ data, range }: { data: AdsOverview; range: AdDatePreset }) {
         <CampaignsTable campaigns={campaigns} currency={currency} />
       </section>
     </>
+  );
+}
+
+function Reconciliation({
+  account,
+  storeSales,
+  metaCurrency,
+}: {
+  account: AdsInsight;
+  storeSales: StoreSales;
+  metaCurrency: string;
+}) {
+  const sameCurrency = metaCurrency === storeSales.currency;
+  const blendedRoas = account.spend > 0 ? storeSales.revenue / account.spend : 0;
+  const orderShare = storeSales.orders > 0 ? (account.purchases / storeSales.orders) * 100 : null;
+
+  const tiles = [
+    {
+      label: 'Real store orders',
+      value: intText(storeSales.orders),
+      sub: `${money(storeSales.revenue, storeSales.currency)} recognized revenue`,
+    },
+    {
+      label: 'Meta claims credit for',
+      value: orderShare !== null ? `${orderShare.toFixed(0)}%` : '—',
+      sub: `${intText(account.purchases)} of ${intText(storeSales.orders)} orders attributed`,
+    },
+    {
+      label: 'Blended ROAS (MER)',
+      value: sameCurrency ? roasText(blendedRoas) : '—',
+      sub: sameCurrency ? 'All store revenue ÷ ad spend' : 'Currencies differ — see note',
+    },
+    {
+      label: 'Meta-reported ROAS',
+      value: roasText(account.roas),
+      sub: 'What Meta attributes',
+    },
+  ];
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-xl">True performance</CardTitle>
+        <CardDescription>
+          Meta’s attributed numbers vs your real store orders for this window.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {tiles.map((t) => (
+            <div key={t.label} className="rounded-lg border border-border bg-muted/30 px-4 py-3">
+              <div className="text-xs text-muted-foreground">{t.label}</div>
+              <div className="mt-1 text-2xl font-semibold tabular-nums">{t.value}</div>
+              <div className="text-[11px] text-muted-foreground">{t.sub}</div>
+            </div>
+          ))}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {sameCurrency ? (
+            <>
+              Blended ROAS (MER) counts <strong>all</strong> store revenue against ad spend — the
+              honest efficiency of your marketing, organic included. Meta-reported ROAS only counts
+              sales it attributes to a click/view and usually over-states its impact.
+            </>
+          ) : (
+            <>
+              Ad spend is in {metaCurrency} but store revenue is in {storeSales.currency}, so
+              blended ROAS isn’t shown (mixing currencies would mislead). Set your Meta ad account
+              to the same currency as your store to enable it.
+            </>
+          )}
+        </p>
+      </CardContent>
+    </Card>
   );
 }
 
