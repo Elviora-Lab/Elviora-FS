@@ -18,7 +18,7 @@ const publicEnvSchema = z.object({
   NEXT_PUBLIC_GA_ID: optionalStr,
   // Meta (Facebook) Pixel ID. Defaults to the Elviora pixel so tracking works
   // without extra deploy config; override per environment via the env var.
-  NEXT_PUBLIC_FB_PIXEL_ID: z.string().default('1735041520825563'),
+  NEXT_PUBLIC_FB_PIXEL_ID: z.string().default('1197005882688887'),
   NEXT_PUBLIC_SENTRY_DSN: optionalStr,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: optionalStr,
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: optionalStr,
