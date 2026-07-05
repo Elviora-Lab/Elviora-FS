@@ -91,11 +91,32 @@ the ad account's side, which always works:
 
 ---
 
-## Step 4 — Generate the token (`META_ADS_ACCESS_TOKEN`)
+## Step 4 — Make sure a Meta app belongs to your Business Portfolio
+
+A System User token is always issued **for an app**, and that app must be part of
+the Business Portfolio — otherwise "Generate new token" tells you to add one first.
+
+1. Check **Business Settings → Accounts → Apps**. If an app is already listed
+   (e.g. from your pixel setup), you're done — use it in the next step.
+2. If it's empty, create a Business app tied to the portfolio:
+   - Go to <https://developers.facebook.com/apps> → **Create app**.
+   - **App name** (e.g. `Elviora Integrations`) + contact email.
+   - **Business portfolio:** ⚠️ select your Elviora portfolio from the dropdown —
+     this is what links the app to the business. Don't leave it blank.
+   - **Use case:** choose **Other** → **Next** → **App type: Business** →
+     **Create app**.
+3. The app now appears under **Business Settings → Accounts → Apps**.
+
+> The app does **not** need to be Live, reviewed, or have any products configured.
+> A brand-new app in development mode is enough to mint a read-only token for your
+> own ad account.
+
+---
+
+## Step 5 — Generate the token (`META_ADS_ACCESS_TOKEN`)
 
 1. With the system user selected, click **Generate new token**.
-2. **App:** pick your Meta app (the same one behind your pixel — any app in the
-   business works).
+2. **App:** pick the app from Step 4 (the same one behind your pixel works too).
 3. **Token expiration:** choose **Never** (a server integration wants a
    non-expiring token).
 4. **Permissions:** check ✅ **`ads_read`** (optionally also `read_insights`).
@@ -108,7 +129,7 @@ the ad account's side, which always works:
 
 ---
 
-## Step 5 — Test the token before deploying (optional, 30 seconds)
+## Step 6 — Test the token before deploying (optional, 30 seconds)
 
 Paste your two values into this and run it in a terminal:
 
@@ -122,7 +143,7 @@ curl "https://graph.facebook.com/v21.0/act_YOUR_ACCOUNT_ID/insights?fields=spend
 
 ---
 
-## Step 6 — Add the variables and deploy
+## Step 7 — Add the variables and deploy
 
 **Local development** — add to `.env`:
 
