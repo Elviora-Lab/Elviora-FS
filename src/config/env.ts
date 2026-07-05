@@ -47,6 +47,11 @@ const serverEnvSchema = z.object({
   // Optional test-event code routes events to the "Test events" tab while wiring.
   META_CAPI_ACCESS_TOKEN: optionalStr,
   META_CAPI_TEST_EVENT_CODE: optionalStr,
+  // Meta Marketing API — read-only ad performance dashboard (/admin/ads).
+  // System User token with `ads_read`, plus the ad account id (digits only, or
+  // with the act_ prefix). Both unset ⇒ the dashboard shows a setup card.
+  META_ADS_ACCESS_TOKEN: optionalStr,
+  META_ADS_ACCOUNT_ID: optionalStr,
   // PostEx courier (Pakistan) — merchant API token + optional pickup address code.
   POSTEX_API_TOKEN: optionalStr,
   POSTEX_PICKUP_ADDRESS_CODE: optionalStr,
@@ -121,6 +126,8 @@ export const serverEnv = (() => {
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     META_CAPI_ACCESS_TOKEN: process.env.META_CAPI_ACCESS_TOKEN,
     META_CAPI_TEST_EVENT_CODE: process.env.META_CAPI_TEST_EVENT_CODE,
+    META_ADS_ACCESS_TOKEN: process.env.META_ADS_ACCESS_TOKEN,
+    META_ADS_ACCOUNT_ID: process.env.META_ADS_ACCOUNT_ID,
     POSTEX_API_TOKEN: process.env.POSTEX_API_TOKEN,
     POSTEX_PICKUP_ADDRESS_CODE: process.env.POSTEX_PICKUP_ADDRESS_CODE,
     CRON_SECRET: process.env.CRON_SECRET,
