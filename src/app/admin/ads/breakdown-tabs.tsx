@@ -4,6 +4,7 @@ import { useState } from 'react';
 
 import { cn } from '@/lib/cn';
 
+import { BreakdownBarChart } from './charts/breakdown-bar-chart';
 import { intText, money, roasText } from './format';
 
 import type { AdsBreakdowns, BreakdownRow } from '@/server/analytics/meta-ads';
@@ -93,6 +94,11 @@ export function BreakdownTabs({
           </button>
         ))}
       </div>
+      {breakdowns[tab].length ? (
+        <div className="border-b border-border/60 p-4">
+          <BreakdownBarChart rows={breakdowns[tab]} currency={currency} />
+        </div>
+      ) : null}
       <BreakdownList rows={breakdowns[tab]} currency={currency} />
     </div>
   );
