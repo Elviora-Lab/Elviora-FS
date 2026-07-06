@@ -2,6 +2,8 @@ import 'server-only';
 
 import { serverEnv } from '@/config/env';
 
+import type { AdDatePreset } from '@/lib/ads/date-presets';
+
 /**
  * Meta Marketing API — read-only ad performance (Insights).
  *
@@ -28,35 +30,17 @@ function accountPath(): string {
   return id.startsWith('act_') ? id : `act_${id}`;
 }
 
-export const AD_DATE_PRESETS = [
-  'today',
-  'yesterday',
-  'last_7d',
-  'last_14d',
-  'last_30d',
-  'last_90d',
-  'this_month',
-  'last_month',
-  'maximum',
-] as const;
-
-export type AdDatePreset = (typeof AD_DATE_PRESETS)[number];
-
-export const AD_DATE_PRESET_LABELS: Record<AdDatePreset, string> = {
-  today: 'Today',
-  yesterday: 'Yesterday',
-  last_7d: 'Last 7 days',
-  last_14d: 'Last 14 days',
-  last_30d: 'Last 30 days',
-  last_90d: 'Last 90 days',
-  this_month: 'This month',
-  last_month: 'Last month',
-  maximum: 'All time',
-};
-
-export function isAdDatePreset(value: string | undefined): value is AdDatePreset {
-  return Boolean(value) && (AD_DATE_PRESETS as readonly string[]).includes(value as string);
-}
+// Date-range presets live in a client-safe module so the dashboard's client
+// components can share them without importing this `server-only` file. Re-export
+// here so server-side callers keep a single import surface.
+export type { AdDatePreset } from '@/lib/ads/date-presets';
+export {
+  AD_DATE_PRESET_LABELS,
+  AD_DATE_PRESETS,
+  AD_RANGE_TABS,
+  DEFAULT_AD_RANGE,
+  isAdDatePreset,
+} from '@/lib/ads/date-presets';
 
 // Fixed-length day windows we can build a fair "previous period" for. Presets
 // like this_month / maximum have no clean equivalent prior window, so their
@@ -145,21 +129,42 @@ export type DailyPoint = {
   roas: number;
 };
 
-export type AdsOverview = {
+/**
+ * The dashboard is split into independent sub-pages ("submodules"), so the data
+ * is fetched in matching slices — each sub-page pays only for the Graph calls it
+ * renders, instead of one monolithic call powering a single mega-page.
+ */
+
+/** Overview submodule: headline metrics, prior-period deltas and the daily trend. */
+export type AdsSummary = {
   currency: string;
   accountName: string;
   account: AdsInsight;
   /** Prior equal-length window for delta indicators; null when not applicable. */
   previous: AdsInsight | null;
   previousLabel: string | null;
-  campaigns: CampaignInsight[];
-  breakdowns: AdsBreakdowns;
-  topAds: TopAd[];
-  /** Per-day spend/revenue/ROAS for the trend chart. */
+  /** Per-day spend/revenue/ROAS for the trend charts. */
   daily: DailyPoint[];
 };
 
-export type AdsOverviewResult = { ok: true; data: AdsOverview } | { ok: false; error: string };
+/** Breakdowns submodule: spend/ROAS split by placement, demographic and device. */
+export type AdsBreakdownsData = {
+  currency: string;
+  breakdowns: AdsBreakdowns;
+};
+
+/** Campaigns submodule: per-campaign performance and the top ads by spend. */
+export type AdsCampaignsData = {
+  currency: string;
+  campaigns: CampaignInsight[];
+  topAds: TopAd[];
+};
+
+type Result<T> = { ok: true; data: T } | { ok: false; error: string };
+
+export type AdsSummaryResult = Result<AdsSummary>;
+export type AdsBreakdownsResult = Result<AdsBreakdownsData>;
+export type AdsCampaignsResult = Result<AdsCampaignsData>;
 
 // ---------------------------------------------------------------------------
 // Action-type parsing
@@ -399,51 +404,45 @@ async function fetchAdThumbnails(ids: string[]): Promise<Record<string, string |
 }
 
 // ---------------------------------------------------------------------------
-// Main entry point
+// Submodule entry points
 // ---------------------------------------------------------------------------
+//
+// Each dashboard sub-page calls one of these. They share the private fetch
+// helpers above but only make the Graph calls their own view needs, so flipping
+// between tabs never re-fetches the whole account. All are inert unless
+// configured and never throw: the core call failing returns `{ ok: false }`;
+// each supplementary section degrades to empty on its own error.
+
+const errText = (error: unknown, fallback: string): string =>
+  error instanceof Error ? error.message : fallback;
+
+/** Read the account's display name + reporting currency (small, shared call). */
+async function fetchAccountMeta(act: string): Promise<{ name: string; currency: string }> {
+  const meta = await graphGet<{ name?: string; currency?: string }>(act, {
+    fields: 'name,currency',
+  });
+  return { name: meta.name ?? 'Ad account', currency: meta.currency ?? 'USD' };
+}
 
 /**
- * Fetch the account summary, per-campaign breakdown (with live status), the
- * prior-period comparison, placement/demographic/device breakdowns and the top
- * ads for a date range. Never throws: the two core insights calls failing
- * returns `{ ok: false, error }`; every richer section degrades to empty on its
- * own error so one missing feature can't blank the whole page.
+ * Overview submodule — headline account metrics, the prior-period comparison for
+ * delta badges, and the per-day spend/revenue/ROAS series that feeds the trend
+ * charts. The account insights call failing is fatal for this view.
  */
-export async function getAdsOverview(datePreset: AdDatePreset): Promise<AdsOverviewResult> {
-  if (!adsInsightsEnabled()) {
-    return { ok: false, error: 'Meta Ads is not configured.' };
-  }
+export async function getAdsSummary(datePreset: AdDatePreset): Promise<AdsSummaryResult> {
+  if (!adsInsightsEnabled()) return { ok: false, error: 'Meta Ads is not configured.' };
 
   const act = accountPath();
   const prev = previousWindow(datePreset);
 
   try {
-    const [
-      meta,
-      accountInsights,
-      campaignInsights,
-      previousInsights,
-      campaignMeta,
-      placement,
-      demographic,
-      device,
-      topAdRows,
-      dailyRows,
-    ] = await Promise.all([
-      // --- Core (failure ⇒ error card) ---
-      graphGet<{ name?: string; currency?: string }>(act, { fields: 'name,currency' }),
+    const [meta, accountInsights, previousInsights, dailyRows] = await Promise.all([
+      fetchAccountMeta(act),
       graphGet<{ data?: InsightRow[] }>(`${act}/insights`, {
         fields: INSIGHT_FIELDS,
         date_preset: datePreset,
         level: 'account',
       }),
-      graphGet<{ data?: InsightRow[] }>(`${act}/insights`, {
-        fields: `${INSIGHT_FIELDS},campaign_id,campaign_name`,
-        date_preset: datePreset,
-        level: 'campaign',
-        limit: '200',
-      }),
-      // --- Supplementary (failure ⇒ graceful empty) ---
       prev
         ? safe(
             graphGet<{ data?: InsightRow[] }>(`${act}/insights`, {
@@ -455,12 +454,50 @@ export async function getAdsOverview(datePreset: AdDatePreset): Promise<AdsOverv
           )
         : Promise.resolve<{ data?: InsightRow[] }>({ data: [] }),
       safe(
-        graphGet<{ data?: { id: string; effective_status?: string; objective?: string }[] }>(
-          `${act}/campaigns`,
-          { fields: 'id,effective_status,objective', limit: '500' },
-        ),
+        graphGet<{ data?: InsightRow[] }>(`${act}/insights`, {
+          fields: 'spend,action_values,purchase_roas',
+          date_preset: datePreset,
+          level: 'account',
+          time_increment: '1',
+          limit: '200',
+        }),
         { data: [] },
       ),
+    ]);
+
+    const previousInsight =
+      prev && previousInsights.data?.length ? toInsight(previousInsights.data[0]) : null;
+
+    const daily: DailyPoint[] = (dailyRows.data ?? []).map((row) => {
+      const i = toInsight(row);
+      return { date: row.date_start ?? '', spend: i.spend, revenue: i.revenue, roas: i.roas };
+    });
+
+    return {
+      ok: true,
+      data: {
+        currency: meta.currency,
+        accountName: meta.name,
+        account: toInsight(accountInsights.data?.[0]),
+        previous: previousInsight,
+        previousLabel: prev?.label ?? null,
+        daily,
+      },
+    };
+  } catch (error) {
+    return { ok: false, error: errText(error, 'Failed to load ad insights.') };
+  }
+}
+
+/** Breakdowns submodule — spend/ROAS split by placement, demographic and device. */
+export async function getAdsBreakdownsData(datePreset: AdDatePreset): Promise<AdsBreakdownsResult> {
+  if (!adsInsightsEnabled()) return { ok: false, error: 'Meta Ads is not configured.' };
+
+  const act = accountPath();
+
+  try {
+    const [meta, placement, demographic, device] = await Promise.all([
+      fetchAccountMeta(act),
       safe(
         fetchBreakdown(act, datePreset, 'publisher_platform', (r) =>
           titleCase(r.publisher_platform ?? 'Unknown'),
@@ -482,6 +519,39 @@ export async function getAdsOverview(datePreset: AdDatePreset): Promise<AdsOverv
         ),
         [],
       ),
+    ]);
+
+    return {
+      ok: true,
+      data: { currency: meta.currency, breakdowns: { placement, demographic, device } },
+    };
+  } catch (error) {
+    return { ok: false, error: errText(error, 'Failed to load breakdowns.') };
+  }
+}
+
+/** Campaigns submodule — per-campaign performance (with live status) and top ads. */
+export async function getAdsCampaignsData(datePreset: AdDatePreset): Promise<AdsCampaignsResult> {
+  if (!adsInsightsEnabled()) return { ok: false, error: 'Meta Ads is not configured.' };
+
+  const act = accountPath();
+
+  try {
+    const [meta, campaignInsights, campaignMeta, topAdRows] = await Promise.all([
+      fetchAccountMeta(act),
+      graphGet<{ data?: InsightRow[] }>(`${act}/insights`, {
+        fields: `${INSIGHT_FIELDS},campaign_id,campaign_name`,
+        date_preset: datePreset,
+        level: 'campaign',
+        limit: '200',
+      }),
+      safe(
+        graphGet<{ data?: { id: string; effective_status?: string; objective?: string }[] }>(
+          `${act}/campaigns`,
+          { fields: 'id,effective_status,objective', limit: '500' },
+        ),
+        { data: [] },
+      ),
       safe(
         graphGet<{ data?: InsightRow[] }>(`${act}/insights`, {
           fields: 'ad_id,ad_name,campaign_name,spend,actions,action_values,purchase_roas',
@@ -492,32 +562,22 @@ export async function getAdsOverview(datePreset: AdDatePreset): Promise<AdsOverv
         }),
         { data: [] },
       ),
-      safe(
-        graphGet<{ data?: InsightRow[] }>(`${act}/insights`, {
-          fields: 'spend,action_values,purchase_roas',
-          date_preset: datePreset,
-          level: 'account',
-          time_increment: '1',
-          limit: '200',
-        }),
-        { data: [] },
-      ),
     ]);
 
-    // Join campaign status onto the insight rows.
+    // Join live campaign status/objective onto the insight rows.
     const statusMap = new Map((campaignMeta.data ?? []).map((c) => [c.id, c] as const));
     const campaigns: CampaignInsight[] = (campaignInsights.data ?? [])
       .map((row) => {
         const cid = row.campaign_id ?? '';
-        const meta = statusMap.get(cid);
-        const status = meta?.effective_status ?? '';
+        const cMeta = statusMap.get(cid);
+        const status = cMeta?.effective_status ?? '';
         return {
           ...toInsight(row),
           campaignId: cid,
           campaignName: row.campaign_name ?? 'Untitled campaign',
           status,
           isActive: status === 'ACTIVE',
-          objective: meta?.objective ?? '',
+          objective: cMeta?.objective ?? '',
         };
       })
       .sort((a, b) => b.spend - a.spend);
@@ -542,32 +602,8 @@ export async function getAdsOverview(datePreset: AdDatePreset): Promise<AdsOverv
       };
     });
 
-    const previousInsight =
-      prev && previousInsights.data?.length ? toInsight(previousInsights.data[0]) : null;
-
-    const daily: DailyPoint[] = (dailyRows.data ?? []).map((row) => {
-      const i = toInsight(row);
-      return { date: row.date_start ?? '', spend: i.spend, revenue: i.revenue, roas: i.roas };
-    });
-
-    return {
-      ok: true,
-      data: {
-        currency: meta.currency ?? 'USD',
-        accountName: meta.name ?? 'Ad account',
-        account: toInsight(accountInsights.data?.[0]),
-        previous: previousInsight,
-        previousLabel: prev?.label ?? null,
-        campaigns,
-        breakdowns: { placement, demographic, device },
-        topAds,
-        daily,
-      },
-    };
+    return { ok: true, data: { currency: meta.currency, campaigns, topAds } };
   } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : 'Failed to load ad insights.',
-    };
+    return { ok: false, error: errText(error, 'Failed to load campaigns.') };
   }
 }
