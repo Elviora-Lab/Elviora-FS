@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { toast } from 'sonner';
 
-import { metaPixel } from '@/lib/analytics/meta-pixel';
+import { analytics } from '@/lib/analytics';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,7 +31,7 @@ export function BackInStockNotify({ variantId }: { variantId: string }) {
     start(async () => {
       const res = await requestStockNotification({ variantId, email: email.trim() });
       if (res.success) {
-        metaPixel.backInStockNotify(variantId);
+        analytics.backInStockNotify(variantId);
         setDone(true);
         toast.success("We'll let you know when it's back");
       } else {

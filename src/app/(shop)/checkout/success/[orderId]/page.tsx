@@ -41,6 +41,13 @@ export default async function OrderSuccessPage({ params }: { params: Params }) {
         value={Number(order.totalAmount)}
         currency={order.currency}
         items={order.items.reduce((sum, i) => sum + i.quantity, 0)}
+        lineItems={order.items.map((i) => ({
+          item_id: i.productId ?? i.id,
+          item_name: i.productName,
+          ...(i.variantName ? { item_variant: i.variantName } : {}),
+          price: Number(i.unitPrice),
+          quantity: i.quantity,
+        }))}
       />
       <div className="container flex max-w-2xl flex-col items-center gap-6 text-center">
         <span className="grid size-14 place-items-center rounded-full bg-success/15 text-success">

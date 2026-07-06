@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 
-import { metaPixel } from '@/lib/analytics/meta-pixel';
+import { analytics } from '@/lib/analytics';
 
 import { subscribeNewsletter } from '@/server/actions/newsletter.actions';
 
@@ -18,7 +18,7 @@ export function NewsletterForm() {
     try {
       const res = await subscribeNewsletter({ email: email.trim() });
       if (res.success) {
-        metaPixel.subscribe();
+        analytics.newsletterSignup();
         toast.success("You're on the list.");
         setEmail('');
       } else {

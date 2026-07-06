@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { useAppDispatch } from '@/store/hooks';
 import { openCart } from '@/store/slices/ui-slice';
 
-import { metaPixel } from '@/lib/analytics/meta-pixel';
+import { analytics } from '@/lib/analytics';
 import { cn } from '@/lib/cn';
 
 import { Price } from '@/design-system/primitives/price';
@@ -101,9 +101,9 @@ export function ProductExperience({
   const active = images[activeIndex];
   const go = (dir: 1 | -1) => setActiveIndex((i) => (i + dir + total) % total);
 
-  // Meta Pixel: fire ViewContent once per product view.
+  // Analytics: fire a product view once per product (Meta ViewContent + GA4 view_item).
   useEffect(() => {
-    metaPixel.viewContent({ id: productId, name: productName, price: currentPrice, currency });
+    analytics.viewItem({ id: productId, name: productName, price: currentPrice, currency });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productId]);
 
@@ -125,7 +125,7 @@ export function ProductExperience({
       currency,
       quantity,
     });
-    metaPixel.addToCart({
+    analytics.addToCart({
       id: productId,
       name: selected.name,
       quantity,

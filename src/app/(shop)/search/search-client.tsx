@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-import { metaPixel } from '@/lib/analytics/meta-pixel';
+import { analytics } from '@/lib/analytics';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 
 import { Input } from '@/components/ui/input';
@@ -25,9 +25,9 @@ export function SearchClient() {
     router.replace(`/search?${params.toString()}`, { scroll: false });
   }, [debounced, router, search]);
 
-  // Meta Pixel: fire Search as the debounced query settles.
+  // Analytics: fire search as the debounced query settles (Meta Search + GA4 search).
   useEffect(() => {
-    if (debounced.trim()) metaPixel.search(debounced.trim());
+    if (debounced.trim()) analytics.search(debounced.trim());
   }, [debounced]);
 
   const { data, isFetching } = useListProductsQuery(

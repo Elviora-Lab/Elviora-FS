@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 
 import { useAppSelector } from '@/store/hooks';
 
-import { metaPixel } from '@/lib/analytics/meta-pixel';
+import { analytics } from '@/lib/analytics';
 import { cn } from '@/lib/cn';
 import { computeCheckoutTotals } from '@/lib/shipping';
 
@@ -94,10 +94,21 @@ export function CheckoutClient({ addresses, cart }: { addresses: Address[]; cart
   });
   const total = totals.total;
 
-  // Meta Pixel: fire InitiateCheckout once when the checkout loads with items.
+  // Analytics: fire begin-checkout once when the checkout loads with items
+  // (Meta InitiateCheckout + GA4 begin_checkout with line items).
   useEffect(() => {
     if (cart.lines.length === 0) return;
-    metaPixel.initiateCheckout({ value: total, currency: cart.currency, items: totalQuantity });
+    analytics.beginCheckout({
+      value: total,
+      currency: cart.currency,
+      count: totalQuantity,
+      items: cart.lines.map((l) => ({
+        item_id: l.productId,
+        item_name: l.name,
+        price: l.unitPrice,
+        quantity: l.quantity,
+      })),
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -117,8 +128,8 @@ export function CheckoutClient({ addresses, cart }: { addresses: Address[]; cart
 
   function choosePayment(method: PaymentMethod) {
     setPaymentMethod(method);
-    // Meta Pixel: selecting a method is "adding payment info" for COD/bank.
-    metaPixel.addPaymentInfo({ value: total, currency: cart.currency, method });
+    // Selecting a method is "adding payment info" for COD/bank.
+    analytics.addPaymentInfo({ value: total, currency: cart.currency, method });
   }
 
   function handlePlaceOrder() {

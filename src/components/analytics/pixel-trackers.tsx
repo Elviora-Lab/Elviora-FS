@@ -2,9 +2,9 @@
 
 import { useEffect, useRef } from 'react';
 
-import { metaPixel } from '@/lib/analytics/meta-pixel';
+import { analytics } from '@/lib/analytics';
 
-/** Anchor that fires the Meta Pixel Contact event when clicked (e.g. a mailto). */
+/** Anchor that fires the Contact event when clicked (e.g. a mailto). */
 export function ContactLink({
   href,
   className,
@@ -15,7 +15,7 @@ export function ContactLink({
   children: React.ReactNode;
 }) {
   return (
-    <a href={href} className={className} onClick={() => metaPixel.contact()}>
+    <a href={href} className={className} onClick={() => analytics.contact()}>
       {children}
     </a>
   );
@@ -27,7 +27,7 @@ export function SkincareViewTracker() {
   useEffect(() => {
     if (sent.current) return;
     sent.current = true;
-    metaPixel.skincareAssistant();
+    analytics.skincareAssistant();
   }, []);
   return null;
 }
@@ -38,7 +38,7 @@ export function CategoryViewTracker({ slug, name }: { slug: string; name: string
   useEffect(() => {
     if (sent.current) return;
     sent.current = true;
-    metaPixel.viewCategory({ slug, name });
+    analytics.viewCategory({ slug, name });
   }, [slug, name]);
   return null;
 }
