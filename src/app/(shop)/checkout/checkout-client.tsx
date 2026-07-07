@@ -330,7 +330,11 @@ export function CheckoutClient({ addresses, cart }: { addresses: Address[]; cart
         ) : null}
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Shipping</span>
-          <Price amount={totals.shippingFee} currency={cart.currency} size="sm" />
+          {totals.freeShipping ? (
+            <span className="font-medium uppercase tracking-wide text-emerald-600">Free</span>
+          ) : (
+            <Price amount={totals.shippingFee} currency={cart.currency} size="sm" />
+          )}
         </div>
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">

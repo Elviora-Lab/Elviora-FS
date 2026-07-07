@@ -311,7 +311,7 @@ export function ProductExperience({
           ) : null}
 
           <p className="text-xs text-muted-foreground">
-            Free shipping on orders over Rs 15,000 · 30-day returns
+            Free shipping on orders over Rs 8,000 · 30-day returns
           </p>
         </div>
 
@@ -341,18 +341,10 @@ export function ProductExperience({
             </AccordionItem>
           ) : null}
 
-          <AccordionItem value="ritual">
-            <AccordionTrigger>How to use</AccordionTrigger>
-            <AccordionContent>
-              Apply to clean skin morning and evening. Layer under a moisturizer. Always follow
-              daytime use with broad-spectrum sunscreen.
-            </AccordionContent>
-          </AccordionItem>
-
           <AccordionItem value="shipping">
             <AccordionTrigger>Shipping &amp; returns</AccordionTrigger>
             <AccordionContent>
-              Complimentary shipping on orders over Rs 15,000. Free 30-day returns on all unopened
+              Complimentary shipping on orders over Rs 8,000. Free 30-day returns on all unopened
               products.
             </AccordionContent>
           </AccordionItem>

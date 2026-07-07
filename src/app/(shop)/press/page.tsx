@@ -36,9 +36,9 @@ export default function PressPage() {
             Reach our press team at{' '}
             <a
               className="font-medium text-foreground underline underline-offset-4"
-              href="mailto:press@elviora.com"
+              href="mailto:elviora192@gmail.com"
             >
-              press@elviora.com
+              elviora192@gmail.com
             </a>{' '}
             and we will respond within two business days.
           </p>

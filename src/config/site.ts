@@ -22,7 +22,7 @@ export const siteConfig = {
     youtube: 'https://youtube.com/@elviora',
   },
   contact: {
-    email: 'concierge@elviora.com',
+    email: 'elviora192@gmail.com',
     phone: '+92 (300) 0001234',
   },
   /**

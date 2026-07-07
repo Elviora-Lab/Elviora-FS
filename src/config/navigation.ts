@@ -40,7 +40,6 @@ export const footerNav: Record<string, NavItem[]> = {
     { label: 'Gift Cards', href: '/gift-cards' },
   ],
   Concierge: [
-    { label: 'Skincare Consultation', href: '/ai-skincare-assistant' },
     { label: 'Contact', href: '/contact' },
     { label: 'FAQ', href: '/faq' },
     { label: 'Shipping & Returns', href: '/shipping' },

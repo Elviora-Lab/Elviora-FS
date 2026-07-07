@@ -51,9 +51,9 @@ export default function PrivacyPage() {
             Questions about your privacy? Email{' '}
             <a
               className="font-medium text-foreground underline underline-offset-4"
-              href="mailto:privacy@elviora.com"
+              href="mailto:elviora192@gmail.com"
             >
-              privacy@elviora.com
+              elviora192@gmail.com
             </a>
             .
           </p>

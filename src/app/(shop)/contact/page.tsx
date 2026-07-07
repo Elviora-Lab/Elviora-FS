@@ -28,9 +28,9 @@ export default function ContactPage() {
             Write to{' '}
             <ContactLink
               className="font-medium text-foreground underline underline-offset-4"
-              href="mailto:hello@elviora.com"
+              href="mailto:elviora192@gmail.com"
             >
-              hello@elviora.com
+              elviora192@gmail.com
             </ContactLink>{' '}
             and a member of our client care team will reply within one business day.
           </p>

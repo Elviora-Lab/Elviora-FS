@@ -44,7 +44,6 @@ export function SiteFooter() {
           <p>
             © {new Date().getFullYear()} {siteConfig.name}. All rights reserved.
           </p>
-          <p>Crafted with care in Paris &middot; New York &middot; Tokyo.</p>
         </div>
       </div>
     </footer>

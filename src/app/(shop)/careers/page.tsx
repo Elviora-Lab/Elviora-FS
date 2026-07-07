@@ -37,9 +37,9 @@ export default function CareersPage() {
             Send your CV and a short note about what draws you to Elviora to{' '}
             <a
               className="font-medium text-foreground underline underline-offset-4"
-              href="mailto:careers@elviora.com"
+              href="mailto:elviora192@gmail.com"
             >
-              careers@elviora.com
+              elviora192@gmail.com
             </a>
             .
           </p>

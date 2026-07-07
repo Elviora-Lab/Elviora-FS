@@ -15,7 +15,7 @@ function client(): Resend | null {
   return cached;
 }
 
-const DEFAULT_FROM = `${siteConfig.name} <no-reply@elviora.com>`;
+const DEFAULT_FROM = `${siteConfig.name} <elviora192@gmail.com>`;
 
 export type SendEmailInput = {
   to: string | string[];

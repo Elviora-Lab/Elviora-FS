@@ -25,6 +25,13 @@ export const FUEL_SURCHARGE_RATE = 0.35;
 export const GST_RATE = 0.15;
 export const COD_TAX_RATE = 0.04; // 2% income tax + 2% sales tax
 
+/**
+ * Orders whose merchandise value (subtotal − discount) reaches this amount ship
+ * free — the delivery charge and its 15% GST are both waived. COD tax, which is
+ * levied on the cash collected at the door, still applies.
+ */
+export const FREE_SHIPPING_THRESHOLD = 8000;
+
 /** Our product line is ~120 g; used when a variant has no explicit weight. */
 export const DEFAULT_ITEM_WEIGHT_KG = 0.12;
 
@@ -111,6 +118,8 @@ export function baseShippingRate(zone: ShippingZone, weightKg: number): number {
 
 export type CheckoutTotals = {
   zone: ShippingZone;
+  /** True when the order qualified for free shipping (fee & its GST waived). */
+  freeShipping: boolean;
   /** Delivery charge shown as "Shipping" = base + fuel surcharge. */
   shippingFee: number;
   /** 15% GST on the shipping service. */
@@ -146,7 +155,10 @@ export function computeCheckoutTotals(params: {
   const weightKg = Math.max(1, params.quantity) * (params.itemWeightKg ?? DEFAULT_ITEM_WEIGHT_KG);
 
   const zone = resolveZone(params.city);
-  const base = baseShippingRate(zone, weightKg);
+  // Merchandise value (after any discount) at or above the threshold ships free:
+  // no base rate, so no fuel surcharge and no GST on the shipping service.
+  const freeShipping = merchandise >= FREE_SHIPPING_THRESHOLD;
+  const base = freeShipping ? 0 : baseShippingRate(zone, weightKg);
   const fuel = base * FUEL_SURCHARGE_RATE;
   const shippingFee = round2(base + fuel);
 
@@ -158,5 +170,5 @@ export function computeCheckoutTotals(params: {
   const taxAmount = round2(gst + codTax);
 
   const total = round2(merchandise + shippingFee + taxAmount);
-  return { zone, shippingFee, gst, codTax, taxAmount, total };
+  return { zone, freeShipping, shippingFee, gst, codTax, taxAmount, total };
 }

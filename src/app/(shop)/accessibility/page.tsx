@@ -36,9 +36,9 @@ export default function AccessibilityPage() {
             If you encounter any barrier on our site, please email{' '}
             <a
               className="font-medium text-foreground underline underline-offset-4"
-              href="mailto:hello@elviora.com"
+              href="mailto:elviora192@gmail.com"
             >
-              hello@elviora.com
+              elviora192@gmail.com
             </a>{' '}
             and we will do our best to help and to fix the issue.
           </p>

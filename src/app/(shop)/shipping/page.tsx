@@ -25,7 +25,7 @@ export default function ShippingPage() {
           <h2 className="editorial-heading text-display-sm">Shipping</h2>
           <ul className="flex flex-col gap-3 text-pretty leading-relaxed text-muted-foreground">
             <li>Nationwide delivery across Pakistan in 2 to 5 business days.</li>
-            <li>Complimentary shipping on orders over Rs 15,000.</li>
+            <li>Complimentary shipping on orders over Rs 8,000.</li>
             <li>A flat fee of Rs 250 applies to orders below the threshold.</li>
             <li>Orders are processed within 24 hours, Monday to Saturday.</li>
           </ul>
@@ -42,9 +42,9 @@ export default function ShippingPage() {
             To start a return, email{' '}
             <a
               className="font-medium text-foreground underline underline-offset-4"
-              href="mailto:hello@elviora.com"
+              href="mailto:elviora192@gmail.com"
             >
-              hello@elviora.com
+              elviora192@gmail.com
             </a>{' '}
             with your order number and we will guide you through the next steps.
           </p>
