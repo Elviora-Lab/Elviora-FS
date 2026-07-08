@@ -8,6 +8,11 @@ const nextConfig: NextConfig = {
 
   images: {
     formats: ['image/avif', 'image/webp'],
+    // Vercel bills one Image Optimization "transformation" per unique
+    // (source image, width, quality, format). Keep each generated variant
+    // cached for 31 days so it isn't re-generated — and re-billed — when the
+    // default 30-day cache lapses.
+    minimumCacheTTL: 2678400,
     remotePatterns: [
       { protocol: 'https', hostname: 'images.unsplash.com' },
       { protocol: 'https', hostname: 'res.cloudinary.com' },
@@ -18,8 +23,11 @@ const nextConfig: NextConfig = {
       // uploading to object storage, so allow any HTTPS host for next/image.
       { protocol: 'https', hostname: '**' },
     ],
-    deviceSizes: [360, 640, 750, 828, 1080, 1200, 1440, 1920, 2560],
-    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    // Trimmed width ladders (was 9 device + 8 image sizes) — fewer widths means
+    // fewer transformations per image, with negligible impact on how closely a
+    // rendered image matches its display size.
+    deviceSizes: [640, 828, 1080, 1440, 1920],
+    imageSizes: [64, 128, 256, 384],
   },
 
   experimental: {
