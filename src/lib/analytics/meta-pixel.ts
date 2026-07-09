@@ -42,6 +42,28 @@ export function fbTrackCustom(event: string, params?: PixelParams): void {
   window.fbq('trackCustom', event, params);
 }
 
+// Advanced matching is applied at most once per (email, phone) pair so a
+// repeated call (e.g. re-selecting a payment method) doesn't re-init the pixel.
+let lastMatchKey = '';
+
+/**
+ * Attach Advanced Matching to the browser pixel. Passing raw email/phone to
+ * `fbq('init', …)` lets fbq normalize + SHA-256 them client-side, which lifts
+ * Event Match Quality on every subsequent browser event this session. The
+ * server (CAPI) sends the same identifiers hashed, so the two dedupe cleanly.
+ * No-ops until the pixel has loaded (production only).
+ */
+export function fbIdentify(user: { email?: string | null; phone?: string | null }): void {
+  if (typeof window === 'undefined' || typeof window.fbq !== 'function') return;
+  const em = user.email?.trim().toLowerCase() || undefined;
+  const ph = user.phone?.replace(/[^0-9]/g, '') || undefined;
+  if (!em && !ph) return;
+  const key = `${em ?? ''}|${ph ?? ''}`;
+  if (key === lastMatchKey) return;
+  lastMatchKey = key;
+  window.fbq('init', FB_PIXEL_ID, { ...(em ? { em } : {}), ...(ph ? { ph } : {}) });
+}
+
 export const metaPixel = {
   pageView: () => fbTrack('PageView'),
 
@@ -57,15 +79,22 @@ export const metaPixel = {
   viewCategory: (p: { slug: string; name: string }) =>
     fbTrackCustom('ViewCategory', { content_category: p.name, content_ids: [p.slug] }),
 
-  addToCart: (p: { id: string; name: string; quantity: number; price: number; currency: string }) =>
-    fbTrack('AddToCart', {
-      content_ids: [p.id],
-      content_name: p.name,
-      content_type: 'product',
-      contents: [{ id: p.id, quantity: p.quantity }],
-      value: p.price * p.quantity,
-      currency: p.currency,
-    }),
+  addToCart: (
+    p: { id: string; name: string; quantity: number; price: number; currency: string },
+    eventID?: string,
+  ) =>
+    fbTrack(
+      'AddToCart',
+      {
+        content_ids: [p.id],
+        content_name: p.name,
+        content_type: 'product',
+        contents: [{ id: p.id, quantity: p.quantity }],
+        value: p.price * p.quantity,
+        currency: p.currency,
+      },
+      eventID ? { eventID } : undefined,
+    ),
 
   addToWishlist: (p: { id: string; name?: string; price?: number; currency?: string }) =>
     fbTrack('AddToWishlist', {
@@ -75,12 +104,16 @@ export const metaPixel = {
       ...(p.price != null ? { value: p.price, currency: p.currency ?? 'PKR' } : {}),
     }),
 
-  initiateCheckout: (p: { value: number; currency: string; items: number }) =>
-    fbTrack('InitiateCheckout', {
-      value: p.value,
-      currency: p.currency,
-      num_items: p.items,
-    }),
+  initiateCheckout: (p: { value: number; currency: string; items: number }, eventID?: string) =>
+    fbTrack(
+      'InitiateCheckout',
+      {
+        value: p.value,
+        currency: p.currency,
+        num_items: p.items,
+      },
+      eventID ? { eventID } : undefined,
+    ),
 
   addPaymentInfo: (p: { value: number; currency: string; method: string }) =>
     fbTrack('AddPaymentInfo', {
@@ -100,6 +133,9 @@ export const metaPixel = {
 
   subscribe: (p?: { value?: number; currency?: string }) =>
     fbTrack('Subscribe', p?.value != null ? { value: p.value, currency: p.currency ?? 'PKR' } : {}),
+
+  /** Attach Advanced Matching (raw email/phone) to lift Event Match Quality. */
+  identify: (user: { email?: string | null; phone?: string | null }) => fbIdentify(user),
 
   contact: () => fbTrack('Contact'),
 

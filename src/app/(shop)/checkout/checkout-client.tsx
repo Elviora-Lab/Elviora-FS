@@ -150,6 +150,14 @@ export function CheckoutClient({ addresses, cart }: { addresses: Address[]; cart
       return;
     }
 
+    // Feed the pixel Advanced Matching from the contact details we now have, so
+    // the browser Purchase on the confirmation page scores high Event Match
+    // Quality (the CAPI Purchase already sends these hashed server-side).
+    const phone = usingNewAddress
+      ? newAddress.phone
+      : (addresses.find((a) => a.id === addressId)?.phone ?? '');
+    analytics.identify({ email: trimmedEmail || undefined, phone: phone || undefined });
+
     start(async () => {
       const result = await placeOrder({
         ...(usingNewAddress ? { address: newAddress } : { addressId }),
