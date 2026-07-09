@@ -64,6 +64,21 @@ export function fbIdentify(user: { email?: string | null; phone?: string | null 
   window.fbq('init', FB_PIXEL_ID, { ...(em ? { em } : {}), ...(ph ? { ph } : {}) });
 }
 
+/**
+ * Meta requires `value` to be a positive number whenever it's present. Emit
+ * `value` + `currency` together only when the amount is finite and > 0 (a free
+ * item or a 0-total order otherwise sends `value: 0`, which Meta rejects);
+ * otherwise omit both.
+ */
+function moneyFields(
+  value: number | undefined,
+  currency: string | undefined,
+): Record<string, unknown> {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0
+    ? { value, currency: currency ?? 'PKR' }
+    : {};
+}
+
 export const metaPixel = {
   pageView: () => fbTrack('PageView'),
 
@@ -72,8 +87,7 @@ export const metaPixel = {
       content_ids: [p.id],
       content_name: p.name,
       content_type: 'product',
-      value: p.price,
-      currency: p.currency,
+      ...moneyFields(p.price, p.currency),
     }),
 
   viewCategory: (p: { slug: string; name: string }) =>
@@ -90,8 +104,7 @@ export const metaPixel = {
         content_name: p.name,
         content_type: 'product',
         contents: [{ id: p.id, quantity: p.quantity }],
-        value: p.price * p.quantity,
-        currency: p.currency,
+        ...moneyFields(p.price * p.quantity, p.currency),
       },
       eventID ? { eventID } : undefined,
     ),
@@ -101,15 +114,14 @@ export const metaPixel = {
       content_ids: [p.id],
       content_type: 'product',
       ...(p.name ? { content_name: p.name } : {}),
-      ...(p.price != null ? { value: p.price, currency: p.currency ?? 'PKR' } : {}),
+      ...moneyFields(p.price, p.currency),
     }),
 
   initiateCheckout: (p: { value: number; currency: string; items: number }, eventID?: string) =>
     fbTrack(
       'InitiateCheckout',
       {
-        value: p.value,
-        currency: p.currency,
+        ...moneyFields(p.value, p.currency),
         num_items: p.items,
       },
       eventID ? { eventID } : undefined,
@@ -117,8 +129,7 @@ export const metaPixel = {
 
   addPaymentInfo: (p: { value: number; currency: string; method: string }) =>
     fbTrack('AddPaymentInfo', {
-      value: p.value,
-      currency: p.currency,
+      ...moneyFields(p.value, p.currency),
       payment_method: p.method,
     }),
 
@@ -127,12 +138,12 @@ export const metaPixel = {
   purchase: (p: { orderId: string; value: number; currency: string; items: number }) =>
     fbTrack(
       'Purchase',
-      { value: p.value, currency: p.currency, num_items: p.items, content_type: 'product' },
+      { ...moneyFields(p.value, p.currency), num_items: p.items, content_type: 'product' },
       { eventID: p.orderId },
     ),
 
   subscribe: (p?: { value?: number; currency?: string }) =>
-    fbTrack('Subscribe', p?.value != null ? { value: p.value, currency: p.currency ?? 'PKR' } : {}),
+    fbTrack('Subscribe', moneyFields(p?.value, p?.currency)),
 
   /** Attach Advanced Matching (raw email/phone) to lift Event Match Quality. */
   identify: (user: { email?: string | null; phone?: string | null }) => fbIdentify(user),

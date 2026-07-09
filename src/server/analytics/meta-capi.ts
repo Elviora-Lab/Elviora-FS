@@ -99,6 +99,24 @@ export type CapiEvent = {
 };
 
 /**
+ * Meta requires `custom_data.value` to be a POSITIVE NUMBER when present. Coerce
+ * it to a number and, if it isn't finite and > 0 (e.g. a free item or a fully
+ * discounted order), drop `value` and the now-meaningless `currency` so Meta
+ * never rejects the event for an invalid value.
+ */
+function sanitizeCustomData(
+  cd: Record<string, unknown> | undefined,
+): Record<string, unknown> | undefined {
+  if (!cd || !('value' in cd)) return cd;
+  const value = Number(cd.value);
+  if (Number.isFinite(value) && value > 0) return { ...cd, value };
+  const out = { ...cd };
+  delete out.value;
+  delete out.currency;
+  return out;
+}
+
+/**
  * Send one event to the Conversions API. Best-effort: network/API failures are
  * swallowed so tracking never breaks a checkout. Returns true if sent.
  */
@@ -108,6 +126,7 @@ export async function sendCapiEvent(event: CapiEvent): Promise<boolean> {
   const pixelId = publicEnv.NEXT_PUBLIC_FB_PIXEL_ID;
   const token = serverEnv.META_CAPI_ACCESS_TOKEN as string;
   const eventTime = event.eventTime ?? Math.floor(Date.now() / 1000);
+  const customData = sanitizeCustomData(event.customData);
 
   const payload: Record<string, unknown> = {
     data: [
@@ -118,7 +137,7 @@ export async function sendCapiEvent(event: CapiEvent): Promise<boolean> {
         action_source: 'website',
         ...(event.eventSourceUrl ? { event_source_url: event.eventSourceUrl } : {}),
         user_data: buildUserData(event.userData),
-        ...(event.customData ? { custom_data: event.customData } : {}),
+        ...(customData && Object.keys(customData).length ? { custom_data: customData } : {}),
       },
     ],
     ...(serverEnv.META_CAPI_TEST_EVENT_CODE
