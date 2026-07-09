@@ -158,6 +158,20 @@ export function CheckoutClient({ addresses, cart }: { addresses: Address[]; cart
       : (addresses.find((a) => a.id === addressId)?.phone ?? '');
     analytics.identify({ email: trimmedEmail || undefined, phone: phone || undefined });
 
+    // GA4 add_shipping_info — the delivery step of the checkout funnel.
+    analytics.addShippingInfo({
+      value: total,
+      currency: cart.currency,
+      shippingTier: 'Standard',
+      coupon: clientCart.couponCode ?? undefined,
+      items: cart.lines.map((l) => ({
+        item_id: l.productId,
+        item_name: l.name,
+        price: l.unitPrice,
+        quantity: l.quantity,
+      })),
+    });
+
     start(async () => {
       const result = await placeOrder({
         ...(usingNewAddress ? { address: newAddress } : { addressId }),

@@ -16,6 +16,9 @@ export function PurchaseTracker({
   value,
   currency,
   items,
+  tax,
+  shipping,
+  coupon,
   lineItems,
 }: {
   orderId: string;
@@ -23,6 +26,9 @@ export function PurchaseTracker({
   currency: string;
   /** Total quantity across the order (Meta's num_items). */
   items: number;
+  tax?: number;
+  shipping?: number;
+  coupon?: string;
   /** Per-line items for GA4 revenue-by-product. */
   lineItems?: GaItem[];
 }) {
@@ -30,7 +36,16 @@ export function PurchaseTracker({
   useEffect(() => {
     if (sent.current) return;
     sent.current = true;
-    analytics.purchase({ orderId, value, currency, count: items, items: lineItems });
-  }, [orderId, value, currency, items, lineItems]);
+    analytics.purchase({
+      orderId,
+      value,
+      currency,
+      count: items,
+      tax,
+      shipping,
+      coupon,
+      items: lineItems,
+    });
+  }, [orderId, value, currency, items, tax, shipping, coupon, lineItems]);
   return null;
 }

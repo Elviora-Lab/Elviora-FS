@@ -41,6 +41,8 @@ export default async function OrderSuccessPage({ params }: { params: Params }) {
         value={Number(order.totalAmount)}
         currency={order.currency}
         items={order.items.reduce((sum, i) => sum + i.quantity, 0)}
+        tax={Number(order.taxAmount)}
+        shipping={Number(order.shippingFee)}
         lineItems={order.items.map((i) => ({
           item_id: i.productId ?? i.id,
           item_name: i.productName,

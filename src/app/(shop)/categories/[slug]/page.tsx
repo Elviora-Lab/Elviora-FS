@@ -118,7 +118,7 @@ export default async function CategoryPage({
         <SubcategoryNav chips={chips} />
 
         <ProductFilters brands={brands.map((b) => ({ name: b.name, slug: b.slug }))} />
-        <ProductResults products={items} />
+        <ProductResults products={items} listId={`category_${slug}`} listName={name} />
 
         <JsonLd
           data={breadcrumbJsonLd([

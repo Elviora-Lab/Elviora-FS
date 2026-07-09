@@ -9,9 +9,23 @@ import { ProductCard, type ProductCardData } from '@/design-system/patterns/prod
 export function ProductCardConnected({
   product,
   priority,
+  listId,
+  listName,
+  index,
 }: {
   product: ProductCardData;
   priority?: boolean;
+  listId?: string;
+  listName?: string;
+  index?: number;
 }) {
-  return <ProductCard product={product} priority={priority} />;
+  return (
+    <ProductCard
+      product={product}
+      priority={priority}
+      listId={listId}
+      listName={listName}
+      index={index}
+    />
+  );
 }

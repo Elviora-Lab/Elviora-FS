@@ -16,6 +16,8 @@ const publicEnvSchema = z.object({
   NEXT_PUBLIC_ENVIRONMENT: z.enum(['development', 'staging', 'production']).default('development'),
   NEXT_PUBLIC_GTM_ID: optionalStr,
   NEXT_PUBLIC_GA_ID: optionalStr,
+  // "true" ⇒ GA4 events carry debug_mode so they show in DebugView.
+  NEXT_PUBLIC_GA_DEBUG: optionalStr,
   // Meta (Facebook) Pixel ID. Defaults to the Elviora pixel so tracking works
   // without extra deploy config; override per environment via the env var.
   NEXT_PUBLIC_FB_PIXEL_ID: z.string().default('1197005882688887'),
@@ -47,6 +49,9 @@ const serverEnvSchema = z.object({
   // Optional test-event code routes events to the "Test events" tab while wiring.
   META_CAPI_ACCESS_TOKEN: optionalStr,
   META_CAPI_TEST_EVENT_CODE: optionalStr,
+  // GA4 Measurement Protocol — server-side events (Admin → Data Streams → Web →
+  // Measurement Protocol API secrets). Paired with NEXT_PUBLIC_GA_ID.
+  GA_API_SECRET: optionalStr,
   // Meta Marketing API — read-only ad performance dashboard (/admin/ads).
   // System User token with `ads_read`, plus the ad account id (digits only, or
   // with the act_ prefix). Both unset ⇒ the dashboard shows a setup card.
@@ -85,6 +90,7 @@ const publicEnvSource = {
   NEXT_PUBLIC_ENVIRONMENT: process.env.NEXT_PUBLIC_ENVIRONMENT,
   NEXT_PUBLIC_GTM_ID: process.env.NEXT_PUBLIC_GTM_ID,
   NEXT_PUBLIC_GA_ID: process.env.NEXT_PUBLIC_GA_ID,
+  NEXT_PUBLIC_GA_DEBUG: process.env.NEXT_PUBLIC_GA_DEBUG,
   NEXT_PUBLIC_FB_PIXEL_ID: process.env.NEXT_PUBLIC_FB_PIXEL_ID,
   NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
@@ -126,6 +132,7 @@ export const serverEnv = (() => {
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     META_CAPI_ACCESS_TOKEN: process.env.META_CAPI_ACCESS_TOKEN,
     META_CAPI_TEST_EVENT_CODE: process.env.META_CAPI_TEST_EVENT_CODE,
+    GA_API_SECRET: process.env.GA_API_SECRET,
     META_ADS_ACCESS_TOKEN: process.env.META_ADS_ACCESS_TOKEN,
     META_ADS_ACCOUNT_ID: process.env.META_ADS_ACCOUNT_ID,
     POSTEX_API_TOKEN: process.env.POSTEX_API_TOKEN,

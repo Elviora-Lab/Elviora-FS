@@ -7,6 +7,8 @@ import { toast } from 'sonner';
 
 import { normalizeError } from '@/services/api';
 
+import { analytics } from '@/lib/analytics';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -48,6 +50,8 @@ export function RegisterForm() {
         password: values.password,
       }).unwrap();
       signIn(session.user);
+      analytics.signUp('password');
+      analytics.setUser({ userId: session.user.id });
       toast.success('Account created');
       router.push('/account');
     } catch (err) {

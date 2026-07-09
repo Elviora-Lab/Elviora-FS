@@ -11,6 +11,10 @@ import { prisma } from '@/lib/db';
 
 import { withAction } from './_with-action';
 
+import {
+  gaTrackPurchase,
+  sessionIdFromGaSessionCookie,
+} from '@/server/analytics/ga-measurement-protocol';
 import { sendCapiEvent } from '@/server/analytics/meta-capi';
 import { getSession } from '@/server/auth/get-session';
 import { getOrCreateGuestId } from '@/server/auth/guest-session';
@@ -172,6 +176,37 @@ export const placeOrder = withAction(async (raw: unknown) => {
         content_ids: contentIds,
       },
     });
+  } catch {
+    // Tracking must never break checkout.
+  }
+
+  // GA4 Measurement Protocol: server-side Purchase, deduped against the browser
+  // gtag purchase via the shared transaction_id. Best-effort.
+  try {
+    const cookieStore = await cookies();
+    const gaSession = cookieStore.getAll().find((c) => c.name.startsWith('_ga_'))?.value ?? null;
+    void gaTrackPurchase(
+      {
+        orderId: order.id,
+        value: Number(order.totalAmount),
+        currency: order.currency,
+        tax: Number(order.taxAmount),
+        shipping: Number(order.shippingFee),
+        coupon: input.couponCode,
+        items: order.items.map((i) => ({
+          item_id: i.productId ?? i.id,
+          item_name: i.productName,
+          ...(i.variantName ? { item_variant: i.variantName } : {}),
+          price: Number(i.unitPrice),
+          quantity: i.quantity,
+        })),
+      },
+      {
+        gaCookie: cookieStore.get('_ga')?.value ?? null,
+        sessionId: sessionIdFromGaSessionCookie(gaSession),
+        userId: session?.sub ?? null,
+      },
+    );
   } catch {
     // Tracking must never break checkout.
   }

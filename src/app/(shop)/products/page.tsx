@@ -43,7 +43,7 @@ export default async function ProductsPage({
           <h1 className="editorial-heading text-display-lg">All products</h1>
         </header>
         <ProductFilters brands={brands.map((b) => ({ name: b.name, slug: b.slug }))} />
-        <ProductResults products={items} />
+        <ProductResults products={items} listId="catalog" listName="All products" />
       </div>
     </Section>
   );

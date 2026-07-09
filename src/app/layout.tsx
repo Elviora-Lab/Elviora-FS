@@ -8,6 +8,7 @@ import { JsonLd } from '@/lib/seo/json-ld-component';
 import { defaultMetadata } from '@/lib/seo/metadata';
 
 import { CapiParamInit } from '@/components/analytics/capi-param-init';
+import { GaIdentity } from '@/components/analytics/ga-identity';
 import { GoogleAnalytics } from '@/components/analytics/google-analytics';
 import { MetaPixel } from '@/components/analytics/meta-pixel';
 
@@ -44,7 +45,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <MetaPixel />
         <CapiParamInit />
         <GoogleAnalytics />
-        <AppProviders>{children}</AppProviders>
+        <AppProviders>
+          <GaIdentity />
+          {children}
+        </AppProviders>
         <JsonLd data={organizationJsonLd()} />
         <JsonLd data={websiteJsonLd()} />
       </body>

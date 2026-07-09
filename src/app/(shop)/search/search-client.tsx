@@ -46,7 +46,12 @@ export function SearchClient() {
         className="max-w-xl"
       />
       {debounced ? (
-        <ProductGrid products={data?.items} loading={isFetching} />
+        <ProductGrid
+          products={data?.items}
+          loading={isFetching}
+          listId="search_results"
+          listName="Search results"
+        />
       ) : (
         <p className="text-sm text-muted-foreground">Start typing to discover the edit.</p>
       )}

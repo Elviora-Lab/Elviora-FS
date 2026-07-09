@@ -79,7 +79,7 @@ export default async function BrandPage({
         </header>
 
         <ProductFilters />
-        <ProductResults products={items} />
+        <ProductResults products={items} listId={`brand_${slug}`} listName={brand.name} />
 
         <JsonLd
           data={breadcrumbJsonLd([

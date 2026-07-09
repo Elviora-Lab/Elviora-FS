@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 
+import { analytics } from '@/lib/analytics';
 import { cn } from '@/lib/cn';
 
 import { Price } from '@/design-system/primitives/price';
@@ -19,6 +20,17 @@ export type HeroProduct = {
 
 const ROTATE_MS = 4200;
 
+/** GA4 promotion payload for a hero slide (each slide is a merchandising slot). */
+function heroPromo(p: HeroProduct, index: number) {
+  return {
+    promotionId: p.slug,
+    promotionName: p.name,
+    creativeName: 'hero',
+    creativeSlot: `home_hero_${index}`,
+    items: [{ item_id: p.slug, item_name: p.name, item_brand: p.brandLine, price: p.price, index }],
+  };
+}
+
 export function HeroShowcase({ products }: { products: HeroProduct[] }) {
   const reduceMotion = useReducedMotion();
   const [index, setIndex] = useState(0);
@@ -31,8 +43,15 @@ export function HeroShowcase({ products }: { products: HeroProduct[] }) {
     return () => clearInterval(t);
   }, [reduceMotion, paused, count]);
 
-  if (count === 0) return null;
-  const current = products[index] ?? products[0]!;
+  const current = products[index] ?? products[0];
+
+  // GA4 view_promotion — fire when the visible hero slide changes.
+  useEffect(() => {
+    if (current) analytics.viewPromotion(heroPromo(current, index));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current?.slug]);
+
+  if (count === 0 || !current) return null;
 
   return (
     <div
@@ -42,6 +61,7 @@ export function HeroShowcase({ products }: { products: HeroProduct[] }) {
     >
       <Link
         href={`/products/${current.slug}`}
+        onClick={() => analytics.selectPromotion(heroPromo(current, index))}
         className="group relative block aspect-[4/5] overflow-hidden rounded-2xl bg-brand-pearl shadow-elevated"
       >
         <AnimatePresence initial={false}>

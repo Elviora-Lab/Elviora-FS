@@ -72,6 +72,9 @@ export const analytics = {
     price: number;
     currency: string;
     variant?: string;
+    brand?: string;
+    listId?: string;
+    listName?: string;
   }) {
     logDev('add_to_cart', p);
     const eventId = newEventId();
@@ -88,6 +91,67 @@ export const analytics = {
     ga.addToCart(p);
   },
 
+  // ---- Product discovery (GA4-only recommended events) --------------------
+
+  viewItemList(p: { listId?: string; listName?: string; items: GaItem[] }) {
+    logDev('view_item_list', p);
+    ga.viewItemList(p);
+  },
+
+  selectItem(p: { listId?: string; listName?: string; item: GaItem }) {
+    logDev('select_item', p);
+    ga.selectItem(p);
+  },
+
+  viewCart(p: { value: number; currency: string; items: GaItem[] }) {
+    logDev('view_cart', p);
+    ga.viewCart(p);
+  },
+
+  removeFromCart(p: { value: number; currency: string; items: GaItem[] }) {
+    logDev('remove_from_cart', p);
+    ga.removeFromCart(p);
+  },
+
+  viewPromotion(p: {
+    promotionId?: string;
+    promotionName?: string;
+    creativeName?: string;
+    creativeSlot?: string;
+    items?: GaItem[];
+  }) {
+    logDev('view_promotion', p);
+    ga.viewPromotion(p);
+  },
+
+  selectPromotion(p: {
+    promotionId?: string;
+    promotionName?: string;
+    creativeName?: string;
+    creativeSlot?: string;
+    items?: GaItem[];
+  }) {
+    logDev('select_promotion', p);
+    ga.selectPromotion(p);
+  },
+
+  // ---- Identity (GA4 user_id / user properties) ---------------------------
+
+  setUser(p: { userId: string | null; properties?: Record<string, string | number> }) {
+    logDev('set_user', p.userId);
+    ga.setUser(p);
+  },
+
+  login(method = 'password') {
+    logDev('login', method);
+    ga.login(method);
+  },
+
+  signUp(method = 'password') {
+    logDev('sign_up', method);
+    ga.signUp(method);
+  },
+
   /** Attach Advanced Matching (email/phone) to the browser pixel — call once
    *  the shopper's contact details are known (e.g. at checkout). */
   identify(p: { email?: string | null; phone?: string | null }) {
@@ -101,7 +165,13 @@ export const analytics = {
     ga.addToWishlist(p);
   },
 
-  beginCheckout(p: { value: number; currency: string; count: number; items?: GaItem[] }) {
+  beginCheckout(p: {
+    value: number;
+    currency: string;
+    count: number;
+    coupon?: string;
+    items?: GaItem[];
+  }) {
     logDev('begin_checkout', p);
     const eventId = newEventId();
     metaPixel.initiateCheckout({ value: p.value, currency: p.currency, items: p.count }, eventId);
@@ -112,12 +182,30 @@ export const analytics = {
       content_type: 'product',
       ...(p.items?.length ? { content_ids: p.items.map((i) => i.item_id) } : {}),
     });
-    ga.beginCheckout({ value: p.value, currency: p.currency, items: p.items });
+    ga.beginCheckout({ value: p.value, currency: p.currency, coupon: p.coupon, items: p.items });
   },
 
-  addPaymentInfo(p: { value: number; currency: string; method: string }) {
+  /** GA4 `add_shipping_info` — the delivery step of the checkout funnel. */
+  addShippingInfo(p: {
+    value: number;
+    currency: string;
+    shippingTier?: string;
+    coupon?: string;
+    items?: GaItem[];
+  }) {
+    logDev('add_shipping_info', p);
+    ga.addShippingInfo(p);
+  },
+
+  addPaymentInfo(p: {
+    value: number;
+    currency: string;
+    method: string;
+    coupon?: string;
+    items?: GaItem[];
+  }) {
     logDev('add_payment_info', p);
-    metaPixel.addPaymentInfo(p);
+    metaPixel.addPaymentInfo({ value: p.value, currency: p.currency, method: p.method });
     ga.addPaymentInfo(p);
   },
 
@@ -126,6 +214,9 @@ export const analytics = {
     value: number;
     currency: string;
     count: number;
+    tax?: number;
+    shipping?: number;
+    coupon?: string;
     items?: GaItem[];
   }) {
     logDev('purchase', p);
@@ -135,7 +226,21 @@ export const analytics = {
       currency: p.currency,
       items: p.count,
     });
-    ga.purchase({ orderId: p.orderId, value: p.value, currency: p.currency, items: p.items });
+    ga.purchase({
+      orderId: p.orderId,
+      value: p.value,
+      currency: p.currency,
+      tax: p.tax,
+      shipping: p.shipping,
+      coupon: p.coupon,
+      items: p.items,
+    });
+  },
+
+  /** GA4 `refund` — full order refund (omit items) or partial (pass items). */
+  refund(p: { orderId: string; value?: number; currency?: string; items?: GaItem[] }) {
+    logDev('refund', p);
+    ga.refund(p);
   },
 
   search(query: string) {

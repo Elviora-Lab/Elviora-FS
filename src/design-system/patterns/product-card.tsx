@@ -7,6 +7,7 @@ import { Heart } from 'lucide-react';
 
 import { routes } from '@/config/routes';
 
+import { analytics } from '@/lib/analytics';
 import { cn } from '@/lib/cn';
 
 import { Price } from '@/design-system/primitives/price';
@@ -35,6 +36,10 @@ type ProductCardProps = {
   wishlisted?: boolean;
   priority?: boolean;
   className?: string;
+  /** Analytics list context — enables GA4 `select_item` when the card is clicked. */
+  listId?: string;
+  listName?: string;
+  index?: number;
 };
 
 export function ProductCard({
@@ -43,11 +48,30 @@ export function ProductCard({
   wishlisted,
   priority,
   className,
+  listId,
+  listName,
+  index,
 }: ProductCardProps) {
+  const trackSelect = () =>
+    analytics.selectItem({
+      listId,
+      listName,
+      item: {
+        item_id: product.id,
+        item_name: product.name,
+        item_brand: product.brandLine,
+        item_list_id: listId,
+        item_list_name: listName,
+        price: product.price,
+        index,
+      },
+    });
+
   return (
     <article className={cn('group relative flex flex-col gap-3', className)}>
       <Link
         href={routes.productDetail(product.slug)}
+        onClick={trackSelect}
         className="relative block aspect-[3/4] overflow-hidden rounded-md bg-gradient-pearl"
       >
         {product.imageUrl ? (
@@ -94,6 +118,7 @@ export function ProductCard({
         {product.brandLine ? <span className="eyebrow">{product.brandLine}</span> : null}
         <Link
           href={routes.productDetail(product.slug)}
+          onClick={trackSelect}
           className="font-serif text-base font-light leading-snug decoration-1 underline-offset-4 hover:underline"
         >
           {product.name}

@@ -7,6 +7,8 @@ import { toast } from 'sonner';
 
 import { normalizeError } from '@/services/api';
 
+import { analytics } from '@/lib/analytics';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -41,6 +43,8 @@ export function LoginForm() {
     try {
       const session = await login({ email: values.email, password: values.password }).unwrap();
       signIn(session.user);
+      analytics.login('password');
+      analytics.setUser({ userId: session.user.id });
       toast.success('Welcome back');
       // If we have an explicit redirect (gated route), honor it.
       // Otherwise send admins to /admin and customers to /account.

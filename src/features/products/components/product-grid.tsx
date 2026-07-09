@@ -1,7 +1,9 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { motion, useReducedMotion, type Variants } from 'framer-motion';
 
+import { analytics } from '@/lib/analytics';
 import { cn } from '@/lib/cn';
 
 import { ProductCard, ProductCardSkeleton } from '@/design-system/patterns/product-card';
@@ -16,6 +18,9 @@ type ProductGridProps = {
   className?: string;
   onWishlistToggle?: (id: string) => void;
   wishlistedIds?: string[];
+  /** GA4 list context — labels this grid's view_item_list / select_item events. */
+  listId?: string;
+  listName?: string;
 };
 
 const container: Variants = {
@@ -35,8 +40,33 @@ export function ProductGrid({
   className,
   onWishlistToggle,
   wishlistedIds = [],
+  listId,
+  listName,
 }: ProductGridProps) {
   const prefersReduced = useReducedMotion();
+
+  // GA4 view_item_list — fire once when the list first has products. Keyed on
+  // the id set so a filter/sort that swaps the products re-reports the new list.
+  const trackedKey = useRef<string>('');
+  useEffect(() => {
+    if (!products || products.length === 0) return;
+    const key = products.map((p) => p.id).join(',');
+    if (trackedKey.current === key) return;
+    trackedKey.current = key;
+    analytics.viewItemList({
+      listId,
+      listName,
+      items: products.slice(0, 50).map((p, i) => ({
+        item_id: p.id,
+        item_name: p.name,
+        item_brand: p.brandLine,
+        item_list_id: listId,
+        item_list_name: listName,
+        price: p.price,
+        index: i,
+      })),
+    });
+  }, [products, listId, listName]);
 
   if (loading && !products) {
     return (
@@ -75,6 +105,9 @@ export function ProductGrid({
             priority={i < 4}
             onWishlistToggle={onWishlistToggle}
             wishlisted={wishlistedIds.includes(p.id)}
+            listId={listId}
+            listName={listName}
+            index={i}
           />
         ))}
       </div>
@@ -95,6 +128,9 @@ export function ProductGrid({
             priority={i < 4}
             onWishlistToggle={onWishlistToggle}
             wishlisted={wishlistedIds.includes(p.id)}
+            listId={listId}
+            listName={listName}
+            index={i}
           />
         </motion.div>
       ))}

@@ -1,9 +1,12 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 
 import { useAppSelector } from '@/store/hooks';
+
+import { analytics } from '@/lib/analytics';
 
 import { EmptyState } from '@/design-system/primitives/empty-state';
 import { Price } from '@/design-system/primitives/price';
@@ -12,7 +15,7 @@ import { Button } from '@/components/ui/button';
 
 import { useRemoveCartLineMutation, useUpdateCartLineMutation } from '@/features/cart/api/cart-api';
 import { useCart } from '@/features/cart/hooks/use-cart';
-import { selectCart } from '@/features/cart/store/cart-slice';
+import { type CartLine, selectCart } from '@/features/cart/store/cart-slice';
 
 import { CouponField } from './coupon-field';
 
@@ -24,6 +27,26 @@ export function CartPageClient() {
   const [updateLine] = useUpdateCartLineMutation();
   const [removeLineMutation] = useRemoveCartLineMutation();
 
+  // GA4 view_cart — once per mount, when the bag has items.
+  const trackedView = useRef(false);
+  useEffect(() => {
+    if (trackedView.current || cart.lines.length === 0) return;
+    trackedView.current = true;
+    analytics.viewCart({
+      value: subtotal,
+      currency: cart.lines[0]?.currency ?? 'PKR',
+      items: cart.lines.map((l, i) => ({
+        item_id: l.productId,
+        item_name: l.name,
+        item_variant: l.variantId,
+        price: l.unitPrice,
+        quantity: l.quantity,
+        index: i,
+      })),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function handleUpdateQty(line: { id?: string; productId: string; variantId: string }, q: number) {
     updateQty(line.productId, line.variantId, q);
     if (line.id)
@@ -32,7 +55,20 @@ export function CartPageClient() {
         .catch(() => undefined);
   }
 
-  function handleRemove(line: { id?: string; productId: string; variantId: string }) {
+  function handleRemove(line: CartLine) {
+    analytics.removeFromCart({
+      value: line.unitPrice * line.quantity,
+      currency: line.currency,
+      items: [
+        {
+          item_id: line.productId,
+          item_name: line.name,
+          item_variant: line.variantId,
+          price: line.unitPrice,
+          quantity: line.quantity,
+        },
+      ],
+    });
     remove(line.productId, line.variantId);
     if (line.id)
       removeLineMutation({ lineId: line.id })

@@ -2,12 +2,22 @@ import { type ProductCardData } from '@/design-system/patterns/product-card';
 import { EmptyState } from '@/design-system/primitives/empty-state';
 
 import { ProductCardConnected } from './product-card-connected';
+import { ViewItemListTracker } from './view-item-list-tracker';
 
 /**
  * Server-rendered product grid. Renders real product cards into the HTML (good
- * for LCP + crawlers); each card hydrates only its wishlist heart.
+ * for LCP + crawlers); each card hydrates only its wishlist heart. `listId` /
+ * `listName` label the GA4 view_item_list / select_item events for this grid.
  */
-export function ProductResults({ products }: { products: ProductCardData[] }) {
+export function ProductResults({
+  products,
+  listId,
+  listName,
+}: {
+  products: ProductCardData[];
+  listId?: string;
+  listName?: string;
+}) {
   if (products.length === 0) {
     return (
       <EmptyState
@@ -18,10 +28,20 @@ export function ProductResults({ products }: { products: ProductCardData[] }) {
   }
 
   return (
-    <div className="grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 lg:grid-cols-4">
-      {products.map((p, i) => (
-        <ProductCardConnected key={p.id} product={p} priority={i < 4} />
-      ))}
-    </div>
+    <>
+      <ViewItemListTracker products={products} listId={listId} listName={listName} />
+      <div className="grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 lg:grid-cols-4">
+        {products.map((p, i) => (
+          <ProductCardConnected
+            key={p.id}
+            product={p}
+            priority={i < 4}
+            listId={listId}
+            listName={listName}
+            index={i}
+          />
+        ))}
+      </div>
+    </>
   );
 }

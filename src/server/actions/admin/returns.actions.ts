@@ -8,6 +8,7 @@ import { prisma } from '@/lib/db';
 
 import { withAction } from '../_with-action';
 
+import { gaTrackRefund } from '@/server/analytics/ga-measurement-protocol';
 import { requireAdmin } from '@/server/auth/guards';
 import { sendEmail } from '@/server/email';
 import { returnUpdateEmail } from '@/server/email/templates/return-update';
@@ -41,6 +42,24 @@ export const setReturnStatus = withAction(async (input: z.infer<typeof setStatus
       where: { id: rr.orderId },
       data: { paymentStatus: 'REFUNDED' },
     });
+
+    // GA4 refund (server-side) — matched to the purchase by transaction_id.
+    // No `_ga` cookie here (this runs in the admin's session, not the buyer's),
+    // so a fallback client_id is used; GA4 still ties it to the transaction.
+    try {
+      const ord = await prisma.order.findUnique({
+        where: { id: rr.orderId },
+        select: { totalAmount: true, currency: true },
+      });
+      if (ord) {
+        void gaTrackRefund(
+          { orderId: rr.orderId, value: Number(ord.totalAmount), currency: ord.currency },
+          { userId: rr.order.userId },
+        );
+      }
+    } catch {
+      /* best-effort */
+    }
   }
 
   // Notify + email the customer.
