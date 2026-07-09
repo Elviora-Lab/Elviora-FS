@@ -162,9 +162,17 @@ export function ProductForm({
         <textarea
           name="fullDescription"
           defaultValue={defaultValues?.fullDescription}
-          rows={5}
+          rows={7}
+          placeholder={
+            '## How to use\n- Step one\n- Step two\n\n**Pro tip:** layer for extra hold.'
+          }
           className="flex w-full rounded-md border border-input bg-transparent px-3.5 py-2 text-sm placeholder:text-muted-foreground/70 focus-visible:border-foreground/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         />
+        <p className="mt-1.5 text-xs text-muted-foreground">
+          Supports simple formatting: <code>## Heading</code>, <code>- bullet</code>,{' '}
+          <code>1. numbered</code>, and <code>**bold**</code>. Leave a blank line between
+          paragraphs.
+        </p>
       </Field>
 
       <Field label="Product images">

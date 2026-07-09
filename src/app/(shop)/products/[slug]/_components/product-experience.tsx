@@ -24,6 +24,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { RichText } from '@/components/ui/rich-text';
 
 import { cartApi } from '@/features/cart/api/cart-api';
 import { useCart } from '@/features/cart/hooks/use-cart';
@@ -319,7 +320,11 @@ export function ProductExperience({
           <AccordionItem value="description">
             <AccordionTrigger>Description</AccordionTrigger>
             <AccordionContent>
-              {fullDescription ?? shortDescription ?? 'No description yet.'}
+              {fullDescription || shortDescription ? (
+                <RichText text={fullDescription ?? shortDescription ?? ''} />
+              ) : (
+                'No description yet.'
+              )}
             </AccordionContent>
           </AccordionItem>
 
