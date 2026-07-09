@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { createHash } from 'node:crypto';
+import { ParamBuilder } from 'capi-param-builder-nodejs';
 
 import { publicEnv, serverEnv } from '@/config/env';
 
@@ -20,20 +20,33 @@ export function capiEnabled(): boolean {
   return Boolean(serverEnv.META_CAPI_ACCESS_TOKEN && publicEnv.NEXT_PUBLIC_FB_PIXEL_ID);
 }
 
-/** SHA-256 hex of a normalized value — Meta requires PII to be hashed. */
-function hash(value: string | null | undefined): string | undefined {
-  if (!value) return undefined;
-  const normalized = value.trim().toLowerCase();
-  if (!normalized) return undefined;
-  return createHash('sha256').update(normalized).digest('hex');
-}
+// Meta's Conversions API Parameter Builder owns normalization + SHA-256 hashing
+// (per-field rules + the EMQ "appendix"). It's stateless for hashing, so one
+// instance is reused. The domain list only affects cookies-to-set (unused here),
+// but we pass the real host so the instance is well-formed.
+const PB_DOMAINS = (() => {
+  try {
+    return [new URL(publicEnv.NEXT_PUBLIC_SITE_URL).hostname, 'localhost'];
+  } catch {
+    return ['localhost'];
+  }
+})();
+const paramBuilder = new ParamBuilder(PB_DOMAINS);
 
-/** Phone: strip everything but digits before hashing (keep country code). */
-function hashPhone(value: string | null | undefined): string | undefined {
+/**
+ * Normalize + SHA-256 a customer-info value via the Parameter Builder. The
+ * library returns a Meta-ready `<hash>.<appendix>` string; we send it as-is and
+ * NEVER re-hash. `dataType` is Meta's field name (`email`, `phone`,
+ * `first_name`, …). Returns undefined for blank input or on any library error
+ * (tracking must never throw).
+ */
+function pii(value: string | null | undefined, dataType: string): string | undefined {
   if (!value) return undefined;
-  const digits = value.replace(/[^0-9]/g, '');
-  if (!digits) return undefined;
-  return createHash('sha256').update(digits).digest('hex');
+  try {
+    return paramBuilder.getNormalizedAndHashedPII(value, dataType) ?? undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 export type CapiUserData = {
@@ -53,13 +66,13 @@ export type CapiUserData = {
 
 function buildUserData(u: CapiUserData): Record<string, unknown> {
   const data: Record<string, unknown> = {};
-  const em = hash(u.email);
-  const ph = hashPhone(u.phone);
-  const fn = hash(u.firstName);
-  const ln = hash(u.lastName);
-  const ct = hash(u.city);
-  const country = hash(u.country);
-  const externalId = hash(u.externalId);
+  const em = pii(u.email, 'email');
+  const ph = pii(u.phone, 'phone');
+  const fn = pii(u.firstName, 'first_name');
+  const ln = pii(u.lastName, 'last_name');
+  const ct = pii(u.city, 'city');
+  const country = pii(u.country, 'country');
+  const externalId = pii(u.externalId, 'external_id');
   if (em) data.em = [em];
   if (ph) data.ph = [ph];
   if (fn) data.fn = [fn];

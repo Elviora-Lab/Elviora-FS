@@ -7,6 +7,7 @@ import { organizationJsonLd, websiteJsonLd } from '@/lib/seo/json-ld';
 import { JsonLd } from '@/lib/seo/json-ld-component';
 import { defaultMetadata } from '@/lib/seo/metadata';
 
+import { CapiParamInit } from '@/components/analytics/capi-param-init';
 import { GoogleAnalytics } from '@/components/analytics/google-analytics';
 import { MetaPixel } from '@/components/analytics/meta-pixel';
 
@@ -41,6 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning className={`${serif.variable} ${sans.variable}`}>
       <body className="min-h-screen bg-background text-foreground antialiased">
         <MetaPixel />
+        <CapiParamInit />
         <GoogleAnalytics />
         <AppProviders>{children}</AppProviders>
         <JsonLd data={organizationJsonLd()} />
