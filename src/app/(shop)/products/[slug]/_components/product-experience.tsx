@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -16,6 +16,7 @@ import { cn } from '@/lib/cn';
 import { Price } from '@/design-system/primitives/price';
 import { QuantitySelector } from '@/design-system/primitives/quantity-selector';
 import { Rating } from '@/design-system/primitives/rating';
+import { TrustBar } from '@/components/commerce/trust-bar';
 import {
   Accordion,
   AccordionContent,
@@ -107,6 +108,20 @@ export function ProductExperience({
   const active = images[activeIndex];
   const go = (dir: 1 | -1) => setActiveIndex((i) => (i + dir + total) % total);
 
+  // Sticky "Add to bag" bar — show whenever the main CTA is off-screen, so the
+  // buy action is always one tap away (less friction → more add-to-carts).
+  const ctaRef = useRef<HTMLDivElement>(null);
+  const [showSticky, setShowSticky] = useState(false);
+  useEffect(() => {
+    const el = ctaRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const obs = new IntersectionObserver(([entry]) => setShowSticky(!entry?.isIntersecting), {
+      threshold: 0,
+    });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
   // Analytics: fire a product view once per product (Meta ViewContent + GA4 view_item).
   useEffect(() => {
     analytics.viewItem({ id: productId, name: productName, price: currentPrice, currency });
@@ -153,231 +168,259 @@ export function ProductExperience({
   }
 
   return (
-    <div className="grid gap-10 lg:grid-cols-2">
-      {/* Gallery — one image at a time */}
-      <div className="relative aspect-[4/5] overflow-hidden rounded-md bg-gradient-pearl">
-        {active?.url ? (
-          <Image
-            key={active.url}
-            src={active.url}
-            alt={active.alt}
-            fill
-            priority
-            sizes="(min-width:1024px) 50vw, 100vw"
-            className="object-contain"
-          />
-        ) : (
-          <span
-            aria-hidden
-            className="absolute inset-0 grid place-items-center font-serif text-3xl font-light uppercase tracking-[0.22em] text-brand-charcoal/30"
-          >
-            Elviora
-          </span>
-        )}
+    <>
+      <div className="grid gap-10 lg:grid-cols-2">
+        {/* Gallery — one image at a time */}
+        <div className="relative aspect-[4/5] overflow-hidden rounded-md bg-gradient-pearl">
+          {active?.url ? (
+            <Image
+              key={active.url}
+              src={active.url}
+              alt={active.alt}
+              fill
+              priority
+              sizes="(min-width:1024px) 50vw, 100vw"
+              className="object-contain"
+            />
+          ) : (
+            <span
+              aria-hidden
+              className="absolute inset-0 grid place-items-center font-serif text-3xl font-light uppercase tracking-[0.22em] text-brand-charcoal/30"
+            >
+              Elviora
+            </span>
+          )}
 
-        {total > 1 ? (
-          <>
-            <button
-              type="button"
-              onClick={() => go(-1)}
-              aria-label="Previous image"
-              className="absolute left-3 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-background/80 text-foreground shadow-soft backdrop-blur transition hover:bg-background"
-            >
-              <ChevronLeft className="size-5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => go(1)}
-              aria-label="Next image"
-              className="absolute right-3 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-background/80 text-foreground shadow-soft backdrop-blur transition hover:bg-background"
-            >
-              <ChevronRight className="size-5" />
-            </button>
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-background/80 px-2.5 py-1 text-xs tabular-nums text-foreground backdrop-blur">
-              {activeIndex + 1} / {total}
+          {total > 1 ? (
+            <>
+              <button
+                type="button"
+                onClick={() => go(-1)}
+                aria-label="Previous image"
+                className="absolute left-3 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-background/80 text-foreground shadow-soft backdrop-blur transition hover:bg-background"
+              >
+                <ChevronLeft className="size-5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => go(1)}
+                aria-label="Next image"
+                className="absolute right-3 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-background/80 text-foreground shadow-soft backdrop-blur transition hover:bg-background"
+              >
+                <ChevronRight className="size-5" />
+              </button>
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-background/80 px-2.5 py-1 text-xs tabular-nums text-foreground backdrop-blur">
+                {activeIndex + 1} / {total}
+              </div>
+            </>
+          ) : null}
+        </div>
+
+        {/* Right column */}
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
+              {brandName ? (
+                brandSlug ? (
+                  <Link
+                    href={`/brands/${brandSlug}`}
+                    className="eyebrow w-fit transition-colors hover:text-foreground"
+                  >
+                    {brandName}
+                  </Link>
+                ) : (
+                  <span className="eyebrow">{brandName}</span>
+                )
+              ) : null}
+              <h1 className="editorial-heading text-display-md md:text-display-lg">
+                {productName}
+              </h1>
+              {reviewCount && reviewCount > 0 ? (
+                <a href="#reviews" className="w-fit transition-opacity hover:opacity-80">
+                  <Rating value={rating ?? 0} reviewCount={reviewCount} />
+                </a>
+              ) : null}
+              {shortDescription ? (
+                <p className="text-pretty leading-relaxed text-muted-foreground">
+                  {shortDescription}
+                </p>
+              ) : null}
             </div>
-          </>
-        ) : null}
-      </div>
+            {skinConcerns.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {skinConcerns.map((c) => (
+                  <Badge key={c.id} variant="outline">
+                    {c.name}
+                  </Badge>
+                ))}
+              </div>
+            ) : null}
+          </div>
 
-      {/* Right column */}
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-col gap-2">
-            {brandName ? (
-              brandSlug ? (
-                <Link
-                  href={`/brands/${brandSlug}`}
-                  className="eyebrow w-fit transition-colors hover:text-foreground"
-                >
-                  {brandName}
-                </Link>
-              ) : (
-                <span className="eyebrow">{brandName}</span>
-              )
+          <div className="flex flex-col gap-5 rounded-lg border border-border bg-card p-6">
+            <Price
+              amount={currentPrice}
+              compareAt={comparePrice}
+              currency={currency}
+              size="lg"
+              showSavings
+            />
+
+            {variants.length > 1 ? (
+              <div className="flex flex-col gap-2.5">
+                <div className="flex items-baseline justify-between">
+                  <Label>Choose your variant</Label>
+                  {selected ? (
+                    <span className="text-xs uppercase tracking-[0.1em] text-muted-foreground">
+                      {selected.name}
+                    </span>
+                  ) : null}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {variants.map((v) => {
+                    const disabled = !v.isActive || v.stockQuantity === 0;
+                    const isActive = variantId === v.id;
+                    return (
+                      <button
+                        key={v.id}
+                        type="button"
+                        onClick={() => !disabled && selectVariant(v.id)}
+                        disabled={disabled}
+                        title={disabled ? `${v.name} (out of stock)` : v.name}
+                        aria-label={v.name}
+                        aria-pressed={isActive}
+                        className={cn(
+                          'relative grid size-8 place-items-center overflow-hidden rounded-full border transition-all',
+                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                          isActive
+                            ? 'border-transparent ring-2 ring-foreground ring-offset-2 ring-offset-card'
+                            : 'border-border/60 hover:scale-110',
+                          disabled && 'cursor-not-allowed opacity-40',
+                        )}
+                        style={v.hex ? { backgroundColor: v.hex } : undefined}
+                      >
+                        {!v.hex ? (
+                          <span className="text-[8px] font-medium uppercase text-muted-foreground">
+                            {v.name.slice(0, 3)}
+                          </span>
+                        ) : null}
+                        {disabled ? (
+                          <span
+                            aria-hidden
+                            className="absolute inset-0 grid place-items-center text-base text-foreground/70"
+                          >
+                            ⁄
+                          </span>
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             ) : null}
-            <h1 className="editorial-heading text-display-md md:text-display-lg">{productName}</h1>
-            {reviewCount && reviewCount > 0 ? (
-              <a href="#reviews" className="w-fit transition-opacity hover:opacity-80">
-                <Rating value={rating ?? 0} reviewCount={reviewCount} />
-              </a>
-            ) : null}
-            {shortDescription ? (
-              <p className="text-pretty leading-relaxed text-muted-foreground">
-                {shortDescription}
+
+            <div className="flex flex-col gap-2">
+              <Label>Quantity</Label>
+              <QuantitySelector
+                value={quantity}
+                onChange={(n) => setQuantity(Math.min(n, Math.max(1, maxForVariant)))}
+                min={1}
+                max={Math.max(1, maxForVariant)}
+                disabled={!canAdd}
+              />
+            </div>
+
+            {selected && selected.stockQuantity > 0 && selected.stockQuantity <= 6 ? (
+              <p className="flex items-center gap-1.5 text-sm font-medium text-destructive">
+                <Flame className="size-4 shrink-0" />
+                Only {selected.stockQuantity} left — order soon
               </p>
             ) : null}
-          </div>
-          {skinConcerns.length > 0 ? (
-            <div className="flex flex-wrap gap-1.5">
-              {skinConcerns.map((c) => (
-                <Badge key={c.id} variant="outline">
-                  {c.name}
-                </Badge>
-              ))}
-            </div>
-          ) : null}
-        </div>
 
-        <div className="flex flex-col gap-5 rounded-lg border border-border bg-card p-6">
-          <Price
-            amount={currentPrice}
-            compareAt={comparePrice}
-            currency={currency}
-            size="lg"
-            showSavings
-          />
+            <Button
+              size="xl"
+              variant="gold"
+              uppercase
+              loading={pending}
+              disabled={!canAdd || outOfStock}
+              onClick={handleAdd}
+            >
+              {outOfStock ? 'Out of stock' : canAdd ? 'Add to bag' : 'Unavailable'}
+            </Button>
+            {/* Sentinel: when this scrolls out of view, the sticky CTA appears. */}
+            <div ref={ctaRef} aria-hidden className="h-px" />
 
-          {variants.length > 1 ? (
-            <div className="flex flex-col gap-2.5">
-              <div className="flex items-baseline justify-between">
-                <Label>Choose your variant</Label>
-                {selected ? (
-                  <span className="text-xs uppercase tracking-[0.1em] text-muted-foreground">
-                    {selected.name}
-                  </span>
-                ) : null}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {variants.map((v) => {
-                  const disabled = !v.isActive || v.stockQuantity === 0;
-                  const isActive = variantId === v.id;
-                  return (
-                    <button
-                      key={v.id}
-                      type="button"
-                      onClick={() => !disabled && selectVariant(v.id)}
-                      disabled={disabled}
-                      title={disabled ? `${v.name} (out of stock)` : v.name}
-                      aria-label={v.name}
-                      aria-pressed={isActive}
-                      className={cn(
-                        'relative grid size-8 place-items-center overflow-hidden rounded-full border transition-all',
-                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                        isActive
-                          ? 'border-transparent ring-2 ring-foreground ring-offset-2 ring-offset-card'
-                          : 'border-border/60 hover:scale-110',
-                        disabled && 'cursor-not-allowed opacity-40',
-                      )}
-                      style={v.hex ? { backgroundColor: v.hex } : undefined}
-                    >
-                      {!v.hex ? (
-                        <span className="text-[8px] font-medium uppercase text-muted-foreground">
-                          {v.name.slice(0, 3)}
-                        </span>
-                      ) : null}
-                      {disabled ? (
-                        <span
-                          aria-hidden
-                          className="absolute inset-0 grid place-items-center text-base text-foreground/70"
-                        >
-                          ⁄
-                        </span>
-                      ) : null}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ) : null}
+            {selected && !canAdd ? (
+              <BackInStockNotify key={selected.id} variantId={selected.id} />
+            ) : null}
 
-          <div className="flex flex-col gap-2">
-            <Label>Quantity</Label>
-            <QuantitySelector
-              value={quantity}
-              onChange={(n) => setQuantity(Math.min(n, Math.max(1, maxForVariant)))}
-              min={1}
-              max={Math.max(1, maxForVariant)}
-              disabled={!canAdd}
-            />
-          </div>
-
-          {selected && selected.stockQuantity > 0 && selected.stockQuantity <= 6 ? (
-            <p className="flex items-center gap-1.5 text-sm font-medium text-destructive">
-              <Flame className="size-4 shrink-0" />
-              Only {selected.stockQuantity} left — order soon
+            <p className="text-xs text-muted-foreground">
+              Free shipping on orders over Rs 8,000 · 30-day returns
             </p>
-          ) : null}
+            <TrustBar />
+          </div>
 
-          <Button
-            size="xl"
-            variant="gold"
-            uppercase
-            loading={pending}
-            disabled={!canAdd || outOfStock}
-            onClick={handleAdd}
-          >
-            {outOfStock ? 'Out of stock' : canAdd ? 'Add to bag' : 'Unavailable'}
-          </Button>
-
-          {selected && !canAdd ? (
-            <BackInStockNotify key={selected.id} variantId={selected.id} />
-          ) : null}
-
-          <p className="text-xs text-muted-foreground">
-            Free shipping on orders over Rs 8,000 · 30-day returns
-          </p>
-        </div>
-
-        <Accordion type="multiple" defaultValue={['description']} className="mt-2">
-          <AccordionItem value="description">
-            <AccordionTrigger>Description</AccordionTrigger>
-            <AccordionContent>
-              {fullDescription || shortDescription ? (
-                <RichText text={fullDescription ?? shortDescription ?? ''} />
-              ) : (
-                'No description yet.'
-              )}
-            </AccordionContent>
-          </AccordionItem>
-
-          {ingredients.length > 0 ? (
-            <AccordionItem value="ingredients">
-              <AccordionTrigger>Hero ingredients</AccordionTrigger>
+          <Accordion type="multiple" defaultValue={['description']} className="mt-2">
+            <AccordionItem value="description">
+              <AccordionTrigger>Description</AccordionTrigger>
               <AccordionContent>
-                <ul className="flex flex-col gap-2">
-                  {ingredients.map((ing) => (
-                    <li key={ing.id}>
-                      <span className="font-medium text-foreground">{ing.name}</span>
-                      {ing.description ? (
-                        <span className="text-muted-foreground"> — {ing.description}</span>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
+                {fullDescription || shortDescription ? (
+                  <RichText text={fullDescription ?? shortDescription ?? ''} />
+                ) : (
+                  'No description yet.'
+                )}
               </AccordionContent>
             </AccordionItem>
-          ) : null}
 
-          <AccordionItem value="shipping">
-            <AccordionTrigger>Shipping &amp; returns</AccordionTrigger>
-            <AccordionContent>
-              Complimentary shipping on orders over Rs 8,000. Free 30-day returns on all unopened
-              products.
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
+            {ingredients.length > 0 ? (
+              <AccordionItem value="ingredients">
+                <AccordionTrigger>Hero ingredients</AccordionTrigger>
+                <AccordionContent>
+                  <ul className="flex flex-col gap-2">
+                    {ingredients.map((ing) => (
+                      <li key={ing.id}>
+                        <span className="font-medium text-foreground">{ing.name}</span>
+                        {ing.description ? (
+                          <span className="text-muted-foreground"> — {ing.description}</span>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                </AccordionContent>
+              </AccordionItem>
+            ) : null}
+
+            <AccordionItem value="shipping">
+              <AccordionTrigger>Shipping &amp; returns</AccordionTrigger>
+              <AccordionContent>
+                Complimentary shipping on orders over Rs 8,000. Free 30-day returns on all unopened
+                products.
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </div>
       </div>
-    </div>
+
+      {showSticky && canAdd && !outOfStock ? (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 shadow-elevated backdrop-blur">
+          <div className="container flex items-center gap-3 py-3">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">{productName}</p>
+              <Price amount={currentPrice} compareAt={comparePrice} currency={currency} size="sm" />
+            </div>
+            <Button
+              size="lg"
+              variant="gold"
+              uppercase
+              loading={pending}
+              onClick={handleAdd}
+              className="shrink-0"
+            >
+              Add to bag
+            </Button>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }

@@ -1,3 +1,4 @@
+import { AnnouncementBar } from '@/components/layout/announcement-bar';
 import { MobileNav } from '@/components/layout/mobile-nav';
 import { SiteFooter } from '@/components/layout/site-footer';
 import { SiteHeader } from '@/components/layout/site-header';
@@ -10,6 +11,7 @@ import { WishlistHydrator } from '@/features/wishlist/components/wishlist-hydrat
 export default function ShopLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
+      <AnnouncementBar />
       <SiteHeader />
       <main className="flex-1">{children}</main>
       <SiteFooter />

@@ -150,6 +150,10 @@ const config: Config = {
         shimmer: {
           '100%': { transform: 'translateX(100%)' },
         },
+        marquee: {
+          from: { transform: 'translateX(0)' },
+          to: { transform: 'translateX(-50%)' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
@@ -157,6 +161,7 @@ const config: Config = {
         'fade-in': 'fade-in 0.4s ease-out',
         'fade-up': 'fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1)',
         shimmer: 'shimmer 1.6s infinite',
+        marquee: 'marquee 30s linear infinite',
       },
       backgroundImage: {
         'gradient-gold':
