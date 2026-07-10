@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 
 import { GaOverview } from './_components/ga-overview';
 
+import { DEFAULT_GA_RANGE, isGaRange } from '@/server/analytics/ga-data-api';
 import { adminAnalyticsRepo } from '@/server/repositories/admin.repo';
 
 export const metadata = buildMetadata({ title: 'Admin · Analytics', noIndex: true });
@@ -80,9 +81,11 @@ function ProductRankList({
 export default async function AdminAnalyticsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ country?: string }>;
+  searchParams: Promise<{ range?: string; country?: string }>;
 }) {
-  const { country } = await searchParams;
+  const sp = await searchParams;
+  const range = isGaRange(sp.range) ? sp.range : DEFAULT_GA_RANGE;
+  const country = sp.country;
   const [funnel, topViewed, topAddedToCart, topSearches] = await Promise.all([
     adminAnalyticsRepo.funnel(WINDOW_DAYS),
     adminAnalyticsRepo.topViewed(WINDOW_DAYS),
@@ -115,12 +118,12 @@ export default async function AdminAnalyticsPage({
 
       {/* Live Google Analytics (GA4 Data API) — loads independently. */}
       <Suspense
-        key={country ?? 'all'}
+        key={`${range}-${country ?? 'all'}`}
         fallback={
-          <div className="h-24 animate-pulse rounded-lg border border-border bg-muted/40" />
+          <div className="h-40 animate-pulse rounded-lg border border-border bg-muted/40" />
         }
       >
-        <GaOverview country={country} />
+        <GaOverview range={range} country={country} />
       </Suspense>
 
       <div className="border-t border-border pt-2">

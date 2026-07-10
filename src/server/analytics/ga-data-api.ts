@@ -41,6 +41,20 @@ function jwtClient(): JWT {
   return cachedClient;
 }
 
+// ---------- Date ranges ----------
+
+export const GA_RANGES = { '7d': 7, '30d': 30, '90d': 90 } as const;
+export type GaRange = keyof typeof GA_RANGES;
+export const DEFAULT_GA_RANGE: GaRange = '30d';
+export const GA_RANGE_LABELS: Record<GaRange, string> = {
+  '7d': 'Last 7 days',
+  '30d': 'Last 30 days',
+  '90d': 'Last 90 days',
+};
+export function isGaRange(value: string | undefined): value is GaRange {
+  return Boolean(value) && value! in GA_RANGES;
+}
+
 // ---------- Types ----------
 
 export type GaKpis = {
@@ -60,6 +74,9 @@ export type GaOverview = {
   channels: GaRow[];
   countries: GaRow[];
   cities: GaRow[];
+  regions: GaRow[];
+  devices: GaRow[];
+  browsers: GaRow[];
   /** The active country filter, if any (echoed back for the UI). */
   country?: string;
 };
@@ -165,34 +182,60 @@ export async function getGaOverview(
       limit: 10,
       ...geoFilter,
     },
+    // 5 — regions / states
+    {
+      dateRanges,
+      dimensions: [{ name: 'region' }],
+      metrics: [{ name: 'activeUsers' }],
+      orderBys: [{ metric: { metricName: 'activeUsers' }, desc: true }],
+      limit: 10,
+      ...geoFilter,
+    },
+    // 6 — device category
+    {
+      dateRanges,
+      dimensions: [{ name: 'deviceCategory' }],
+      metrics: [{ name: 'activeUsers' }],
+      orderBys: [{ metric: { metricName: 'activeUsers' }, desc: true }],
+      limit: 6,
+      ...geoFilter,
+    },
+    // 7 — browser
+    {
+      dateRanges,
+      dimensions: [{ name: 'browser' }],
+      metrics: [{ name: 'activeUsers' }],
+      orderBys: [{ metric: { metricName: 'activeUsers' }, desc: true }],
+      limit: 6,
+      ...geoFilter,
+    },
   ];
 
   try {
     const { token } = await jwtClient().getAccessToken();
     if (!token) return { ok: false, error: 'Service-account authentication failed.' };
 
-    const res = await fetch(`${DATA_API}/properties/${propertyId}:batchRunReports`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ requests }),
-    });
+    // GA4 caps batchRunReports at 5 report requests — split into chunks and run
+    // the batches in parallel, then reassemble the reports in request order.
+    const chunks: (typeof requests)[] = [];
+    for (let i = 0; i < requests.length; i += 5) chunks.push(requests.slice(i, i + 5));
 
-    if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      let message = `GA Data API error (${res.status}).`;
-      if (res.status === 403) {
-        message =
-          'Access denied — add the service-account email as a Viewer on the GA property (Admin → Property Access Management).';
-      } else if (res.status === 400 && body.includes('property')) {
-        message =
-          'Invalid GA_PROPERTY_ID — use the numeric property id (Admin → Property Settings).';
-      }
-      console.warn('[ga-data-api]', res.status, body.slice(0, 300));
-      return { ok: false, error: message };
-    }
+    const batchResults = await Promise.all(
+      chunks.map(async (reqs) => {
+        const res = await fetch(`${DATA_API}/properties/${propertyId}:batchRunReports`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ requests: reqs }),
+        });
+        if (!res.ok) {
+          const body = await res.text().catch(() => '');
+          throw Object.assign(new Error(`GA ${res.status}`), { status: res.status, body });
+        }
+        return ((await res.json()) as BatchResponse).reports ?? [];
+      }),
+    );
 
-    const json = (await res.json()) as BatchResponse;
-    const reports = json.reports ?? [];
+    const reports = batchResults.flat();
     const kpiValues = reports[0]?.rows?.[0]?.metricValues ?? [];
 
     return {
@@ -210,12 +253,23 @@ export async function getGaOverview(
         channels: rowsToRanked(reports[2]),
         countries: rowsToRanked(reports[3]),
         cities: rowsToRanked(reports[4]),
+        regions: rowsToRanked(reports[5]),
+        devices: rowsToRanked(reports[6]),
+        browsers: rowsToRanked(reports[7]),
         country: opts.country,
       },
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error.';
-    console.warn('[ga-data-api] request failed', message);
+    const status = (error as { status?: number }).status;
+    const body = (error as { body?: string }).body ?? '';
+    let message = error instanceof Error ? error.message : 'Unknown error.';
+    if (status === 403) {
+      message =
+        'Access denied — add the service-account email as a Viewer on the GA property (Admin → Property Access Management).';
+    } else if (status === 400 && body.includes('property')) {
+      message = 'Invalid GA_PROPERTY_ID — use the numeric property id (Admin → Property Settings).';
+    }
+    console.warn('[ga-data-api] request failed', status ?? '', message);
     return { ok: false, error: message };
   }
 }
