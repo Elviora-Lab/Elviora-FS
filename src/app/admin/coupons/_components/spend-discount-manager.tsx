@@ -116,61 +116,65 @@ export function SpendDiscountManager({ tiers, enabled }: { tiers: AdminTier[]; e
       {tiers.length === 0 ? (
         <p className="text-sm text-muted-foreground">No tiers yet — add one above.</p>
       ) : (
-        <table className="w-full text-sm">
-          <thead className="border-b border-border text-left text-xs uppercase tracking-[0.12em] text-muted-foreground">
-            <tr>
-              <th className="p-3">Spend ≥</th>
-              <th className="p-3">Discount</th>
-              <th className="p-3">Effective</th>
-              <th className="p-3">Status</th>
-              <th className="p-3">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {tiers.map((t) => (
-              <tr key={t.id} className="border-b border-border/60">
-                <td className="p-3 tabular-nums">Rs {t.minSubtotal.toLocaleString('en-US')}</td>
-                <td className="p-3 tabular-nums">Rs {t.discountAmount.toLocaleString('en-US')}</td>
-                <td className="p-3 tabular-nums text-muted-foreground">
-                  {((t.discountAmount / t.minSubtotal) * 100).toFixed(1)}%
-                </td>
-                <td className="p-3">
-                  <Badge variant={t.isActive ? 'success' : 'muted'}>
-                    {t.isActive ? 'Active' : 'Inactive'}
-                  </Badge>
-                </td>
-                <td className="p-3">
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      loading={pending}
-                      onClick={() =>
-                        run(
-                          () => toggleSpendTier({ id: t.id, isActive: !t.isActive }),
-                          t.isActive ? 'Deactivated' : 'Activated',
-                        )
-                      }
-                    >
-                      {t.isActive ? 'Deactivate' : 'Activate'}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      loading={pending}
-                      onClick={() => {
-                        if (!confirm('Delete this tier?')) return;
-                        run(() => deleteSpendTier({ id: t.id }), 'Tier deleted');
-                      }}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[560px] text-sm">
+            <thead className="border-b border-border text-left text-xs uppercase tracking-[0.12em] text-muted-foreground">
+              <tr>
+                <th className="p-3">Spend ≥</th>
+                <th className="p-3">Discount</th>
+                <th className="p-3">Effective</th>
+                <th className="p-3">Status</th>
+                <th className="p-3">Action</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {tiers.map((t) => (
+                <tr key={t.id} className="border-b border-border/60">
+                  <td className="p-3 tabular-nums">Rs {t.minSubtotal.toLocaleString('en-US')}</td>
+                  <td className="p-3 tabular-nums">
+                    Rs {t.discountAmount.toLocaleString('en-US')}
+                  </td>
+                  <td className="p-3 tabular-nums text-muted-foreground">
+                    {((t.discountAmount / t.minSubtotal) * 100).toFixed(1)}%
+                  </td>
+                  <td className="p-3">
+                    <Badge variant={t.isActive ? 'success' : 'muted'}>
+                      {t.isActive ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </td>
+                  <td className="p-3">
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        loading={pending}
+                        onClick={() =>
+                          run(
+                            () => toggleSpendTier({ id: t.id, isActive: !t.isActive }),
+                            t.isActive ? 'Deactivated' : 'Activated',
+                          )
+                        }
+                      >
+                        {t.isActive ? 'Deactivate' : 'Activate'}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        loading={pending}
+                        onClick={() => {
+                          if (!confirm('Delete this tier?')) return;
+                          run(() => deleteSpendTier({ id: t.id }), 'Tier deleted');
+                        }}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

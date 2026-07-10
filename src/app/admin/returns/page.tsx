@@ -39,7 +39,7 @@ export default async function AdminReturnsPage() {
       ) : (
         <Card>
           <CardContent className="overflow-x-auto p-0">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[820px] text-sm">
               <thead className="border-b border-border text-left text-xs uppercase tracking-[0.12em] text-muted-foreground">
                 <tr>
                   <th className="p-3">Order</th>

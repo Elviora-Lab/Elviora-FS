@@ -321,7 +321,7 @@ export default async function AdminPixelPage({ searchParams }: Props) {
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full min-w-[520px] text-sm">
                 <thead>
                   <tr className="border-b border-border text-left text-xs uppercase tracking-[0.1em] text-muted-foreground">
                     <th className="px-4 py-2 font-medium">Event</th>

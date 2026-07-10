@@ -71,8 +71,8 @@ export default async function CustomerOrderDetailPage({ params }: { params: Para
             <CardHeader>
               <CardTitle>Items</CardTitle>
             </CardHeader>
-            <CardContent>
-              <table className="w-full text-sm">
+            <CardContent className="overflow-x-auto">
+              <table className="w-full min-w-[520px] text-sm">
                 <thead className="text-left text-xs uppercase tracking-[0.12em] text-muted-foreground">
                   <tr>
                     <th className="pb-2">Product</th>

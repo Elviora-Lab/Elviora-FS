@@ -68,7 +68,7 @@ export default async function AdminCouponsPage() {
           {coupons.length === 0 ? (
             <p className="p-6 text-sm text-muted-foreground">No coupons yet.</p>
           ) : (
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[780px] text-sm">
               <thead className="border-b border-border text-left text-xs uppercase tracking-[0.12em] text-muted-foreground">
                 <tr>
                   <th className="p-3">Code</th>

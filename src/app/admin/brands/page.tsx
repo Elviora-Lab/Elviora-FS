@@ -35,8 +35,8 @@ export default async function AdminBrandsPage() {
         <CardHeader>
           <CardTitle>All brands</CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
-          <table className="w-full text-sm">
+        <CardContent className="overflow-x-auto p-0">
+          <table className="w-full min-w-[640px] text-sm">
             <thead className="border-b border-border">
               <tr className="text-left text-xs uppercase tracking-[0.12em] text-muted-foreground">
                 <th className="px-4 py-3">Name</th>

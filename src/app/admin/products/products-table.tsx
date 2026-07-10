@@ -124,7 +124,7 @@ export function ProductsTable({
 
       <Card>
         <CardContent className="overflow-x-auto p-0">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[860px] text-sm">
             <thead className="border-b border-border">
               <tr className="text-left text-xs uppercase tracking-[0.12em] text-muted-foreground">
                 <th className="w-10 px-4 py-3">

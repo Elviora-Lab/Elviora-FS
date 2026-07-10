@@ -133,7 +133,7 @@ export function OrdersTable({ rows }: { rows: Row[] }) {
         </div>
       </div>
 
-      <table className="w-full text-sm">
+      <table className="w-full min-w-[900px] text-sm">
         <thead className="border-b border-border">
           <tr className="text-left text-xs uppercase tracking-[0.12em] text-muted-foreground">
             <th className="w-10 px-4 py-3">
