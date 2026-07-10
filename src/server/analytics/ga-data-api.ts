@@ -53,18 +53,22 @@ export type GaKpis = {
 };
 
 export type GaRow = { label: string; value: number };
-export type GaDailyPoint = { date: string; users: number };
 
 export type GaOverview = {
   kpis: GaKpis;
   topPages: GaRow[];
   channels: GaRow[];
-  daily: GaDailyPoint[];
+  countries: GaRow[];
+  cities: GaRow[];
+  /** The active country filter, if any (echoed back for the UI). */
+  country?: string;
 };
 
 export type GaOverviewResult =
   | { ok: true; data: GaOverview }
   | { ok: false; error: string; notConfigured?: boolean };
+
+export type GaOverviewOpts = { country?: string };
 
 // ---------- Minimal GA Data API response shapes ----------
 
@@ -78,10 +82,6 @@ const n = (v: string | undefined) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-/** `YYYYMMDD` (GA date dimension) → `YYYY-MM-DD`. */
-const fmtDate = (d: string) =>
-  d.length === 8 ? `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}` : d;
-
 function rowsToRanked(report: GaReport | undefined): GaRow[] {
   return (report?.rows ?? []).flatMap((r) => {
     const label = r.dimensionValues?.[0]?.value;
@@ -92,12 +92,28 @@ function rowsToRanked(report: GaReport | undefined): GaRow[] {
 
 // ---------- Report ----------
 
-export async function getGaOverview(days: number): Promise<GaOverviewResult> {
+export async function getGaOverview(
+  days: number,
+  opts: GaOverviewOpts = {},
+): Promise<GaOverviewResult> {
   if (!gaDataApiEnabled())
     return { ok: false, error: 'Google Analytics is not connected.', notConfigured: true };
 
   const propertyId = serverEnv.GA_PROPERTY_ID as string;
   const dateRanges = [{ startDate: `${days}daysAgo`, endDate: 'today' }];
+
+  // When a country is selected, filter EVERY report to it (GA4 has no IP
+  // dimension, so location = country/region/city only).
+  const geoFilter = opts.country
+    ? {
+        dimensionFilter: {
+          filter: {
+            fieldName: 'country',
+            stringFilter: { value: opts.country, matchType: 'EXACT' },
+          },
+        },
+      }
+    : {};
 
   const requests = [
     // 0 — headline KPIs
@@ -111,6 +127,7 @@ export async function getGaOverview(days: number): Promise<GaOverviewResult> {
         { name: 'conversions' },
         { name: 'totalRevenue' },
       ],
+      ...geoFilter,
     },
     // 1 — top pages
     {
@@ -119,6 +136,7 @@ export async function getGaOverview(days: number): Promise<GaOverviewResult> {
       metrics: [{ name: 'screenPageViews' }],
       orderBys: [{ metric: { metricName: 'screenPageViews' }, desc: true }],
       limit: 8,
+      ...geoFilter,
     },
     // 2 — traffic channels
     {
@@ -127,13 +145,25 @@ export async function getGaOverview(days: number): Promise<GaOverviewResult> {
       metrics: [{ name: 'sessions' }],
       orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
       limit: 8,
+      ...geoFilter,
     },
-    // 3 — daily active users (trend)
+    // 3 — top countries (the location breakdown / filter source)
     {
       dateRanges,
-      dimensions: [{ name: 'date' }],
+      dimensions: [{ name: 'country' }],
       metrics: [{ name: 'activeUsers' }],
-      orderBys: [{ dimension: { dimensionName: 'date' } }],
+      orderBys: [{ metric: { metricName: 'activeUsers' }, desc: true }],
+      limit: 10,
+      ...geoFilter,
+    },
+    // 4 — top cities (respects the country filter when set)
+    {
+      dateRanges,
+      dimensions: [{ name: 'city' }],
+      metrics: [{ name: 'activeUsers' }],
+      orderBys: [{ metric: { metricName: 'activeUsers' }, desc: true }],
+      limit: 10,
+      ...geoFilter,
     },
   ];
 
@@ -178,11 +208,9 @@ export async function getGaOverview(days: number): Promise<GaOverviewResult> {
         },
         topPages: rowsToRanked(reports[1]),
         channels: rowsToRanked(reports[2]),
-        daily: (reports[3]?.rows ?? []).flatMap((r) => {
-          const date = r.dimensionValues?.[0]?.value;
-          if (!date) return [];
-          return [{ date: fmtDate(date), users: n(r.metricValues?.[0]?.value) }];
-        }),
+        countries: rowsToRanked(reports[3]),
+        cities: rowsToRanked(reports[4]),
+        country: opts.country,
       },
     };
   } catch (error) {

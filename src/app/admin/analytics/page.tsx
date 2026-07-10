@@ -77,7 +77,12 @@ function ProductRankList({
   );
 }
 
-export default async function AdminAnalyticsPage() {
+export default async function AdminAnalyticsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ country?: string }>;
+}) {
+  const { country } = await searchParams;
   const [funnel, topViewed, topAddedToCart, topSearches] = await Promise.all([
     adminAnalyticsRepo.funnel(WINDOW_DAYS),
     adminAnalyticsRepo.topViewed(WINDOW_DAYS),
@@ -110,11 +115,12 @@ export default async function AdminAnalyticsPage() {
 
       {/* Live Google Analytics (GA4 Data API) — loads independently. */}
       <Suspense
+        key={country ?? 'all'}
         fallback={
           <div className="h-24 animate-pulse rounded-lg border border-border bg-muted/40" />
         }
       >
-        <GaOverview />
+        <GaOverview country={country} />
       </Suspense>
 
       <div className="border-t border-border pt-2">
