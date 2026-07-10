@@ -1,9 +1,12 @@
+import { Suspense } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 
 import { buildMetadata } from '@/lib/seo/metadata';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+
+import { GaOverview } from './_components/ga-overview';
 
 import { adminAnalyticsRepo } from '@/server/repositories/admin.repo';
 
@@ -104,6 +107,22 @@ export default async function AdminAnalyticsPage() {
           Traffic and merchandising performance over the last {WINDOW_DAYS} days.
         </p>
       </header>
+
+      {/* Live Google Analytics (GA4 Data API) — loads independently. */}
+      <Suspense
+        fallback={
+          <div className="h-24 animate-pulse rounded-lg border border-border bg-muted/40" />
+        }
+      >
+        <GaOverview />
+      </Suspense>
+
+      <div className="border-t border-border pt-2">
+        <h2 className="editorial-heading text-display-sm">First-party events</h2>
+        <p className="text-sm text-muted-foreground">
+          Measured server-side from your own database (ad-blocker-proof).
+        </p>
+      </div>
 
       {/* Funnel */}
       <div className="grid gap-4 sm:grid-cols-3">

@@ -52,6 +52,12 @@ const serverEnvSchema = z.object({
   // GA4 Measurement Protocol — server-side events (Admin → Data Streams → Web →
   // Measurement Protocol API secrets). Paired with NEXT_PUBLIC_GA_ID.
   GA_API_SECRET: optionalStr,
+  // GA4 Data API (read GA metrics into /admin/analytics). Numeric property id
+  // (Admin → Property Settings) + a Google Cloud service account granted Viewer
+  // on the property. The private key keeps its literal "\n" escapes.
+  GA_PROPERTY_ID: optionalStr,
+  GA_SA_CLIENT_EMAIL: optionalStr,
+  GA_SA_PRIVATE_KEY: optionalStr,
   // Meta Marketing API — read-only ad performance dashboard (/admin/ads).
   // System User token with `ads_read`, plus the ad account id (digits only, or
   // with the act_ prefix). Both unset ⇒ the dashboard shows a setup card.
@@ -133,6 +139,9 @@ export const serverEnv = (() => {
     META_CAPI_ACCESS_TOKEN: process.env.META_CAPI_ACCESS_TOKEN,
     META_CAPI_TEST_EVENT_CODE: process.env.META_CAPI_TEST_EVENT_CODE,
     GA_API_SECRET: process.env.GA_API_SECRET,
+    GA_PROPERTY_ID: process.env.GA_PROPERTY_ID,
+    GA_SA_CLIENT_EMAIL: process.env.GA_SA_CLIENT_EMAIL,
+    GA_SA_PRIVATE_KEY: process.env.GA_SA_PRIVATE_KEY,
     META_ADS_ACCESS_TOKEN: process.env.META_ADS_ACCESS_TOKEN,
     META_ADS_ACCOUNT_ID: process.env.META_ADS_ACCOUNT_ID,
     POSTEX_API_TOKEN: process.env.POSTEX_API_TOKEN,
