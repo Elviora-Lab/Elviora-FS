@@ -5,6 +5,8 @@ import { cn } from '@/lib/cn';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
+import { GaTrendChart } from './ga-trend-chart';
+
 import {
   DEFAULT_GA_RANGE,
   GA_RANGE_LABELS,
@@ -197,7 +199,8 @@ export async function GaOverview({
     );
   }
 
-  const { kpis, topPages, channels, countries, cities, regions, devices, browsers } = result.data;
+  const { kpis, daily, events, topPages, channels, countries, cities, regions, devices, browsers } =
+    result.data;
   const activeCountry = result.data.country;
   const emptyLabel = `No data for ${GA_RANGE_LABELS[range].toLowerCase()}.`;
 
@@ -245,6 +248,27 @@ export async function GaOverview({
           </Card>
         ))}
       </div>
+
+      {daily.length >= 2 ? (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Active users</CardTitle>
+            <CardDescription>Daily, over {GA_RANGE_LABELS[range].toLowerCase()}.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <GaTrendChart points={daily} />
+          </CardContent>
+        </Card>
+      ) : null}
+
+      <SubHeading>Engagement</SubHeading>
+      <RankedList
+        title="Top events"
+        description="Which GA4 events fire most — including the ecommerce events the store sends."
+        rows={events}
+        unit="events"
+        emptyLabel={emptyLabel}
+      />
 
       <SubHeading>Acquisition &amp; content</SubHeading>
       <div className="grid gap-6 lg:grid-cols-2">

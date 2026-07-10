@@ -67,9 +67,12 @@ export type GaKpis = {
 };
 
 export type GaRow = { label: string; value: number };
+export type GaDailyPoint = { date: string; users: number };
 
 export type GaOverview = {
   kpis: GaKpis;
+  daily: GaDailyPoint[];
+  events: GaRow[];
   topPages: GaRow[];
   channels: GaRow[];
   countries: GaRow[];
@@ -98,6 +101,10 @@ const n = (v: string | undefined) => {
   const parsed = Number(v ?? 0);
   return Number.isFinite(parsed) ? parsed : 0;
 };
+
+/** `YYYYMMDD` (GA date dimension) → `YYYY-MM-DD`. */
+const fmtDate = (d: string) =>
+  d.length === 8 ? `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}` : d;
 
 function rowsToRanked(report: GaReport | undefined): GaRow[] {
   return (report?.rows ?? []).flatMap((r) => {
@@ -209,6 +216,23 @@ export async function getGaOverview(
       limit: 6,
       ...geoFilter,
     },
+    // 8 — daily active users (trend chart)
+    {
+      dateRanges,
+      dimensions: [{ name: 'date' }],
+      metrics: [{ name: 'activeUsers' }],
+      orderBys: [{ dimension: { dimensionName: 'date' } }],
+      ...geoFilter,
+    },
+    // 9 — top events (ties GA back to the tracking we fire)
+    {
+      dateRanges,
+      dimensions: [{ name: 'eventName' }],
+      metrics: [{ name: 'eventCount' }],
+      orderBys: [{ metric: { metricName: 'eventCount' }, desc: true }],
+      limit: 12,
+      ...geoFilter,
+    },
   ];
 
   try {
@@ -256,6 +280,11 @@ export async function getGaOverview(
         regions: rowsToRanked(reports[5]),
         devices: rowsToRanked(reports[6]),
         browsers: rowsToRanked(reports[7]),
+        daily: (reports[8]?.rows ?? []).flatMap((r) => {
+          const date = r.dimensionValues?.[0]?.value;
+          return date ? [{ date: fmtDate(date), users: n(r.metricValues?.[0]?.value) }] : [];
+        }),
+        events: rowsToRanked(reports[9]),
         country: opts.country,
       },
     };
