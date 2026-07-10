@@ -14,6 +14,7 @@ import { computeCheckoutTotals } from '@/lib/shipping';
 
 import { EmptyState } from '@/design-system/primitives/empty-state';
 import { Price } from '@/design-system/primitives/price';
+import { TrustBar } from '@/components/commerce/trust-bar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -381,6 +382,7 @@ export function CheckoutClient({ addresses, cart }: { addresses: Address[]; cart
         <Button size="lg" variant="gold" uppercase loading={pending} onClick={handlePlaceOrder}>
           Place order
         </Button>
+        <TrustBar className="pt-1" />
       </aside>
     </div>
   );

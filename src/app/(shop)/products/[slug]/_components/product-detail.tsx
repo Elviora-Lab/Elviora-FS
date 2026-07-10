@@ -100,6 +100,8 @@ export async function ProductDetail({
           currency="PKR"
           fallbackPrice={startingPrice}
           outOfStock={totalStock === 0}
+          rating={reviewSummary.average}
+          reviewCount={reviewSummary.count}
         />
 
         {/* Related products */}
@@ -118,7 +120,9 @@ export async function ProductDetail({
         ) : null}
 
         {/* Reviews */}
-        <ProductReviews productId={product.id} summary={reviewSummary} reviews={reviews} />
+        <div id="reviews" className="scroll-mt-24">
+          <ProductReviews productId={product.id} summary={reviewSummary} reviews={reviews} />
+        </div>
 
         {/* SEO */}
         <JsonLd

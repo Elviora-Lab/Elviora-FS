@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useTransition } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Flame } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { useAppDispatch } from '@/store/hooks';
@@ -15,6 +15,7 @@ import { cn } from '@/lib/cn';
 
 import { Price } from '@/design-system/primitives/price';
 import { QuantitySelector } from '@/design-system/primitives/quantity-selector';
+import { Rating } from '@/design-system/primitives/rating';
 import {
   Accordion,
   AccordionContent,
@@ -59,6 +60,8 @@ type Props = {
   currency?: string;
   fallbackPrice: number;
   outOfStock: boolean;
+  rating?: number;
+  reviewCount?: number;
 };
 
 export function ProductExperience({
@@ -76,6 +79,8 @@ export function ProductExperience({
   currency = 'PKR',
   fallbackPrice,
   outOfStock,
+  rating,
+  reviewCount,
 }: Props) {
   const router = useRouter();
   const dispatch = useAppDispatch();
@@ -212,6 +217,11 @@ export function ProductExperience({
               )
             ) : null}
             <h1 className="editorial-heading text-display-md md:text-display-lg">{productName}</h1>
+            {reviewCount && reviewCount > 0 ? (
+              <a href="#reviews" className="w-fit transition-opacity hover:opacity-80">
+                <Rating value={rating ?? 0} reviewCount={reviewCount} />
+              </a>
+            ) : null}
             {shortDescription ? (
               <p className="text-pretty leading-relaxed text-muted-foreground">
                 {shortDescription}
@@ -230,7 +240,13 @@ export function ProductExperience({
         </div>
 
         <div className="flex flex-col gap-5 rounded-lg border border-border bg-card p-6">
-          <Price amount={currentPrice} compareAt={comparePrice} currency={currency} size="lg" />
+          <Price
+            amount={currentPrice}
+            compareAt={comparePrice}
+            currency={currency}
+            size="lg"
+            showSavings
+          />
 
           {variants.length > 1 ? (
             <div className="flex flex-col gap-2.5">
@@ -295,6 +311,13 @@ export function ProductExperience({
               disabled={!canAdd}
             />
           </div>
+
+          {selected && selected.stockQuantity > 0 && selected.stockQuantity <= 6 ? (
+            <p className="flex items-center gap-1.5 text-sm font-medium text-destructive">
+              <Flame className="size-4 shrink-0" />
+              Only {selected.stockQuantity} left — order soon
+            </p>
+          ) : null}
 
           <Button
             size="xl"

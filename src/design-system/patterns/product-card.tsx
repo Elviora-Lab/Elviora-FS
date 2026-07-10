@@ -131,6 +131,7 @@ export function ProductCard({
           compareAt={product.compareAt}
           currency={product.currency}
           className="mt-1"
+          showSavings
         />
       </div>
     </article>
