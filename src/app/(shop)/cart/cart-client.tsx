@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useAppSelector } from '@/store/hooks';
 
 import { analytics } from '@/lib/analytics';
+import { bestDiscount } from '@/lib/promotions';
 
 import { EmptyState } from '@/design-system/primitives/empty-state';
 import { Price } from '@/design-system/primitives/price';
@@ -16,13 +17,20 @@ import { Button } from '@/components/ui/button';
 import { useRemoveCartLineMutation, useUpdateCartLineMutation } from '@/features/cart/api/cart-api';
 import { useCart } from '@/features/cart/hooks/use-cart';
 import { type CartLine, selectCart } from '@/features/cart/store/cart-slice';
+import { RewardsLadder } from '@/features/promotions/components/rewards-ladder';
+import { useSpendDiscount } from '@/features/promotions/hooks/use-spend-discount';
 
 import { CouponField } from './coupon-field';
 
 export function CartPageClient() {
   const { cart, subtotal, count, updateQty, remove } = useCart();
-  const { couponDiscount } = useAppSelector(selectCart);
-  const discount = couponDiscount ?? 0;
+  const { couponCode, couponDiscount } = useAppSelector(selectCart);
+  const { spendDiscount } = useSpendDiscount(subtotal);
+  // Best-single-wins (matches the server): the larger of coupon vs spend tier.
+  const { amount: discount, source } = bestDiscount(couponDiscount ?? 0, spendDiscount);
+  const discountLabel =
+    source === 'spend' ? 'Spend & Save' : couponCode ? `Coupon ${couponCode}` : 'Discount';
+  const currency = cart.lines[0]?.currency ?? 'PKR';
   const total = Math.max(0, subtotal - discount);
   const [updateLine] = useUpdateCartLineMutation();
   const [removeLineMutation] = useRemoveCartLineMutation();
@@ -141,22 +149,23 @@ export function CartPageClient() {
 
       <aside className="flex h-fit flex-col gap-4 rounded-lg border border-border bg-card p-6 lg:sticky lg:top-24">
         <h2 className="font-serif text-2xl font-light">Order summary</h2>
+        <RewardsLadder subtotal={subtotal} currency={currency} />
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Subtotal</span>
-          <Price amount={subtotal} currency={cart.lines[0]?.currency ?? 'PKR'} />
+          <Price amount={subtotal} currency={currency} />
         </div>
         <CouponField />
         {discount > 0 ? (
           <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Discount</span>
-            <span className="tabular-nums">
-              −<Price amount={discount} currency={cart.lines[0]?.currency ?? 'PKR'} />
+            <span className="text-muted-foreground">{discountLabel}</span>
+            <span className="tabular-nums text-success">
+              −<Price amount={discount} currency={currency} />
             </span>
           </div>
         ) : null}
         <div className="flex items-center justify-between border-t border-border pt-3 text-sm font-medium">
           <span>Total</span>
-          <Price amount={total} currency={cart.lines[0]?.currency ?? 'PKR'} />
+          <Price amount={total} currency={currency} />
         </div>
         <p className="text-xs text-muted-foreground">Shipping and taxes calculated at checkout.</p>
         <Button asChild size="lg" variant="gold" uppercase>

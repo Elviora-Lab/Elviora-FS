@@ -26,9 +26,10 @@ export const GST_RATE = 0.15;
 export const COD_TAX_RATE = 0.04; // 2% income tax + 2% sales tax
 
 /**
- * Orders whose merchandise value (subtotal − discount) reaches this amount ship
- * free — the delivery charge and its 15% GST are both waived. COD tax, which is
- * levied on the cash collected at the door, still applies.
+ * Orders whose merchandise **subtotal** (before any discount) reaches this
+ * amount ship free — the delivery charge and its 15% GST are both waived. COD
+ * tax, which is levied on the cash collected at the door, still applies. Judged
+ * pre-discount so a Spend & Save reward can't cancel free shipping.
  */
 export const FREE_SHIPPING_THRESHOLD = 8000;
 
@@ -155,9 +156,10 @@ export function computeCheckoutTotals(params: {
   const weightKg = Math.max(1, params.quantity) * (params.itemWeightKg ?? DEFAULT_ITEM_WEIGHT_KG);
 
   const zone = resolveZone(params.city);
-  // Merchandise value (after any discount) at or above the threshold ships free:
-  // no base rate, so no fuel surcharge and no GST on the shipping service.
-  const freeShipping = merchandise >= FREE_SHIPPING_THRESHOLD;
+  // Free shipping is judged on the PRE-discount subtotal, so a Spend & Save
+  // reward can never accidentally drop an order below the threshold and cancel
+  // free shipping. At/above the threshold: no base rate, fuel, or shipping GST.
+  const freeShipping = params.subtotal >= FREE_SHIPPING_THRESHOLD;
   const base = freeShipping ? 0 : baseShippingRate(zone, weightKg);
   const fuel = base * FUEL_SURCHARGE_RATE;
   const shippingFee = round2(base + fuel);

@@ -6,8 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 import { CouponForm } from './_components/coupon-form';
 import { CouponRowActions } from './_components/coupon-row-actions';
+import { SpendDiscountManager } from './_components/spend-discount-manager';
 
 import { adminCouponsRepo } from '@/server/repositories/coupons.repo';
+import { promotionsService } from '@/server/services/promotions.service';
 
 export const metadata = buildMetadata({ title: 'Admin · Coupons', noIndex: true });
 export const dynamic = 'force-dynamic';
@@ -19,16 +21,35 @@ function describeValue(type: string, value: number) {
 }
 
 export default async function AdminCouponsPage() {
-  const coupons = await adminCouponsRepo.list();
+  const [coupons, rawTiers, spendEnabled] = await Promise.all([
+    adminCouponsRepo.list(),
+    promotionsService.allTiers(),
+    promotionsService.isEnabled(),
+  ]);
+  const tiers = rawTiers.map((t) => ({
+    id: t.id,
+    minSubtotal: Number(t.minSubtotal),
+    discountAmount: Number(t.discountAmount),
+    isActive: t.isActive,
+  }));
 
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <h1 className="editorial-heading text-display-md">Coupons</h1>
+        <h1 className="editorial-heading text-display-md">Coupons &amp; discounts</h1>
         <p className="text-sm text-muted-foreground">
-          Promotional codes and campaign-level discounts.
+          Promo codes, campaign discounts, and automatic Spend &amp; Save tiers.
         </p>
       </header>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Spend &amp; Save (automatic tiers)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <SpendDiscountManager tiers={tiers} enabled={spendEnabled} />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

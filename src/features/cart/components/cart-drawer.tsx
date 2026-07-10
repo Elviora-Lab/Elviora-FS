@@ -21,6 +21,8 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 
+import { RewardsLadder } from '@/features/promotions/components/rewards-ladder';
+
 import { useRemoveCartLineMutation, useUpdateCartLineMutation } from '../api/cart-api';
 import { useCart } from '../hooks/use-cart';
 
@@ -156,6 +158,7 @@ export function CartDrawer() {
 
         {cart.lines.length > 0 ? (
           <SheetFooter className="flex-col gap-4 sm:flex-col sm:items-stretch">
+            <RewardsLadder subtotal={subtotal} currency={cart.lines[0]?.currency ?? 'PKR'} />
             <div className="flex items-center justify-between text-sm">
               <span className="eyebrow">Subtotal</span>
               <Price amount={subtotal} currency={cart.lines[0]?.currency ?? 'PKR'} size="lg" />

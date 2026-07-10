@@ -11,6 +11,7 @@ import { BadRequestError, NotFoundError } from '@/server/http/errors';
 import { cartRepo } from '@/server/repositories/cart.repo';
 import { ordersRepo } from '@/server/repositories/orders.repo';
 import { couponsService } from '@/server/services/coupons.service';
+import { promotionsService } from '@/server/services/promotions.service';
 
 const orderNumberAlphabet = customAlphabet('0123456789ABCDEFGHJKMNPQRSTVWXYZ', 8);
 const newOrderNumber = () => `ELV-${new Date().getFullYear()}-${orderNumberAlphabet()}`;
@@ -88,12 +89,29 @@ export const ordersService = {
 
         // Evaluate the coupon (if any) against the subtotal. Validation throws
         // a 400; the usage count is incremented atomically further below.
-        let discount = new Prisma.Decimal(0);
-        let appliedCoupon: { id: string } | null = null;
+        let couponDiscount = new Prisma.Decimal(0);
+        let appliedCoupon: { id: string; code: string } | null = null;
         if (opts.couponCode) {
           const evaluation = await couponsService.evaluate(opts.couponCode, subtotal);
-          discount = evaluation.discount;
-          appliedCoupon = { id: evaluation.coupon.id };
+          couponDiscount = evaluation.discount;
+          appliedCoupon = { id: evaluation.coupon.id, code: evaluation.coupon.code };
+        }
+
+        // Automatic "Spend & Save" tier discount for this subtotal, then apply
+        // BEST-SINGLE-WINS: the larger of the tier vs the coupon (never both). A
+        // coupon that loses is NOT redeemed, so it stays usable on a later order.
+        const spendDiscount = new Prisma.Decimal(
+          await promotionsService.computeDiscount(subtotal.toNumber()),
+        );
+        let discount = new Prisma.Decimal(0);
+        let discountLabel: string | null = null;
+        if (spendDiscount.greaterThanOrEqualTo(couponDiscount) && spendDiscount.greaterThan(0)) {
+          discount = spendDiscount;
+          discountLabel = 'Spend & Save';
+          appliedCoupon = null;
+        } else if (couponDiscount.greaterThan(0)) {
+          discount = couponDiscount;
+          discountLabel = appliedCoupon?.code ?? null;
         }
 
         // Shipping + tax from the PostEx rate card. Same helper the checkout UI
@@ -118,6 +136,7 @@ export const ordersService = {
             shippingFee,
             taxAmount,
             discountAmount: discount,
+            discountLabel,
             totalAmount,
             currency,
             notes: opts.notes,

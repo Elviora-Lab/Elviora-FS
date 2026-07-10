@@ -579,6 +579,9 @@ model Order {
   shippingFee     Decimal       @default(0) @map("shipping_fee") @db.Decimal(12, 2)
   taxAmount       Decimal       @default(0) @map("tax_amount") @db.Decimal(12, 2)
   discountAmount  Decimal       @default(0) @map("discount_amount") @db.Decimal(12, 2)
+  /// Human label for the applied discount ("Spend & Save", a coupon code, …) —
+  /// null when no discount. Lets receipts/admin show the source without a join.
+  discountLabel   String?       @map("discount_label") @db.VarChar(64)
   totalAmount     Decimal       @map("total_amount") @db.Decimal(12, 2)
   currency        String        @default("PKR") @db.VarChar(3)
   notes           String?       @db.Text
@@ -794,6 +797,32 @@ model CouponUsage {
   @@index([userId])
   @@index([orderId])
   @@map("coupon_usages")
+}
+
+/// "Spend & Save" — automatic, cart-level discount tiers. When the subtotal
+/// reaches `minSubtotal`, `discountAmount` comes off. The highest qualifying
+/// active tier wins; the app compares it against any coupon and applies the
+/// larger (best-single-wins). Managed from /admin/coupons.
+model SpendDiscountTier {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  minSubtotal    Decimal  @map("min_subtotal") @db.Decimal(12, 2)
+  discountAmount Decimal  @map("discount_amount") @db.Decimal(12, 2)
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([isActive, minSubtotal])
+  @@map("spend_discount_tiers")
+}
+
+/// Generic key/value store for store-wide toggles (e.g. the Spend & Save
+/// master switch, `spend_discount.enabled`). Small, reusable — not per-user.
+model AppSetting {
+  key       String   @id @db.VarChar(64)
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("app_settings")
 }
 
 model Banner {

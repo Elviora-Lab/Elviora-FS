@@ -9,6 +9,7 @@ import { useAppSelector } from '@/store/hooks';
 
 import { analytics } from '@/lib/analytics';
 import { cn } from '@/lib/cn';
+import { bestDiscount } from '@/lib/promotions';
 import { computeCheckoutTotals } from '@/lib/shipping';
 
 import { EmptyState } from '@/design-system/primitives/empty-state';
@@ -21,6 +22,8 @@ import { Label } from '@/components/ui/label';
 
 import { useCart } from '@/features/cart/hooks/use-cart';
 import { selectCart } from '@/features/cart/store/cart-slice';
+import { RewardsLadder } from '@/features/promotions/components/rewards-ladder';
+import { useSpendDiscount } from '@/features/promotions/hooks/use-spend-discount';
 
 import { placeOrder } from '@/server/actions/checkout.actions';
 
@@ -57,7 +60,11 @@ export function CheckoutClient({ addresses, cart }: { addresses: Address[]; cart
   const [pending, start] = useTransition();
   const { clear: clearLocalCart, cart: clientCart } = useCart();
   const { couponCode, couponDiscount } = useAppSelector(selectCart);
-  const discount = couponDiscount ?? 0;
+  const { spendDiscount } = useSpendDiscount(cart.subtotal);
+  // Best-single-wins (matches the server's order-time calculation).
+  const { amount: discount, source } = bestDiscount(couponDiscount ?? 0, spendDiscount);
+  const discountLabel =
+    source === 'spend' ? 'Spend & Save' : couponCode ? `Coupon ${couponCode}` : 'Discount';
 
   const initialAddressId = addresses.find((a) => a.isDefault)?.id ?? addresses[0]?.id ?? 'new';
   const [addressId, setAddressId] = useState<string>(initialAddressId);
@@ -336,16 +343,15 @@ export function CheckoutClient({ addresses, cart }: { addresses: Address[]; cart
           ))}
         </ul>
         <div className="luxe-divider" />
+        <RewardsLadder subtotal={cart.subtotal} currency={cart.currency} />
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Subtotal</span>
           <Price amount={cart.subtotal} currency={cart.currency} size="sm" />
         </div>
         {discount > 0 ? (
           <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">
-              Discount{couponCode ? ` (${couponCode})` : ''}
-            </span>
-            <span className="tabular-nums">
+            <span className="text-muted-foreground">{discountLabel}</span>
+            <span className="tabular-nums text-success">
               −<Price amount={discount} currency={cart.currency} size="sm" />
             </span>
           </div>

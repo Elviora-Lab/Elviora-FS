@@ -71,7 +71,13 @@ export function registerEventListeners() {
   events.on('order.created', async ({ orderId, userId, total, currency }) => {
     const order = await prisma.order.findUnique({
       where: { id: orderId },
-      select: { orderNumber: true, shippingEmail: true, user: { select: { email: true } } },
+      select: {
+        orderNumber: true,
+        shippingEmail: true,
+        discountAmount: true,
+        discountLabel: true,
+        user: { select: { email: true } },
+      },
     });
     if (!order) return;
 
@@ -91,6 +97,8 @@ export function registerEventListeners() {
         orderNumber: order.orderNumber,
         total,
         currency,
+        savings: Number(order.discountAmount),
+        savingsLabel: order.discountLabel,
       });
       await sendEmail({ to: recipient, subject, html });
     }

@@ -104,7 +104,7 @@ export default async function AdminOrderDetailPage({
                   {Number(order.discountAmount) > 0 && (
                     <tr>
                       <td colSpan={3} className="text-right text-sm text-muted-foreground">
-                        Discount
+                        {order.discountLabel ?? 'Discount'}
                       </td>
                       <td className="text-right">
                         −{formatMoney(Number(order.discountAmount), order.currency)}

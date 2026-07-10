@@ -96,8 +96,8 @@ export default async function OrderSuccessPage({ params }: { params: Params }) {
             </div>
             {Number(order.discountAmount) > 0 ? (
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Discount</span>
-                <span className="tabular-nums">
+                <span className="text-muted-foreground">{order.discountLabel ?? 'Discount'}</span>
+                <span className="tabular-nums text-success">
                   −
                   <Price
                     amount={Number(order.discountAmount)}
