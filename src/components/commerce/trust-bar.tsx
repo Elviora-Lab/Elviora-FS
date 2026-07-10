@@ -14,15 +14,18 @@ const SIGNALS = [
  * shoppers). Honest claims that match the store's actual policies.
  */
 export function TrustBar({ className }: { className?: string }) {
+  // Two-up always: 4-across breaks mid-word inside the narrow PDP buy-column
+  // (its width tracks the viewport, not the container). 2 columns stays legible
+  // at any container width and reflows to a clean 2x2.
   return (
-    <div className={cn('grid grid-cols-2 gap-2 sm:grid-cols-4', className)}>
+    <div className={cn('grid grid-cols-2 gap-2', className)}>
       {SIGNALS.map((s) => (
         <div
           key={s.label}
-          className="flex items-center gap-1.5 rounded-md border border-border bg-muted/30 px-2.5 py-2 text-xs text-muted-foreground"
+          className="flex items-center gap-1.5 rounded-md border border-border bg-muted/30 px-2.5 py-2 text-xs leading-tight text-muted-foreground"
         >
           <s.icon className="size-4 shrink-0 text-foreground/70" />
-          {s.label}
+          <span>{s.label}</span>
         </div>
       ))}
     </div>

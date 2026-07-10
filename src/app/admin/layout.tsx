@@ -7,6 +7,7 @@ import { cn } from '@/lib/cn';
 
 import { BrandLogo } from '@/components/brand/brand-logo';
 
+import { AdminMobileNav } from '@/app/admin/_components/admin-mobile-nav';
 import { logoutAction } from '@/server/actions/auth.actions';
 import { requireAdmin } from '@/server/auth/guards';
 import { usersRepo } from '@/server/repositories/users.repo';
@@ -22,6 +23,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="grid min-h-screen bg-muted/30 lg:grid-cols-[260px_1fr]">
+      {/* Mobile-only top bar + drawer; hidden at lg where the sidebar returns. */}
+      <AdminMobileNav displayName={displayName} role={session.role} />
       <aside className="sticky top-0 hidden h-screen flex-col gap-2 border-r border-border bg-card p-6 lg:flex">
         <Link href="/admin" className="mb-2 inline-flex items-center gap-3" aria-label="Admin home">
           <BrandLogo variant="mark" size={40} />
