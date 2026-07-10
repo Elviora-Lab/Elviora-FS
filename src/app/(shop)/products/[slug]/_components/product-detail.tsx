@@ -5,6 +5,9 @@ import { ProductCard } from '@/design-system/patterns/product-card';
 import { Breadcrumb } from '@/design-system/primitives/breadcrumb';
 import { Section } from '@/design-system/primitives/section';
 
+import { RecentlyViewed } from '@/features/recommendations/components/recently-viewed';
+import { RecentlyViewedTracker } from '@/features/recommendations/components/recently-viewed-tracker';
+
 import { ProductExperience } from './product-experience';
 import { ProductReviews } from './product-reviews';
 import { ProductViewBeacon } from './product-view-beacon';
@@ -67,6 +70,20 @@ export async function ProductDetail({
     <Section>
       <div className="container flex flex-col gap-10">
         {trackView ? <ProductViewBeacon slug={slug} /> : null}
+        {trackView ? (
+          <RecentlyViewedTracker
+            item={{
+              id: product.id,
+              slug: product.slug,
+              name: product.name,
+              brandLine: product.brand?.name ?? undefined,
+              imageUrl: primaryImage ?? '',
+              price: startingPrice,
+              compareAt: product.comparePrice ? Number(product.comparePrice) : undefined,
+              currency: 'PKR',
+            }}
+          />
+        ) : null}
         <Breadcrumb
           items={[
             { label: 'Home', href: '/' },
@@ -123,6 +140,9 @@ export async function ProductDetail({
         <div id="reviews" className="scroll-mt-24">
           <ProductReviews productId={product.id} summary={reviewSummary} reviews={reviews} />
         </div>
+
+        {/* Recently viewed (from localStorage; excludes this product) */}
+        <RecentlyViewed excludeId={product.id} />
 
         {/* SEO */}
         <JsonLd
