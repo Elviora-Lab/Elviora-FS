@@ -1,7 +1,11 @@
 import 'server-only';
 
-import { S3Client } from '@aws-sdk/client-s3';
-import { PutObjectCommand } from '@aws-sdk/client-s3';
+import {
+  DeleteObjectCommand,
+  GetObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 import { serverEnv } from '@/config/env';
@@ -53,6 +57,51 @@ export async function presignUpload({
   });
   const uploadUrl = await getSignedUrl(client(), command, { expiresIn });
   return { uploadUrl, publicUrl: publicUrlFor(key) };
+}
+
+const normalizeKey = (key: string) => key.trim().replace(/^\/+/, '');
+
+/** Download an object's bytes — used to optimize an already-uploaded image. */
+export async function getObjectBuffer(key: string): Promise<Buffer> {
+  if (!serverEnv.S3_BUCKET) throw new Error('S3_BUCKET is not configured');
+  const res = await client().send(
+    new GetObjectCommand({ Bucket: serverEnv.S3_BUCKET, Key: normalizeKey(key) }),
+  );
+  if (!res.Body) throw new Error('Object has no body');
+  const bytes = await res.Body.transformToByteArray();
+  return Buffer.from(bytes);
+}
+
+/** Upload a buffer directly from the server (immutable long-cache). */
+export async function putObject({
+  key,
+  body,
+  contentType,
+}: {
+  key: string;
+  body: Buffer | Uint8Array;
+  contentType: string;
+}): Promise<{ publicUrl: string }> {
+  if (!serverEnv.S3_BUCKET) throw new Error('S3_BUCKET is not configured');
+  await client().send(
+    new PutObjectCommand({
+      Bucket: serverEnv.S3_BUCKET,
+      Key: normalizeKey(key),
+      Body: body,
+      ContentType: contentType,
+      // Keys are content-unique (nanoid), so the bytes never change — cache hard.
+      CacheControl: 'public, max-age=31536000, immutable',
+    }),
+  );
+  return { publicUrl: publicUrlFor(key) };
+}
+
+/** Best-effort object deletion (e.g. removing a raw upload after optimizing). */
+export async function deleteObject(key: string): Promise<void> {
+  if (!serverEnv.S3_BUCKET) throw new Error('S3_BUCKET is not configured');
+  await client().send(
+    new DeleteObjectCommand({ Bucket: serverEnv.S3_BUCKET, Key: normalizeKey(key) }),
+  );
 }
 
 export function isStorageConfigured(): boolean {

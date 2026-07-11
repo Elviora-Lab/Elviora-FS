@@ -49,6 +49,9 @@ export function ImageUploader({
   }
 
   async function uploadOne(file: File): Promise<string> {
+    // 1) Upload the RAW file straight to storage via a presigned URL. Going
+    //    direct (client → storage) sidesteps Vercel's 4.5MB function body limit,
+    //    so large phone photos upload fine.
     const res = await fetch('/api/v1/uploads/presign', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -62,7 +65,7 @@ export function ImageUploader({
     const json = (await res.json().catch(() => null)) as {
       success: boolean;
       message?: string;
-      data?: { uploadUrl: string; publicUrl: string };
+      data?: { key: string; uploadUrl: string; publicUrl: string };
     } | null;
     if (!res.ok || !json?.success || !json.data) {
       throw new Error(json?.message ?? 'Upload is not available');
@@ -73,6 +76,23 @@ export function ImageUploader({
       body: file,
     });
     if (!put.ok) throw new Error('Upload failed');
+
+    // 2) Optimize server-side (sharp → WebP). If it fails for any reason, fall
+    //    back to the raw upload so the image still saves.
+    try {
+      const opt = await fetch('/api/v1/uploads/optimize', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ kind: 'productImage', key: json.data.key }),
+      });
+      const oj = (await opt.json().catch(() => null)) as {
+        success: boolean;
+        data?: { publicUrl: string };
+      } | null;
+      if (opt.ok && oj?.success && oj.data?.publicUrl) return oj.data.publicUrl;
+    } catch {
+      /* fall through to the raw URL */
+    }
     return json.data.publicUrl;
   }
 
