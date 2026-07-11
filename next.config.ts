@@ -1,6 +1,25 @@
 import type { NextConfig } from 'next';
 import { withSentryConfig } from '@sentry/nextjs';
 
+// Report-only Content-Security-Policy. Sources reflect what the app actually
+// loads: Next inline hydration ('unsafe-inline'/'unsafe-eval'), GA/GTM, Meta
+// Pixel, Sentry, and the image CDNs (Shopify/Supabase/Unsplash/Cloudinary via
+// img-src https:). Kept report-only until console shows no legitimate breakage.
+const CSP_REPORT_ONLY = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://*.google-analytics.com https://connect.facebook.net",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self' data:",
+  "connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com https://connect.facebook.net https://*.facebook.com https://*.supabase.co https://*.sentry.io",
+  'frame-src https://www.facebook.com https://td.doubleclick.net',
+  "manifest-src 'self'",
+].join('; ');
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
@@ -48,6 +67,10 @@ const nextConfig: NextConfig = {
             key: 'Strict-Transport-Security',
             value: 'max-age=63072000; includeSubDomains; preload',
           },
+          // Report-only first: this does NOT block anything — it logs violations
+          // to the browser console so we can tighten to an enforcing policy
+          // safely once we've confirmed nothing legitimate is flagged.
+          { key: 'Content-Security-Policy-Report-Only', value: CSP_REPORT_ONLY },
         ],
       },
     ];
