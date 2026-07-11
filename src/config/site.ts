@@ -15,15 +15,15 @@ export const siteConfig = {
     'Elviora — from the Latin elvīra, "she who illuminates", softened with the lyrical Italian ending -iora.',
   locale: 'en-PK',
   defaultCurrency: 'PKR',
+  // Only accounts we actually own — `sameAs` must be truthful for Google to
+  // trust it. Add TikTok/YouTube/Pinterest here once those profiles exist.
   social: {
-    instagram: 'https://instagram.com/elviora',
-    tiktok: 'https://tiktok.com/@elviora',
-    pinterest: 'https://pinterest.com/elviora',
-    youtube: 'https://youtube.com/@elviora',
+    instagram: 'https://www.instagram.com/elviora.com.pk',
+    facebook: 'https://www.facebook.com/people/Elviora/61591687198185/',
   },
   contact: {
     email: 'elviora192@gmail.com',
-    phone: '+92 (300) 0001234',
+    phone: '+92 343 0803769',
   },
   /**
    * Return / sender address printed on every shipping label.
