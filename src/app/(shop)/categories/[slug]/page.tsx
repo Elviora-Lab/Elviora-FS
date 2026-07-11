@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 
 import { routes } from '@/config/routes';
 
-import { breadcrumbJsonLd } from '@/lib/seo/json-ld';
+import { breadcrumbJsonLd, itemListJsonLd } from '@/lib/seo/json-ld';
 import { JsonLd } from '@/lib/seo/json-ld-component';
 import { buildMetadata } from '@/lib/seo/metadata';
 
@@ -128,6 +128,14 @@ export default async function CategoryPage({
             { label: name, href: `/categories/${slug}` },
           ])}
         />
+        {items.length > 0 ? (
+          <JsonLd
+            data={itemListJsonLd(
+              items.map((p) => ({ name: p.name, slug: p.slug })),
+              { path: `/categories/${slug}` },
+            )}
+          />
+        ) : null}
       </div>
     </Section>
   );

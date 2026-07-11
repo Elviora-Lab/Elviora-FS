@@ -158,10 +158,21 @@ export async function ProductDetail({
             slug: product.slug,
             description: product.shortDescription ?? product.fullDescription ?? '',
             imageUrl: primaryImage ?? '',
+            images: product.images.map((i) => i.imageUrl).filter(Boolean),
             price: startingPrice,
             currency: 'PKR',
+            sku: product.sku,
             inStock: totalStock > 0,
             brand: product.brand?.name,
+            rating: reviewSummary.count > 0 ? reviewSummary.average : undefined,
+            reviewCount: reviewSummary.count,
+            reviews: reviews.slice(0, 5).map((r) => ({
+              author: r.user.firstName?.trim() || 'Verified buyer',
+              rating: r.rating,
+              title: r.title,
+              body: r.comment,
+              date: r.createdAt.toISOString(),
+            })),
           })}
         />
       </div>

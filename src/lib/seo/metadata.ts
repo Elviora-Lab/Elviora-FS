@@ -43,7 +43,8 @@ export function buildMetadata({
       title: fullTitle,
       description,
       url: canonical,
-      locale: siteConfig.locale,
+      // OG spec wants an underscore locale (en_PK), not the BCP-47 hyphen form.
+      locale: siteConfig.locale.replace('-', '_'),
       ...(explicitImages ? { images: explicitImages } : {}),
     },
     twitter: {

@@ -1,3 +1,5 @@
+import { breadcrumbJsonLd, itemListJsonLd } from '@/lib/seo/json-ld';
+import { JsonLd } from '@/lib/seo/json-ld-component';
 import { buildMetadata } from '@/lib/seo/metadata';
 
 import { Section } from '@/design-system/primitives/section';
@@ -44,6 +46,21 @@ export default async function ProductsPage({
         </header>
         <ProductFilters brands={brands.map((b) => ({ name: b.name, slug: b.slug }))} />
         <ProductResults products={items} listId="catalog" listName="All products" />
+
+        <JsonLd
+          data={breadcrumbJsonLd([
+            { label: 'Home', href: '/' },
+            { label: 'Products', href: '/products' },
+          ])}
+        />
+        {items.length > 0 ? (
+          <JsonLd
+            data={itemListJsonLd(
+              items.map((p) => ({ name: p.name, slug: p.slug })),
+              { path: '/products' },
+            )}
+          />
+        ) : null}
       </div>
     </Section>
   );
