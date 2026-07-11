@@ -20,6 +20,7 @@ export const siteConfig = {
   social: {
     instagram: 'https://www.instagram.com/elviora.com.pk',
     facebook: 'https://www.facebook.com/people/Elviora/61591687198185/',
+    youtube: 'https://www.youtube.com/@elviora-com',
   },
   contact: {
     email: 'elviora192@gmail.com',
