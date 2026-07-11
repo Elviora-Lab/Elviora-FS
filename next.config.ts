@@ -7,12 +7,12 @@ const nextConfig: NextConfig = {
   compress: true,
 
   images: {
-    formats: ['image/avif', 'image/webp'],
-    // Vercel bills one Image Optimization "transformation" per unique
-    // (source image, width, quality, format). Keep each generated variant
-    // cached for 31 days so it isn't re-generated — and re-billed — when the
-    // default 30-day cache lapses.
-    minimumCacheTTL: 2678400,
+    // Resize through each source CDN (Shopify/Unsplash/Cloudinary) via a custom
+    // loader instead of Vercel's metered Image Optimization — the plan's 5K/mo
+    // transformation quota was being exhausted, which stopped images rendering.
+    // With a loaderFile the optimizer is bypassed entirely (zero transforms);
+    // deviceSizes/imageSizes below still drive the responsive srcSet widths.
+    loaderFile: './src/lib/image-loader.ts',
     remotePatterns: [
       { protocol: 'https', hostname: 'images.unsplash.com' },
       { protocol: 'https', hostname: 'res.cloudinary.com' },
