@@ -6,12 +6,18 @@ import { routes } from '@/config/routes';
 import { buildMetadata } from '@/lib/seo/metadata';
 
 import { ProductCard } from '@/design-system/patterns/product-card';
+import { CountUp } from '@/design-system/primitives/count-up';
 import { Reveal } from '@/design-system/primitives/reveal';
 import { Section, SectionHeading } from '@/design-system/primitives/section';
 import { Button } from '@/components/ui/button';
 
 import { HeroShowcase } from './_components/hero-showcase';
+import { getShadeSpotlight, getShowcaseReviews } from './_components/homepage-modules.data';
+import { ReviewsCarousel } from './_components/reviews-carousel';
+import { ShadeSpotlight } from './_components/shade-spotlight';
+import { StatementMarquee } from './_components/statement-marquee';
 
+import { reviewsRepo } from '@/server/repositories/reviews.repo';
 import { categoriesService } from '@/server/services/categories.service';
 import { productsService } from '@/server/services/products.service';
 
@@ -32,15 +38,24 @@ const EDITORIAL_IMAGE =
 export default async function HomePage() {
   // Resilient at build/runtime: a DB hiccup yields an empty edit rather than a
   // crashed render; ISR repopulates on the next successful revalidate.
-  const [{ items: bestsellers, total: productCount }, categoryTree, { items: bundles }] =
-    await Promise.all([
-      productsService.list({}, 'popular', 1, 8).catch(() => ({ items: [], total: 0 })),
-      categoriesService.tree().catch(() => []),
-      // Curated sets live in the "Best Selling" merchandising category.
-      productsService
-        .list({ category: 'best-selling' }, 'newest', 1, 4)
-        .catch(() => ({ items: [], total: 0 })),
-    ]);
+  const [
+    { items: bestsellers, total: productCount },
+    categoryTree,
+    { items: bundles },
+    spotlight,
+    reviews,
+    reviewSummary,
+  ] = await Promise.all([
+    productsService.list({}, 'popular', 1, 8).catch(() => ({ items: [], total: 0 })),
+    categoriesService.tree().catch(() => []),
+    // Curated sets live in the "Best Selling" merchandising category.
+    productsService
+      .list({ category: 'best-selling' }, 'newest', 1, 4)
+      .catch(() => ({ items: [], total: 0 })),
+    getShadeSpotlight().catch(() => null),
+    getShowcaseReviews(12).catch(() => []),
+    reviewsRepo.globalSummary().catch(() => ({ average: 0, count: 0 })),
+  ]);
 
   // The merchandising categories (those with subcategories) drive the hero
   // chips and the tiles — name, blurb, and banner image all live on the
@@ -120,25 +135,36 @@ export default async function HomePage() {
                 </Link>
               ))}
             </div>
-            <dl className="mt-4 flex gap-8 text-sm">
+            <dl className="mt-4 flex flex-wrap gap-x-8 gap-y-4 text-sm">
               <div>
                 <dt className="font-serif text-2xl font-light text-foreground">
-                  {productCount > 0 ? productCount : '—'}
+                  {productCount > 0 ? <CountUp value={productCount} /> : '—'}
                 </dt>
                 <dd className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
                   Shades & finishes
                 </dd>
               </div>
+              {reviewSummary.count > 0 ? (
+                <div>
+                  <dt className="font-serif text-2xl font-light text-foreground">
+                    <CountUp value={reviewSummary.average} decimals={1} suffix="★" />
+                  </dt>
+                  <dd className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                    From {reviewSummary.count.toLocaleString('en-US')} reviews
+                  </dd>
+                </div>
+              ) : (
+                <div>
+                  <dt className="font-serif text-2xl font-light text-foreground">Small-batch</dt>
+                  <dd className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                    Made fresh
+                  </dd>
+                </div>
+              )}
               <div>
                 <dt className="font-serif text-2xl font-light text-foreground">Cruelty-free</dt>
                 <dd className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
                   Always
-                </dd>
-              </div>
-              <div>
-                <dt className="font-serif text-2xl font-light text-foreground">Small-batch</dt>
-                <dd className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                  Made fresh
                 </dd>
               </div>
             </dl>
@@ -198,6 +224,27 @@ export default async function HomePage() {
         </Section>
       )}
 
+      {/* — Shop the shades (interactive swatches) — */}
+      {spotlight && (
+        <Section className="border-t border-border/60">
+          <div className="container">
+            <SectionHeading
+              eyebrow="Shop the shades"
+              title="Find your colour"
+              description="Tap a swatch — the shade comes to life."
+            />
+            <div className="mt-12">
+              <Reveal inView>
+                <ShadeSpotlight product={spotlight} />
+              </Reveal>
+            </div>
+          </div>
+        </Section>
+      )}
+
+      {/* — Statement band — */}
+      <StatementMarquee />
+
       {/* — Sets & Bundles — */}
       {bundles.length > 0 && (
         <Section className="border-t border-border/60">
@@ -243,6 +290,22 @@ export default async function HomePage() {
               <Button asChild size="lg" variant="outline" uppercase>
                 <Link href="/products">View all</Link>
               </Button>
+            </div>
+          </div>
+        </Section>
+      )}
+
+      {/* — Social proof: reviews carousel — */}
+      {reviews.length > 0 && (
+        <Section className="border-t border-border/60">
+          <div className="container">
+            <SectionHeading
+              eyebrow="Loved by our community"
+              title="What everyone's saying"
+              description="Real reviews from verified Elviora orders."
+            />
+            <div className="mt-12">
+              <ReviewsCarousel reviews={reviews} />
             </div>
           </div>
         </Section>

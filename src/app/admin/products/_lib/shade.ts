@@ -39,13 +39,13 @@ export function shadeFromSlug(slug: string, name: string): string {
 }
 
 /** Pull the `@#RRGGBB` hex out of a variant shade label, if present. */
-function variantHex(shade: string): string | null {
+export function variantHex(shade: string): string | null {
   const m = shade.match(/@#?([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/);
   return m ? `#${m[1]}` : null;
 }
 
 /** The code/name part of a variant shade label, minus hex and parentheticals. */
-function variantCode(shade: string): string {
+export function variantCode(shade: string): string {
   return shade
     .replace(/@#?[0-9a-fA-F]{3,8}\b/i, '')
     .replace(/\(.*?\)/g, '')
