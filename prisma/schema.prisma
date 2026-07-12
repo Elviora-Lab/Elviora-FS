@@ -728,7 +728,15 @@ model Shipment {
 /// `is_verified_purchase` is set at write time after looking up the order_items.
 model Review {
   id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId             String   @map("user_id") @db.Uuid
+  /// Null for verified-purchase GUEST reviews (accounts are optional). A guest
+  /// review is instead bound to its purchase via `orderId` + `authorName`.
+  userId             String?  @map("user_id") @db.Uuid
+  /// The order this review is for — set on guest reviews. No FK (analytics-style:
+  /// deleting an order must not cascade-remove its reviews). Enforces one review
+  /// per (order, product) via the unique index below.
+  orderId            String?  @map("order_id") @db.Uuid
+  /// Display name for guest reviews (taken from the order's shipping name).
+  authorName         String?  @map("author_name") @db.VarChar(160)
   productId          String   @map("product_id") @db.Uuid
   rating             Int
   title              String?  @db.VarChar(200)
@@ -737,11 +745,12 @@ model Review {
   isApproved         Boolean  @default(false) @map("is_approved") // moderation gate
   createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user    User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
   product Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
   images  ReviewImage[]
 
   @@unique([userId, productId], map: "uq_review_user_product")
+  @@unique([orderId, productId], map: "uq_review_order_product")
   @@index([productId, isApproved])
   @@index([createdAt])
   @@map("reviews")

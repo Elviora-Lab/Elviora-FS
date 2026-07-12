@@ -35,7 +35,10 @@ export default async function AdminReviewsPage() {
         <ul className="flex flex-col gap-4">
           {items.map((r) => {
             const author =
-              [r.user.firstName, r.user.lastName].filter(Boolean).join(' ').trim() || r.user.email;
+              (r.user
+                ? [r.user.firstName, r.user.lastName].filter(Boolean).join(' ').trim() ||
+                  r.user.email
+                : r.authorName?.trim()) || 'Verified buyer';
             return (
               <Card key={r.id}>
                 <CardContent className="flex flex-col gap-3 p-6">

@@ -167,7 +167,7 @@ export async function ProductDetail({
             rating: reviewSummary.count > 0 ? reviewSummary.average : undefined,
             reviewCount: reviewSummary.count,
             reviews: reviews.slice(0, 5).map((r) => ({
-              author: r.user.firstName?.trim() || 'Verified buyer',
+              author: r.user?.firstName?.trim() || r.authorName?.trim() || 'Verified buyer',
               rating: r.rating,
               title: r.title,
               body: r.comment,

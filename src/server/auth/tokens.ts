@@ -94,6 +94,33 @@ export async function verifyPasswordResetToken(token: string): Promise<{ sub: st
   return { sub: String(payload.sub) };
 }
 
+const REVIEW_AUDIENCE = 'elviora:review';
+const REVIEW_TTL_SECONDS = 60 * 60 * 24 * 90; // 90 days
+
+/**
+ * Signed "leave a review" token, bound to an order id. Emailed after delivery so
+ * a guest (no account) can post a verified-purchase review — the token IS the
+ * proof of purchase. Dedicated audience so it can't act as an access token.
+ */
+export async function signReviewToken(orderId: string): Promise<string> {
+  return new SignJWT({})
+    .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+    .setIssuedAt()
+    .setIssuer(ISSUER)
+    .setAudience(REVIEW_AUDIENCE)
+    .setSubject(orderId)
+    .setExpirationTime(`${REVIEW_TTL_SECONDS}s`)
+    .sign(secret('access'));
+}
+
+export async function verifyReviewToken(token: string): Promise<{ orderId: string }> {
+  const { payload } = await jwtVerify(token, secret('access'), {
+    issuer: ISSUER,
+    audience: REVIEW_AUDIENCE,
+  });
+  return { orderId: String(payload.sub) };
+}
+
 export const tokenTtl = {
   access: ACCESS_TTL_SECONDS,
   refresh: REFRESH_TTL_SECONDS,

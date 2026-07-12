@@ -13,13 +13,24 @@ type ReviewRow = {
   comment: string | null;
   isVerifiedPurchase: boolean;
   createdAt: Date;
-  user: { firstName: string | null; lastName: string | null };
+  authorName: string | null;
+  user: { firstName: string | null; lastName: string | null } | null;
 };
 
-function authorName(u: ReviewRow['user']) {
-  const first = u.firstName?.trim() || 'Anonymous';
-  const lastInitial = u.lastName?.trim()?.[0];
-  return lastInitial ? `${first} ${lastInitial}.` : first;
+function authorName(r: Pick<ReviewRow, 'user' | 'authorName'>) {
+  // Logged-in reviewer → "First L."; guest verified-purchase → shipping name;
+  // else a neutral fallback.
+  if (r.user) {
+    const first = r.user.firstName?.trim() || 'Anonymous';
+    const lastInitial = r.user.lastName?.trim()?.[0];
+    return lastInitial ? `${first} ${lastInitial}.` : first;
+  }
+  const guest = r.authorName?.trim();
+  if (!guest) return 'Verified buyer';
+  // Show first name + last initial only, for privacy.
+  const [first, ...rest] = guest.split(/\s+/);
+  const lastInitial = rest.length ? rest[rest.length - 1]?.[0] : undefined;
+  return lastInitial ? `${first} ${lastInitial}.` : (first ?? 'Verified buyer');
 }
 
 export function ProductReviews({
@@ -68,7 +79,7 @@ export function ProductReviews({
                   </p>
                 ) : null}
                 <p className="text-xs text-muted-foreground/80">
-                  {authorName(r.user)} · {formatDate(r.createdAt, { dateStyle: 'medium' })}
+                  {authorName(r)} · {formatDate(r.createdAt, { dateStyle: 'medium' })}
                 </p>
               </article>
             ))

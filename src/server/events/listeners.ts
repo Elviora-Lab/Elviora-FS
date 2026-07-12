@@ -1,10 +1,13 @@
 import 'server-only';
 
+import { siteConfig } from '@/config/site';
+
 import { prisma } from '@/lib/db';
 
 import { events } from './bus';
 
 import { analyticsServer } from '@/server/analytics';
+import { signReviewToken } from '@/server/auth/tokens';
 import { sendEmail } from '@/server/email';
 import { orderCancelledEmail } from '@/server/email/templates/order-cancelled';
 import { orderConfirmationEmail } from '@/server/email/templates/order-confirmation';
@@ -154,7 +157,9 @@ export function registerEventListeners() {
       });
     }
     if (order.email) {
-      const { subject, html } = orderDeliveredEmail({ orderNumber: order.orderNumber });
+      // Signed, no-login review link (verified purchase) so guests can review.
+      const reviewUrl = `${siteConfig.url}/review?token=${await signReviewToken(orderId)}`;
+      const { subject, html } = orderDeliveredEmail({ orderNumber: order.orderNumber, reviewUrl });
       await sendEmail({ to: order.email, subject, html });
     }
   });

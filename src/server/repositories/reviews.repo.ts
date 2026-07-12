@@ -16,6 +16,7 @@ export const reviewsRepo = {
         comment: true,
         isVerifiedPurchase: true,
         createdAt: true,
+        authorName: true,
         user: { select: { firstName: true, lastName: true } },
       },
     });
@@ -46,6 +47,7 @@ export const reviewsRepo = {
         title: true,
         comment: true,
         isVerifiedPurchase: true,
+        authorName: true,
         user: { select: { firstName: true } },
         product: {
           select: {
