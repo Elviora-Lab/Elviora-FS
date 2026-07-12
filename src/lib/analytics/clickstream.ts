@@ -79,6 +79,10 @@ export function deriveClick(target: EventTarget | null): ClickPayload | null {
   if (!(target instanceof Element)) return null;
   // Skip back-office pages — the clickstream is storefront-only.
   if (!isTrackablePath(window.location.pathname)) return null;
+  // Explicit opt-out: anything under a [data-no-track] element is never recorded
+  // (e.g. auth buttons — sign in / register / logout). Add the attribute to any
+  // element whose clicks you don't want in the stream.
+  if (target.closest('[data-no-track]')) return null;
   // `el` is the clickable (for tag/href); `host` is the nearest element carrying
   // tracking metadata — often an ancestor wrapper (e.g. a product-card <article>
   // wrapping its <a>). closest() returns the *nearest*, so a button's own

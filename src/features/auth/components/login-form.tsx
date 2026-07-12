@@ -87,7 +87,7 @@ export function LoginForm() {
             </FormItem>
           )}
         />
-        <Button type="submit" size="lg" loading={isLoading} className="mt-2">
+        <Button type="submit" size="lg" loading={isLoading} className="mt-2" data-no-track>
           Sign in
         </Button>
       </form>
