@@ -2,18 +2,20 @@ import Link from 'next/link';
 import { ArrowDown, ArrowRight, ArrowUp, Check, Minus } from 'lucide-react';
 
 import { cn } from '@/lib/cn';
+import { prisma } from '@/lib/db';
 import { buildMetadata } from '@/lib/seo/metadata';
 
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 import { EventSparkline } from './event-sparkline';
+import { PixelFilters } from './pixel-filters';
 
 import {
   DEFAULT_PIXEL_RANGE,
   getPixelDashboard,
+  isPixelAudience,
   isPixelRange,
-  PIXEL_RANGE_LABELS,
   PIXEL_RANGES,
   type PixelDashboard,
   type PixelEventSeries,
@@ -23,7 +25,37 @@ import {
 export const metadata = buildMetadata({ title: 'Admin · Pixel Events', noIndex: true });
 export const dynamic = 'force-dynamic';
 
-type Props = { searchParams: Promise<{ range?: string }> };
+type Props = {
+  searchParams: Promise<{
+    range?: string;
+    from?: string;
+    to?: string;
+    audience?: string;
+    category?: string;
+    product?: string;
+  }>;
+};
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Resolve the query window: a valid custom [from,to] wins, else the preset. */
+function resolveWindow(sp: { range?: string; from?: string; to?: string }): {
+  since: Date;
+  until: Date;
+} {
+  if (sp.from && sp.to && DATE_RE.test(sp.from) && DATE_RE.test(sp.to)) {
+    const since = new Date(`${sp.from}T00:00:00.000Z`);
+    const until = new Date(`${sp.to}T23:59:59.999Z`);
+    if (!Number.isNaN(since.getTime()) && !Number.isNaN(until.getTime()) && since <= until) {
+      return { since, until };
+    }
+  }
+  const range = isPixelRange(sp.range) ? sp.range : DEFAULT_PIXEL_RANGE;
+  const until = new Date();
+  const since = new Date(until.getTime() - PIXEL_RANGES[range] * 24 * 60 * 60 * 1000);
+  return { since, until };
+}
 
 // ---------- Formatting ----------
 
@@ -237,9 +269,19 @@ function FunnelStrip({
 // ---------- Page ----------
 
 export default async function AdminPixelPage({ searchParams }: Props) {
-  const { range: rawRange } = await searchParams;
-  const range = isPixelRange(rawRange) ? rawRange : DEFAULT_PIXEL_RANGE;
-  const data = await getPixelDashboard(PIXEL_RANGES[range]);
+  const sp = await searchParams;
+  const { since, until } = resolveWindow(sp);
+  const categories = await prisma.category.findMany({
+    select: { id: true, name: true },
+    orderBy: { name: 'asc' },
+  });
+  const audience = isPixelAudience(sp.audience) ? sp.audience : 'all';
+  const categoryId =
+    sp.category && categories.some((c) => c.id === sp.category) ? sp.category : undefined;
+  const productId = sp.product && UUID_RE.test(sp.product) ? sp.product : undefined;
+
+  const data = await getPixelDashboard({ since, until, audience, productId, categoryId });
+  const productScoped = Boolean(productId || categoryId);
 
   const pixelId = data.health.pixel.id;
   const eventsManagerUrl = pixelId
@@ -260,23 +302,14 @@ export default async function AdminPixelPage({ searchParams }: Props) {
         </p>
       </header>
 
-      {/* Range switcher */}
-      <div className="flex flex-wrap gap-1 border-b border-border">
-        {(Object.keys(PIXEL_RANGES) as Array<keyof typeof PIXEL_RANGES>).map((r) => (
-          <Link
-            key={r}
-            href={`/admin/pixel?range=${r}`}
-            className={cn(
-              '-mb-px border-b-2 px-3 py-2 text-sm transition-colors',
-              r === range
-                ? 'border-foreground font-medium text-foreground'
-                : 'border-transparent text-muted-foreground hover:text-foreground',
-            )}
-          >
-            {PIXEL_RANGE_LABELS[r]}
-          </Link>
-        ))}
-      </div>
+      {/* Filters: date range, audience, category */}
+      <PixelFilters categories={categories} />
+      {productScoped ? (
+        <p className="-mt-4 text-xs text-muted-foreground">
+          Search &amp; Subscribe aren&apos;t product-specific, so they read as n/a under a
+          product/category filter.
+        </p>
+      ) : null}
 
       {/* Event volume — small multiples */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
