@@ -64,6 +64,8 @@ export const ordersService = {
     couponCode?: string;
     /** Chosen payment method — COD adds the 4% COD tax. */
     paymentMethod: string;
+    /** Last-touch marketing attribution captured at checkout (elv_utm cookie). */
+    utm?: { source?: string | null; medium?: string | null; campaign?: string | null };
   }) {
     return prisma
       .$transaction(async (tx) => {
@@ -149,6 +151,9 @@ export const ordersService = {
             shippingAddressLine1: opts.shippingAddress.addressLine1,
             shippingAddressLine2: opts.shippingAddress.addressLine2,
             shippingPostalCode: opts.shippingAddress.postalCode,
+            utmSource: opts.utm?.source ?? null,
+            utmMedium: opts.utm?.medium ?? null,
+            utmCampaign: opts.utm?.campaign ?? null,
             items: {
               create: cart.items.map((item) => ({
                 productId: item.productId,

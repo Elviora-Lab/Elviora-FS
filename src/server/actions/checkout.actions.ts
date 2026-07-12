@@ -36,6 +36,21 @@ const placeOrderInput = z.object({
   couponCode: z.string().min(1).max(64).optional(),
 });
 
+/** Read the last-touch UTM cookie (set client-side by `UtmCapture`) so the order
+ *  carries its marketing attribution. Best-effort — never blocks checkout. */
+async function readUtmCookie(): Promise<
+  { source: string | null; medium: string | null; campaign: string | null } | undefined
+> {
+  try {
+    const raw = (await cookies()).get('elv_utm')?.value;
+    if (!raw) return undefined;
+    const p = JSON.parse(decodeURIComponent(raw)) as { s?: string; m?: string; c?: string };
+    return { source: p.s || null, medium: p.m || null, campaign: p.c || null };
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * Place an order from the user's server-side cart.
  *
@@ -85,6 +100,7 @@ export const placeOrder = withAction(async (raw: unknown) => {
   }
 
   const contactEmail = input.email ?? session?.email ?? null;
+  const utm = await readUtmCookie();
 
   const order = await ordersService.createFromCart({
     userId: session?.sub ?? null,
@@ -104,6 +120,7 @@ export const placeOrder = withAction(async (raw: unknown) => {
       addressLine2: shippingAddress.addressLine2 ?? null,
       postalCode: shippingAddress.postalCode ?? null,
     },
+    utm,
   });
 
   // Record the chosen payment method. The actual amount is captured/cleared

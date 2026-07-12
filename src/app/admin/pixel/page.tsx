@@ -14,6 +14,7 @@ import { PixelFilters } from './pixel-filters';
 import {
   DEFAULT_PIXEL_RANGE,
   getPixelDashboard,
+  getUtmOptions,
   isPixelAudience,
   isPixelRange,
   PIXEL_RANGES,
@@ -33,6 +34,8 @@ type Props = {
     audience?: string;
     category?: string;
     product?: string;
+    campaign?: string;
+    source?: string;
   }>;
 };
 
@@ -271,17 +274,29 @@ function FunnelStrip({
 export default async function AdminPixelPage({ searchParams }: Props) {
   const sp = await searchParams;
   const { since, until } = resolveWindow(sp);
-  const categories = await prisma.category.findMany({
-    select: { id: true, name: true },
-    orderBy: { name: 'asc' },
-  });
+  const [categories, utmOptions] = await Promise.all([
+    prisma.category.findMany({ select: { id: true, name: true }, orderBy: { name: 'asc' } }),
+    getUtmOptions(),
+  ]);
   const audience = isPixelAudience(sp.audience) ? sp.audience : 'all';
   const categoryId =
     sp.category && categories.some((c) => c.id === sp.category) ? sp.category : undefined;
   const productId = sp.product && UUID_RE.test(sp.product) ? sp.product : undefined;
+  const utmCampaign =
+    sp.campaign && utmOptions.campaigns.includes(sp.campaign) ? sp.campaign : undefined;
+  const utmSource = sp.source && utmOptions.sources.includes(sp.source) ? sp.source : undefined;
 
-  const data = await getPixelDashboard({ since, until, audience, productId, categoryId });
+  const data = await getPixelDashboard({
+    since,
+    until,
+    audience,
+    productId,
+    categoryId,
+    utmCampaign,
+    utmSource,
+  });
   const productScoped = Boolean(productId || categoryId);
+  const campaignScoped = Boolean(utmCampaign || utmSource);
 
   const pixelId = data.health.pixel.id;
   const eventsManagerUrl = pixelId
@@ -302,9 +317,19 @@ export default async function AdminPixelPage({ searchParams }: Props) {
         </p>
       </header>
 
-      {/* Filters: date range, audience, category */}
-      <PixelFilters categories={categories} />
-      {productScoped ? (
+      {/* Filters: date range, audience, category, campaign/source */}
+      <PixelFilters
+        categories={categories}
+        campaigns={utmOptions.campaigns}
+        sources={utmOptions.sources}
+      />
+      {campaignScoped ? (
+        <p className="-mt-4 text-xs text-muted-foreground">
+          Campaign attribution is captured on the order at checkout, so only{' '}
+          <span className="font-medium">Purchase &amp; revenue</span> are campaign-specific — other
+          events read as n/a.
+        </p>
+      ) : productScoped ? (
         <p className="-mt-4 text-xs text-muted-foreground">
           Search &amp; Subscribe aren&apos;t product-specific, so they read as n/a under a
           product/category filter.

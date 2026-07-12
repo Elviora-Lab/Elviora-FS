@@ -605,6 +605,13 @@ model Order {
   shippingAddressLine2 String? @map("shipping_address_line_2") @db.VarChar(255)
   shippingPostalCode   String? @map("shipping_postal_code") @db.VarChar(20)
 
+  // ---- Marketing attribution (last-touch, captured at checkout) -----------
+  // utm_* from the landing URL via the elv_utm cookie. Powers first-party
+  // campaign filtering on /admin/pixel (which campaign drove the sale/revenue).
+  utmSource   String? @map("utm_source") @db.VarChar(120)
+  utmMedium   String? @map("utm_medium") @db.VarChar(120)
+  utmCampaign String? @map("utm_campaign") @db.VarChar(160)
+
   user          User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
   items         OrderItem[]
   statusHistory OrderStatusHistory[]

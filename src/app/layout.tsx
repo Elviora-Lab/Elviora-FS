@@ -13,6 +13,7 @@ import { GaIdentity } from '@/components/analytics/ga-identity';
 import { GoogleAnalytics } from '@/components/analytics/google-analytics';
 import { MetaIdentity } from '@/components/analytics/meta-identity';
 import { MetaPixel } from '@/components/analytics/meta-pixel';
+import { UtmCapture } from '@/components/analytics/utm-capture';
 
 import '@/styles/globals.css';
 
@@ -46,6 +47,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen bg-background text-foreground antialiased">
         <MetaPixel />
         <CapiParamInit />
+        <UtmCapture />
         <ClickTracker />
         <GoogleAnalytics />
         <AppProviders>

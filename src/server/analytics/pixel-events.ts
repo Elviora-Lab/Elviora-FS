@@ -176,6 +176,9 @@ export type PixelFilters = {
   productId?: string;
   /** …or to all products in a category. */
   categoryId?: string;
+  /** Last-touch marketing attribution (orders only). Scopes Purchase + revenue. */
+  utmCampaign?: string;
+  utmSource?: string;
 };
 
 /** `AND <col> IS [NOT] NULL` for the audience split (col names are literals). */
@@ -202,9 +205,21 @@ function orderProductSql(f: PixelFilters): Prisma.Sql {
   return Prisma.empty;
 }
 
+/** Order-level UTM scope (last-touch attribution lives on the order), or nothing. */
+function orderUtmSql(f: PixelFilters): Prisma.Sql {
+  const conds: Prisma.Sql[] = [];
+  if (f.utmCampaign) conds.push(Prisma.sql`utm_campaign = ${f.utmCampaign}`);
+  if (f.utmSource) conds.push(Prisma.sql`utm_source = ${f.utmSource}`);
+  return conds.length ? Prisma.sql`AND ${Prisma.join(conds, ' AND ')}` : Prisma.empty;
+}
+
 /** True when a product/category filter is active — search/subscribe have no
  *  product dimension, so they read as n/a (0) in that case. */
 const productScoped = (f: PixelFilters) => Boolean(f.productId || f.categoryId);
+
+/** True when a campaign/source filter is active — only orders carry UTM, so
+ *  every non-purchase event reads as n/a. */
+const campaignScoped = (f: PixelFilters) => Boolean(f.utmCampaign || f.utmSource);
 
 export async function getPixelDashboard(f: PixelFilters): Promise<PixelDashboard> {
   const { since, until } = f;
@@ -215,23 +230,29 @@ export async function getPixelDashboard(f: PixelFilters): Promise<PixelDashboard
   const prevSince = new Date(since.getTime() - windowMs);
   const spine = dateSpine(since, until);
   const prod = productScoped(f);
+  const camp = campaignScoped(f);
   const aud = audienceSql(f.audience, 'user_id');
 
   const [viewRows, cartRows, searchRows, orderRows, subRows, previous] = await Promise.all([
-    prisma.$queryRaw<DayRow[]>(Prisma.sql`
-      SELECT to_char(date_trunc('day', viewed_at AT TIME ZONE 'UTC'), 'YYYY-MM-DD') AS day,
-             COUNT(*)::int AS count
-      FROM product_view_logs
-      WHERE viewed_at >= ${since} AND viewed_at < ${until} ${aud} ${productSql(f, 'product_id')}
-      GROUP BY 1`),
-    prisma.$queryRaw<DayRow[]>(Prisma.sql`
-      SELECT to_char(date_trunc('day', created_at AT TIME ZONE 'UTC'), 'YYYY-MM-DD') AS day,
-             COUNT(*)::int AS count
-      FROM cart_event_logs
-      WHERE created_at >= ${since} AND created_at < ${until} ${aud} ${productSql(f, 'product_id')}
-      GROUP BY 1`),
-    // Search has no product dimension → empty when a product filter is active.
-    prod
+    // Views/carts have no UTM → n/a under a campaign filter.
+    camp
+      ? Promise.resolve<DayRow[]>([])
+      : prisma.$queryRaw<DayRow[]>(Prisma.sql`
+          SELECT to_char(date_trunc('day', viewed_at AT TIME ZONE 'UTC'), 'YYYY-MM-DD') AS day,
+                 COUNT(*)::int AS count
+          FROM product_view_logs
+          WHERE viewed_at >= ${since} AND viewed_at < ${until} ${aud} ${productSql(f, 'product_id')}
+          GROUP BY 1`),
+    camp
+      ? Promise.resolve<DayRow[]>([])
+      : prisma.$queryRaw<DayRow[]>(Prisma.sql`
+          SELECT to_char(date_trunc('day', created_at AT TIME ZONE 'UTC'), 'YYYY-MM-DD') AS day,
+                 COUNT(*)::int AS count
+          FROM cart_event_logs
+          WHERE created_at >= ${since} AND created_at < ${until} ${aud} ${productSql(f, 'product_id')}
+          GROUP BY 1`),
+    // Search has no product/UTM dimension → empty under a product or campaign filter.
+    prod || camp
       ? Promise.resolve<DayRow[]>([])
       : prisma.$queryRaw<DayRow[]>(Prisma.sql`
           SELECT to_char(date_trunc('day', searched_at AT TIME ZONE 'UTC'), 'YYYY-MM-DD') AS day,
@@ -244,10 +265,10 @@ export async function getPixelDashboard(f: PixelFilters): Promise<PixelDashboard
              COUNT(*)::int AS count,
              COALESCE(SUM(total_amount), 0)::float AS revenue
       FROM orders
-      WHERE created_at >= ${since} AND created_at < ${until} ${aud} ${orderProductSql(f)}
+      WHERE created_at >= ${since} AND created_at < ${until} ${aud} ${orderProductSql(f)} ${orderUtmSql(f)}
       GROUP BY 1`),
-    // Newsletter has no user/product link → n/a when audience=user or product-scoped.
-    prod || f.audience === 'user'
+    // Newsletter has no user/product/UTM link → n/a when audience=user or product/campaign-scoped.
+    prod || camp || f.audience === 'user'
       ? Promise.resolve<DayRow[]>([])
       : prisma.$queryRaw<DayRow[]>(Prisma.sql`
           SELECT to_char(date_trunc('day', subscribed_at AT TIME ZONE 'UTC'), 'YYYY-MM-DD') AS day,
@@ -298,28 +319,48 @@ export async function getPixelDashboard(f: PixelFilters): Promise<PixelDashboard
 type CountRow = { count: number };
 type CountRevenueRow = { count: number; revenue: number };
 
+export type UtmOptions = { campaigns: string[]; sources: string[] };
+
+/** Distinct utm_campaign / utm_source seen on orders — powers the filter dropdowns. */
+export async function getUtmOptions(): Promise<UtmOptions> {
+  const [campaigns, sources] = await Promise.all([
+    prisma.$queryRaw<{ v: string }[]>`
+      SELECT DISTINCT utm_campaign AS v FROM orders
+      WHERE utm_campaign IS NOT NULL AND utm_campaign <> '' ORDER BY 1 LIMIT 100`,
+    prisma.$queryRaw<{ v: string }[]>`
+      SELECT DISTINCT utm_source AS v FROM orders
+      WHERE utm_source IS NOT NULL AND utm_source <> '' ORDER BY 1 LIMIT 100`,
+  ]);
+  return { campaigns: campaigns.map((r) => r.v), sources: sources.map((r) => r.v) };
+}
+
 /** Bare totals for the previous window, under the SAME filters — delta baseline. */
 async function previousTotals(f: PixelFilters) {
   const { since, until } = f;
   const prod = productScoped(f);
+  const camp = campaignScoped(f);
   const aud = audienceSql(f.audience, 'user_id');
 
   const [views, carts, searches, orders, subs] = await Promise.all([
-    prisma.$queryRaw<CountRow[]>(Prisma.sql`
-      SELECT COUNT(*)::int AS count FROM product_view_logs
-      WHERE viewed_at >= ${since} AND viewed_at < ${until} ${aud} ${productSql(f, 'product_id')}`),
-    prisma.$queryRaw<CountRow[]>(Prisma.sql`
-      SELECT COUNT(*)::int AS count FROM cart_event_logs
-      WHERE created_at >= ${since} AND created_at < ${until} ${aud} ${productSql(f, 'product_id')}`),
-    prod
+    camp
+      ? Promise.resolve<CountRow[]>([{ count: 0 }])
+      : prisma.$queryRaw<CountRow[]>(Prisma.sql`
+          SELECT COUNT(*)::int AS count FROM product_view_logs
+          WHERE viewed_at >= ${since} AND viewed_at < ${until} ${aud} ${productSql(f, 'product_id')}`),
+    camp
+      ? Promise.resolve<CountRow[]>([{ count: 0 }])
+      : prisma.$queryRaw<CountRow[]>(Prisma.sql`
+          SELECT COUNT(*)::int AS count FROM cart_event_logs
+          WHERE created_at >= ${since} AND created_at < ${until} ${aud} ${productSql(f, 'product_id')}`),
+    prod || camp
       ? Promise.resolve<CountRow[]>([{ count: 0 }])
       : prisma.$queryRaw<CountRow[]>(Prisma.sql`
           SELECT COUNT(*)::int AS count FROM search_logs
           WHERE searched_at >= ${since} AND searched_at < ${until} ${aud}`),
     prisma.$queryRaw<CountRevenueRow[]>(Prisma.sql`
       SELECT COUNT(*)::int AS count, COALESCE(SUM(total_amount), 0)::float AS revenue FROM orders
-      WHERE created_at >= ${since} AND created_at < ${until} ${aud} ${orderProductSql(f)}`),
-    prod || f.audience === 'user'
+      WHERE created_at >= ${since} AND created_at < ${until} ${aud} ${orderProductSql(f)} ${orderUtmSql(f)}`),
+    prod || camp || f.audience === 'user'
       ? Promise.resolve<CountRow[]>([{ count: 0 }])
       : prisma.$queryRaw<CountRow[]>(Prisma.sql`
           SELECT COUNT(*)::int AS count FROM newsletter_subscribers

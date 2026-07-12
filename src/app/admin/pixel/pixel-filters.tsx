@@ -28,7 +28,15 @@ const PRESETS = ['7d', '30d', '90d'] as const;
  * component re-queries. Presets + a custom date range, audience split, and a
  * category scope.
  */
-export function PixelFilters({ categories }: { categories: Category[] }) {
+export function PixelFilters({
+  categories,
+  campaigns,
+  sources,
+}: {
+  categories: Category[];
+  campaigns: string[];
+  sources: string[];
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -44,6 +52,8 @@ export function PixelFilters({ categories }: { categories: Category[] }) {
 
   const audience = params.get('audience') ?? 'all';
   const category = params.get('category') ?? '';
+  const campaign = params.get('campaign') ?? '';
+  const source = params.get('source') ?? '';
   const from = params.get('from') ?? '';
   const to = params.get('to') ?? '';
   const custom = Boolean(from && to);
@@ -112,6 +122,39 @@ export function PixelFilters({ categories }: { categories: Category[] }) {
           ))}
         </select>
       </div>
+
+      {/* Campaign / source — only once some UTM attribution has been captured. */}
+      {campaigns.length || sources.length ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="w-16 text-xs text-muted-foreground">Campaign</span>
+          <select
+            value={campaign}
+            onChange={(e) => set({ campaign: e.target.value || null })}
+            className={field}
+          >
+            <option value="">All campaigns</option>
+            {campaigns.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+          <span className="px-1 text-muted-foreground/40">|</span>
+          <span className="text-xs text-muted-foreground">Source</span>
+          <select
+            value={source}
+            onChange={(e) => set({ source: e.target.value || null })}
+            className={field}
+          >
+            <option value="">All sources</option>
+            {sources.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : null}
     </div>
   );
 }
