@@ -7,7 +7,7 @@ import { formatDate } from '@/utils/format';
 
 import { Price } from '@/design-system/primitives/price';
 import { Section } from '@/design-system/primitives/section';
-import { Survey } from '@/components/survey/survey';
+import { Survey } from '@/components/survey/lazy-survey';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';

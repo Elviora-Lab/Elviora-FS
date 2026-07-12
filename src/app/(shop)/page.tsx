@@ -13,8 +13,8 @@ import { Button } from '@/components/ui/button';
 
 import { HeroShowcase } from './_components/hero-showcase';
 import { getShadeSpotlight, getShowcaseReviews } from './_components/homepage-modules.data';
+import { ShadeSpotlight } from './_components/lazy-sections';
 import { ReviewsCarousel } from './_components/reviews-carousel';
-import { ShadeSpotlight } from './_components/shade-spotlight';
 import { StatementMarquee } from './_components/statement-marquee';
 
 import { reviewsRepo } from '@/server/repositories/reviews.repo';

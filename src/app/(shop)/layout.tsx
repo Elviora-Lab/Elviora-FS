@@ -1,9 +1,9 @@
 import { AnnouncementBar } from '@/components/layout/announcement-bar';
-import { ExitIntentNudge } from '@/components/layout/exit-intent-nudge';
+import { ExitIntentNudge } from '@/components/layout/deferred-client';
 import { MobileNav } from '@/components/layout/mobile-nav';
 import { SiteFooter } from '@/components/layout/site-footer';
 import { SiteHeader } from '@/components/layout/site-header';
-import { Survey } from '@/components/survey/survey';
+import { Survey } from '@/components/survey/lazy-survey';
 
 import { AuthHydrator } from '@/features/auth/components/auth-hydrator';
 import { CartDrawer } from '@/features/cart/components/cart-drawer';
