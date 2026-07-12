@@ -447,18 +447,34 @@ async function fetchAccountMeta(act: string): Promise<{ name: string; currency: 
  * delta badges, and the per-day spend/revenue/ROAS series that feeds the trend
  * charts. The account insights call failing is fatal for this view.
  */
-export function getAdsSummary(datePreset: AdDatePreset): Promise<AdsSummaryResult> {
-  return unstable_cache(() => fetchAdsSummary(datePreset), ['meta-ads-summary', datePreset], {
-    revalidate: ADS_CACHE_TTL,
-    tags: ['meta-ads'],
-  })();
+/** Graph API `filtering` param that scopes account-level insights to a single
+ *  campaign, or {} for the whole account. */
+function campaignFilter(campaignId?: string): Record<string, string> {
+  return campaignId
+    ? { filtering: JSON.stringify([{ field: 'campaign.id', operator: 'IN', value: [campaignId] }]) }
+    : {};
 }
 
-async function fetchAdsSummary(datePreset: AdDatePreset): Promise<AdsSummaryResult> {
+export function getAdsSummary(
+  datePreset: AdDatePreset,
+  campaignId?: string,
+): Promise<AdsSummaryResult> {
+  return unstable_cache(
+    () => fetchAdsSummary(datePreset, campaignId),
+    ['meta-ads-summary', datePreset, campaignId ?? 'all'],
+    { revalidate: ADS_CACHE_TTL, tags: ['meta-ads'] },
+  )();
+}
+
+async function fetchAdsSummary(
+  datePreset: AdDatePreset,
+  campaignId?: string,
+): Promise<AdsSummaryResult> {
   if (!adsInsightsEnabled()) return { ok: false, error: 'Meta Ads is not configured.' };
 
   const act = accountPath();
   const prev = previousWindow(datePreset);
+  const scope = campaignFilter(campaignId);
 
   try {
     const [meta, accountInsights, previousInsights, dailyRows] = await Promise.all([
@@ -467,6 +483,7 @@ async function fetchAdsSummary(datePreset: AdDatePreset): Promise<AdsSummaryResu
         fields: INSIGHT_FIELDS,
         date_preset: datePreset,
         level: 'account',
+        ...scope,
       }),
       prev
         ? safe(
@@ -474,6 +491,7 @@ async function fetchAdsSummary(datePreset: AdDatePreset): Promise<AdsSummaryResu
               fields: INSIGHT_FIELDS,
               time_range: JSON.stringify({ since: prev.since, until: prev.until }),
               level: 'account',
+              ...scope,
             }),
             { data: [] },
           )
@@ -485,6 +503,7 @@ async function fetchAdsSummary(datePreset: AdDatePreset): Promise<AdsSummaryResu
           level: 'account',
           time_increment: '1',
           limit: '200',
+          ...scope,
         }),
         { data: [] },
       ),
@@ -575,6 +594,43 @@ async function fetchAdsBreakdownsData(datePreset: AdDatePreset): Promise<AdsBrea
   } catch (error) {
     return { ok: false, error: errText(error, 'Failed to load breakdowns.') };
   }
+}
+
+export type CampaignOption = { id: string; name: string };
+
+/** Lightweight {id, name} list of campaigns that spent in the window — powers the
+ *  funnel's campaign filter. Sorted by spend so the biggest campaigns lead. */
+export function getAdsCampaignOptions(datePreset: AdDatePreset): Promise<CampaignOption[]> {
+  return unstable_cache(
+    () => fetchAdsCampaignOptions(datePreset),
+    ['meta-ads-campaign-options', datePreset],
+    { revalidate: ADS_CACHE_TTL, tags: ['meta-ads'] },
+  )();
+}
+
+async function fetchAdsCampaignOptions(datePreset: AdDatePreset): Promise<CampaignOption[]> {
+  if (!adsInsightsEnabled()) return [];
+  const act = accountPath();
+  const res = await safe(
+    graphGet<{ data?: InsightRow[] }>(`${act}/insights`, {
+      fields: 'campaign_id,campaign_name,spend',
+      date_preset: datePreset,
+      level: 'campaign',
+      sort: 'spend_descending',
+      limit: '100',
+    }),
+    { data: [] },
+  );
+  const seen = new Set<string>();
+  const options: CampaignOption[] = [];
+  for (const row of res.data ?? []) {
+    const id = row.campaign_id;
+    if (id && !seen.has(id)) {
+      seen.add(id);
+      options.push({ id, name: row.campaign_name ?? 'Untitled campaign' });
+    }
+  }
+  return options;
 }
 
 /** Campaigns submodule — per-campaign performance (with live status) and top ads. */

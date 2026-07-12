@@ -4,23 +4,32 @@ import { cn } from '@/lib/cn';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 import { AdsErrorCard, SetupCard } from '../ads-shared';
+import { CampaignFilter } from '../campaign-filter';
 import { FunnelChart, type FunnelStage } from '../charts/funnel-chart';
 import { intText } from '../format';
 
-import { adsInsightsEnabled, getAdsSummary } from '@/server/analytics/meta-ads';
+import {
+  adsInsightsEnabled,
+  getAdsCampaignOptions,
+  getAdsSummary,
+} from '@/server/analytics/meta-ads';
 
-type Props = { searchParams: Promise<{ range?: string }> };
+type Props = { searchParams: Promise<{ range?: string; campaign?: string }> };
 
 export default async function AdminAdsFunnelPage({ searchParams }: Props) {
-  const { range: rawRange } = await searchParams;
+  const { range: rawRange, campaign } = await searchParams;
   const range = isAdDatePreset(rawRange) ? rawRange : DEFAULT_AD_RANGE;
 
   if (!adsInsightsEnabled()) return <SetupCard />;
 
-  const result = await getAdsSummary(range);
+  const [result, campaignOptions] = await Promise.all([
+    getAdsSummary(range, campaign),
+    getAdsCampaignOptions(range),
+  ]);
   if (!result.ok) return <AdsErrorCard error={result.error} />;
 
   const { account } = result.data;
+  const selectedCampaign = campaign ? campaignOptions.find((c) => c.id === campaign) : undefined;
   const f = account.funnel;
   const stages: FunnelStage[] = [
     { label: 'Link clicks', value: f.linkClicks || account.clicks },
@@ -35,13 +44,25 @@ export default async function AdminAdsFunnelPage({ searchParams }: Props) {
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Campaign scope */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <CampaignFilter range={range} campaignId={campaign} options={campaignOptions} />
+        {selectedCampaign ? (
+          <span className="text-xs text-muted-foreground">
+            Scoped to <span className="font-medium text-foreground">{selectedCampaign.name}</span>
+          </span>
+        ) : null}
+      </div>
+
       <Card>
         <CardHeader className="pb-2">
           <div className="flex items-baseline justify-between gap-3">
             <div>
               <CardTitle className="text-xl">Conversion funnel</CardTitle>
               <CardDescription>
-                Where ad-driven visitors drop off, from click to purchase.
+                {selectedCampaign
+                  ? `Where "${selectedCampaign.name}" visitors drop off, from click to purchase.`
+                  : 'Where ad-driven visitors drop off, from click to purchase (all campaigns).'}
               </CardDescription>
             </div>
             {overall !== null ? (
