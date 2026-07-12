@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { unstable_cache } from 'next/cache';
+
 import { serverEnv } from '@/config/env';
 
 import type { AdDatePreset } from '@/lib/ads/date-presets';
@@ -19,6 +21,11 @@ import type { AdDatePreset } from '@/lib/ads/date-presets';
 
 const GRAPH_VERSION = 'v21.0';
 const GRAPH_BASE = `https://graph.facebook.com/${GRAPH_VERSION}`;
+
+// Ad metrics move slowly (Meta aggregates over hours), so the dashboard is served
+// from a short-lived server cache instead of hitting the Graph API on every admin
+// page load — keeping it snappy and well under Meta's rate limits.
+const ADS_CACHE_TTL = 600; // seconds (10 min)
 
 export function adsInsightsEnabled(): boolean {
   return Boolean(serverEnv.META_ADS_ACCESS_TOKEN && serverEnv.META_ADS_ACCOUNT_ID);
@@ -289,6 +296,11 @@ async function graphGet<T>(path: string, params: Record<string, string>): Promis
   const token = serverEnv.META_ADS_ACCESS_TOKEN as string;
   const url = new URL(`${GRAPH_BASE}/${path}`);
   for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
+  // Use the ad account's configured attribution setting on every Insights read so
+  // the dashboard's spend/ROAS/purchases reconcile with what Ads Manager shows.
+  // Without this the API falls back to a legacy window (7d-click/1d-view) that can
+  // silently disagree with Meta's UI.
+  if (path.endsWith('/insights')) url.searchParams.set('use_unified_attribution_setting', 'true');
   url.searchParams.set('access_token', token);
 
   const res = await fetch(url, { cache: 'no-store' });
@@ -435,7 +447,14 @@ async function fetchAccountMeta(act: string): Promise<{ name: string; currency: 
  * delta badges, and the per-day spend/revenue/ROAS series that feeds the trend
  * charts. The account insights call failing is fatal for this view.
  */
-export async function getAdsSummary(datePreset: AdDatePreset): Promise<AdsSummaryResult> {
+export function getAdsSummary(datePreset: AdDatePreset): Promise<AdsSummaryResult> {
+  return unstable_cache(() => fetchAdsSummary(datePreset), ['meta-ads-summary', datePreset], {
+    revalidate: ADS_CACHE_TTL,
+    tags: ['meta-ads'],
+  })();
+}
+
+async function fetchAdsSummary(datePreset: AdDatePreset): Promise<AdsSummaryResult> {
   if (!adsInsightsEnabled()) return { ok: false, error: 'Meta Ads is not configured.' };
 
   const act = accountPath();
@@ -496,7 +515,15 @@ export async function getAdsSummary(datePreset: AdDatePreset): Promise<AdsSummar
 }
 
 /** Breakdowns submodule — spend/ROAS split by placement, demographic and device. */
-export async function getAdsBreakdownsData(datePreset: AdDatePreset): Promise<AdsBreakdownsResult> {
+export function getAdsBreakdownsData(datePreset: AdDatePreset): Promise<AdsBreakdownsResult> {
+  return unstable_cache(
+    () => fetchAdsBreakdownsData(datePreset),
+    ['meta-ads-breakdowns', datePreset],
+    { revalidate: ADS_CACHE_TTL, tags: ['meta-ads'] },
+  )();
+}
+
+async function fetchAdsBreakdownsData(datePreset: AdDatePreset): Promise<AdsBreakdownsResult> {
   if (!adsInsightsEnabled()) return { ok: false, error: 'Meta Ads is not configured.' };
 
   const act = accountPath();
@@ -551,7 +578,15 @@ export async function getAdsBreakdownsData(datePreset: AdDatePreset): Promise<Ad
 }
 
 /** Campaigns submodule — per-campaign performance (with live status) and top ads. */
-export async function getAdsCampaignsData(datePreset: AdDatePreset): Promise<AdsCampaignsResult> {
+export function getAdsCampaignsData(datePreset: AdDatePreset): Promise<AdsCampaignsResult> {
+  return unstable_cache(
+    () => fetchAdsCampaignsData(datePreset),
+    ['meta-ads-campaigns', datePreset],
+    { revalidate: ADS_CACHE_TTL, tags: ['meta-ads'] },
+  )();
+}
+
+async function fetchAdsCampaignsData(datePreset: AdDatePreset): Promise<AdsCampaignsResult> {
   if (!adsInsightsEnabled()) return { ok: false, error: 'Meta Ads is not configured.' };
 
   const act = accountPath();

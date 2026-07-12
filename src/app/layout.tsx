@@ -11,6 +11,7 @@ import { CapiParamInit } from '@/components/analytics/capi-param-init';
 import { ClickTracker } from '@/components/analytics/click-tracker';
 import { GaIdentity } from '@/components/analytics/ga-identity';
 import { GoogleAnalytics } from '@/components/analytics/google-analytics';
+import { MetaIdentity } from '@/components/analytics/meta-identity';
 import { MetaPixel } from '@/components/analytics/meta-pixel';
 
 import '@/styles/globals.css';
@@ -49,6 +50,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <GoogleAnalytics />
         <AppProviders>
           <GaIdentity />
+          <MetaIdentity />
           {children}
         </AppProviders>
         <JsonLd data={organizationJsonLd()} />
