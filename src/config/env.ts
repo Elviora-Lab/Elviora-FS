@@ -16,6 +16,9 @@ const publicEnvSchema = z.object({
   NEXT_PUBLIC_ENVIRONMENT: z.enum(['development', 'staging', 'production']).default('development'),
   NEXT_PUBLIC_GTM_ID: optionalStr,
   NEXT_PUBLIC_GA_ID: optionalStr,
+  // Microsoft Clarity project id — session replay + heatmaps. Loads in
+  // production only (like the pixel); leave blank to disable.
+  NEXT_PUBLIC_CLARITY_ID: optionalStr,
   // "true" ⇒ GA4 events carry debug_mode so they show in DebugView.
   NEXT_PUBLIC_GA_DEBUG: optionalStr,
   // Meta (Facebook) Pixel ID. Defaults to the Elviora pixel so tracking works
@@ -101,6 +104,7 @@ const publicEnvSource = {
   NEXT_PUBLIC_ENVIRONMENT: process.env.NEXT_PUBLIC_ENVIRONMENT,
   NEXT_PUBLIC_GTM_ID: process.env.NEXT_PUBLIC_GTM_ID,
   NEXT_PUBLIC_GA_ID: process.env.NEXT_PUBLIC_GA_ID,
+  NEXT_PUBLIC_CLARITY_ID: process.env.NEXT_PUBLIC_CLARITY_ID,
   NEXT_PUBLIC_GA_DEBUG: process.env.NEXT_PUBLIC_GA_DEBUG,
   NEXT_PUBLIC_FB_PIXEL_ID: process.env.NEXT_PUBLIC_FB_PIXEL_ID,
   NEXT_PUBLIC_CLICKSTREAM_SAMPLE: process.env.NEXT_PUBLIC_CLICKSTREAM_SAMPLE,

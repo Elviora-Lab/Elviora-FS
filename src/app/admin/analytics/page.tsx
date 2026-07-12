@@ -88,13 +88,34 @@ export default async function AdminAnalyticsPage({
   const sp = await searchParams;
   const range = isGaRange(sp.range) ? sp.range : DEFAULT_GA_RANGE;
   const country = sp.country;
-  const [funnel, topViewed, topAddedToCart, topSearches, geo] = await Promise.all([
-    adminAnalyticsRepo.funnel(WINDOW_DAYS),
-    adminAnalyticsRepo.topViewed(WINDOW_DAYS),
-    adminAnalyticsRepo.topAddedToCart(WINDOW_DAYS),
-    adminAnalyticsRepo.topSearches(WINDOW_DAYS),
-    getCustomerGeo(WINDOW_DAYS),
-  ]);
+  const [funnel, topViewed, topAddedToCart, topSearches, zeroResults, surveys, geo] =
+    await Promise.all([
+      adminAnalyticsRepo.funnel(WINDOW_DAYS),
+      adminAnalyticsRepo.topViewed(WINDOW_DAYS),
+      adminAnalyticsRepo.topAddedToCart(WINDOW_DAYS),
+      adminAnalyticsRepo.topSearches(WINDOW_DAYS),
+      adminAnalyticsRepo.zeroResultSearches(WINDOW_DAYS),
+      adminAnalyticsRepo.surveyBreakdown(WINDOW_DAYS),
+      getCustomerGeo(WINDOW_DAYS),
+    ]);
+
+  // Group survey answers by question for the feedback card.
+  const SURVEY_META: Record<string, { title: string; desc: string }> = {
+    why_not_buy: {
+      title: 'Why shoppers hesitate',
+      desc: 'On-site "anything holding you back?" survey — the direct reason people don’t order.',
+    },
+    how_heard: {
+      title: 'How customers heard about us',
+      desc: 'Asked right after purchase — where your buyers actually come from.',
+    },
+  };
+  const surveyGroups = new Map<string, Array<{ answer: string; count: number }>>();
+  for (const r of surveys) {
+    const arr = surveyGroups.get(r.question) ?? [];
+    arr.push({ answer: r.answer, count: r.count });
+    surveyGroups.set(r.question, arr);
+  }
 
   const tiles = [
     { label: 'Product views', value: funnel.views, sub: `Last ${WINDOW_DAYS} days` },
@@ -185,6 +206,72 @@ export default async function AdminAnalyticsPage({
             </p>
           ) : (
             <CustomerGeoChart rows={geo.cities} currency={geo.currency} />
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Customer feedback — zero-party survey answers */}
+      {surveyGroups.size > 0 ? (
+        <div className="grid gap-6 lg:grid-cols-2">
+          {[...surveyGroups.entries()].map(([question, answers]) => {
+            const meta = SURVEY_META[question] ?? { title: question, desc: 'Survey responses.' };
+            const total = answers.reduce((sum, a) => sum + a.count, 0);
+            return (
+              <Card key={question}>
+                <CardHeader>
+                  <CardTitle className="text-xl">{meta.title}</CardTitle>
+                  <CardDescription>{meta.desc}</CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-2.5">
+                  {answers.map((a) => (
+                    <div key={a.answer} className="flex flex-col gap-1">
+                      <div className="flex items-baseline justify-between text-sm">
+                        <span>{a.answer}</span>
+                        <span className="tabular-nums text-muted-foreground">
+                          {a.count} · {total > 0 ? Math.round((a.count / total) * 100) : 0}%
+                        </span>
+                      </div>
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-full rounded-full bg-foreground/60"
+                          style={{ width: `${total > 0 ? (a.count / total) * 100 : 0}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      ) : null}
+
+      {/* Searched but not found — unmet demand */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xl">Searched but not found</CardTitle>
+          <CardDescription>
+            Queries that returned nothing — products you don&apos;t stock yet, or that customers
+            can&apos;t find under the name they used. A strong signal for what to add or rename.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          {zeroResults.length === 0 ? (
+            <p className="px-6 pb-6 text-sm text-muted-foreground">
+              No empty searches in the last {WINDOW_DAYS} days.
+            </p>
+          ) : (
+            <ol className="divide-y divide-border/60">
+              {zeroResults.map((s, i) => (
+                <li key={s.keyword} className="flex items-center gap-3 px-4 py-3 text-sm">
+                  <span className="w-5 text-center text-xs text-muted-foreground">{i + 1}</span>
+                  <span className="min-w-0 flex-1 truncate">{s.keyword}</span>
+                  <span className="font-medium tabular-nums text-destructive">
+                    {s.count.toLocaleString()}
+                  </span>
+                </li>
+              ))}
+            </ol>
           )}
         </CardContent>
       </Card>

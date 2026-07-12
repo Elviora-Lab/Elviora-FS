@@ -7,6 +7,7 @@ import { formatDate } from '@/utils/format';
 
 import { Price } from '@/design-system/primitives/price';
 import { Section } from '@/design-system/primitives/section';
+import { Survey } from '@/components/survey/survey';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -50,6 +51,22 @@ export default async function OrderSuccessPage({ params }: { params: Params }) {
           price: Number(i.unitPrice),
           quantity: i.quantity,
         }))}
+      />
+      {/* Zero-party attribution — best-quality moment to ask, right after buying. */}
+      <Survey
+        kind="post_purchase"
+        question="how_heard"
+        prompt="One quick thing — how did you hear about us?"
+        options={[
+          'Instagram',
+          'Facebook',
+          'TikTok',
+          'Google search',
+          'Friend or family',
+          'Somewhere else',
+        ]}
+        orderId={order.id}
+        trigger="immediate"
       />
       <div className="container flex max-w-2xl flex-col items-center gap-6 text-center">
         <span className="grid size-14 place-items-center rounded-full bg-success/15 text-success">

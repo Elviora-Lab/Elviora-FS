@@ -1016,6 +1016,28 @@ model ClickEventLog {
   @@map("click_event_logs")
 }
 
+/// Zero-party data — answers to on-site micro-surveys ("why didn't you buy?",
+/// "how did you hear about us?"). The qualitative *why* that behavioural logs
+/// can't capture. Relation-less like the other logs.
+model SurveyResponse {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// Which survey fired: exit_intent | post_purchase.
+  kind      String   @db.VarChar(32)
+  /// Question key (e.g. why_not_buy, how_heard).
+  question  String   @db.VarChar(64)
+  /// Chosen option label or free text.
+  answer    String   @db.VarChar(500)
+  userId    String?  @map("user_id") @db.Uuid
+  guestId   String?  @map("guest_id") @db.VarChar(64)
+  orderId   String?  @map("order_id") @db.Uuid
+  pagePath  String?  @map("page_path") @db.VarChar(512)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([kind, createdAt])
+  @@index([question, answer])
+  @@map("survey_responses")
+}
+
 // =============================================================================
 //  LOYALTY, REFERRALS, SUBSCRIPTIONS
 // =============================================================================

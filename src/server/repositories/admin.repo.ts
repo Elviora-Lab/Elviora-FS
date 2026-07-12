@@ -369,6 +369,34 @@ export const adminAnalyticsRepo = {
     return rows.map((r) => ({ keyword: r.keyword, count: r._count.keyword }));
   },
 
+  /** Searches that returned NOTHING — demand you don't stock or can't be found. */
+  async zeroResultSearches(
+    days: number,
+    limit = 10,
+  ): Promise<Array<{ keyword: string; count: number }>> {
+    const rows = await prisma.searchLog.groupBy({
+      by: ['keyword'],
+      where: { searchedAt: { gte: since(days) }, resultCount: 0 },
+      _count: { keyword: true },
+      orderBy: { _count: { keyword: 'desc' } },
+      take: limit,
+    });
+    return rows.map((r) => ({ keyword: r.keyword, count: r._count.keyword }));
+  },
+
+  /** On-site survey answers grouped by question → answer, most-common first. */
+  async surveyBreakdown(
+    days: number,
+  ): Promise<Array<{ question: string; answer: string; count: number }>> {
+    const rows = await prisma.surveyResponse.groupBy({
+      by: ['question', 'answer'],
+      where: { createdAt: { gte: since(days) } },
+      _count: { answer: true },
+      orderBy: { _count: { answer: 'desc' } },
+    });
+    return rows.map((r) => ({ question: r.question, answer: r.answer, count: r._count.answer }));
+  },
+
   /** View → cart → order volumes for the window (the funnel). */
   async funnel(days: number) {
     const gte = since(days);

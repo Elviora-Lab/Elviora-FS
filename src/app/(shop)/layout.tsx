@@ -3,6 +3,7 @@ import { ExitIntentNudge } from '@/components/layout/exit-intent-nudge';
 import { MobileNav } from '@/components/layout/mobile-nav';
 import { SiteFooter } from '@/components/layout/site-footer';
 import { SiteHeader } from '@/components/layout/site-header';
+import { Survey } from '@/components/survey/survey';
 
 import { AuthHydrator } from '@/features/auth/components/auth-hydrator';
 import { CartDrawer } from '@/features/cart/components/cart-drawer';
@@ -22,6 +23,23 @@ export default function ShopLayout({ children }: { children: React.ReactNode }) 
       <CartDrawer />
       <MobileNav />
       <ExitIntentNudge />
+      {/* Zero-party "why aren't you ordering" survey — dwell-triggered so it
+          doesn't collide with the exit-intent nudge above. */}
+      <Survey
+        kind="exit_intent"
+        question="why_not_buy"
+        prompt="Anything holding you back from ordering today?"
+        options={[
+          'Price',
+          'Shipping cost',
+          'Not sure about the product',
+          'Payment options',
+          'Just browsing',
+          'Something else',
+        ]}
+        trigger="dwell"
+        skipPaths={['/checkout', '/account', '/review', '/admin']}
+      />
       {/* Hydrators sync Redux with the server session/cart/wishlist on mount + invalidation. */}
       <AuthHydrator />
       <CartHydrator />
