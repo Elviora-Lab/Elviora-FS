@@ -282,7 +282,9 @@ export default async function HomePage() {
             <div className="mt-12 grid grid-cols-2 gap-x-5 gap-y-10 md:grid-cols-3 lg:grid-cols-4">
               {bestsellers.slice(0, 8).map((product, i) => (
                 <Reveal key={product.id} inView delay={(i % 4) * 0.05}>
-                  <ProductCard product={product} priority={i < 4} />
+                  {/* No `priority` — this section is well below the fold, so its
+                      images should lazy-load and not compete with the hero LCP. */}
+                  <ProductCard product={product} />
                 </Reveal>
               ))}
             </div>

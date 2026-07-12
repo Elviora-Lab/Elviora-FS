@@ -14,6 +14,22 @@ type ImageLoaderProps = {
  * images at the right width with ZERO Vercel transformations, because the
  * browser never hits `/_next/image`.
  */
+/**
+ * Route a full-size external image through the free weserv.nl proxy to get a
+ * right-sized WebP. Used for sources with no native on-CDN resizing (e.g.
+ * Supabase Storage on the Free plan), which would otherwise ship the original
+ * (often 300 KB+) to every device. `ssl:` forces an HTTPS fetch of the source.
+ */
+function weserv(url: URL, width: number, quality?: number): string {
+  const params = new URLSearchParams({
+    url: `ssl:${url.host}${url.pathname}${url.search}`,
+    w: String(width),
+    output: 'webp',
+    q: String(quality ?? 75),
+  });
+  return `https://images.weserv.nl/?${params.toString()}`;
+}
+
 export default function imageLoader({ src, width, quality }: ImageLoaderProps): string {
   // Local/static assets (/public, Next static output) — serve directly.
   if (src.startsWith('/')) return src;
@@ -57,6 +73,7 @@ export default function imageLoader({ src, width, quality }: ImageLoaderProps): 
   // NEXT_PUBLIC_SUPABASE_IMAGE_TRANSFORM=1. Otherwise the image passes through
   // full-size (still renders, still zero Vercel transformations).
   if (host.endsWith('.supabase.co') && url.pathname.includes('/storage/v1/object/public/')) {
+    // Pro plan: use Supabase's own (fast, native) image transform.
     if (process.env.NEXT_PUBLIC_SUPABASE_IMAGE_TRANSFORM === '1') {
       url.pathname = url.pathname.replace(
         '/storage/v1/object/public/',
@@ -64,8 +81,11 @@ export default function imageLoader({ src, width, quality }: ImageLoaderProps): 
       );
       url.searchParams.set('width', String(width));
       url.searchParams.set('quality', String(quality ?? 75));
+      return url.toString();
     }
-    return url.toString();
+    // Free plan: resize via weserv.nl instead of shipping the full-size original
+    // (~350 KB) to every device — a ~10× reduction to a right-sized WebP.
+    return weserv(url, width, quality);
   }
 
   // Any other host (cdn.elviora.com, arbitrary admin URLs): serve as-is.
