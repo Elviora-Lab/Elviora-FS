@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, ChevronRight, Flame } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Flame } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { useAppDispatch } from '@/store/hooks';
@@ -300,8 +300,8 @@ export function ProductExperience({
                         style={v.hex ? { backgroundColor: v.hex } : undefined}
                       >
                         {!v.hex ? (
-                          <span className="text-[8px] font-medium uppercase text-muted-foreground">
-                            {v.name.slice(0, 3)}
+                          <span className="text-[10px] font-medium uppercase text-muted-foreground">
+                            {v.name.slice(0, 4)}
                           </span>
                         ) : null}
                         {disabled ? (
@@ -330,11 +330,18 @@ export function ProductExperience({
               />
             </div>
 
-            {selected && selected.stockQuantity > 0 && selected.stockQuantity <= 6 ? (
-              <p className="flex items-center gap-1.5 text-sm font-medium text-destructive">
-                <Flame className="size-4 shrink-0" />
-                Only {selected.stockQuantity} left — order soon
-              </p>
+            {selected && selected.stockQuantity > 0 ? (
+              selected.stockQuantity <= 6 ? (
+                <p className="flex items-center gap-1.5 text-sm font-medium text-destructive">
+                  <Flame className="size-4 shrink-0" />
+                  Only {selected.stockQuantity} left — order soon · Delivered in 2–5 days
+                </p>
+              ) : (
+                <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <Check className="size-4 shrink-0 text-success" />
+                  In stock · Delivered in 2–5 days
+                </p>
+              )
             ) : null}
 
             <Button

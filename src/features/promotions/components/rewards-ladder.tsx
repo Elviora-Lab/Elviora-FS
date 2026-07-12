@@ -5,20 +5,13 @@ import { Gift, Truck } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { spendTierProgress } from '@/lib/promotions';
 import { FREE_SHIPPING_THRESHOLD } from '@/lib/shipping';
+import { formatMoney } from '@/utils/format';
 
 import { useGetSpendTiersQuery } from '../api/promotions-api';
 
-const money = (n: number, currency = 'PKR') => {
-  try {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency,
-      maximumFractionDigits: 0,
-    }).format(n);
-  } catch {
-    return `Rs ${Math.round(n).toLocaleString('en-US')}`;
-  }
-};
+// Use the shared formatter so amounts render "Rs 8,000" here exactly like the
+// Price primitive on the same cart/checkout screen (was "PKR 8,000" via en-US).
+const money = (n: number, currency = 'PKR') => formatMoney(n, currency);
 
 /**
  * The "rewards ladder" nudge — the core conversion lever. Tells the shopper what

@@ -8,10 +8,12 @@ import { useAppSelector } from '@/store/hooks';
 
 import { analytics } from '@/lib/analytics';
 import { bestDiscount } from '@/lib/promotions';
+import { FREE_SHIPPING_THRESHOLD } from '@/lib/shipping';
 
 import { EmptyState } from '@/design-system/primitives/empty-state';
 import { Price } from '@/design-system/primitives/price';
 import { QuantitySelector } from '@/design-system/primitives/quantity-selector';
+import { TrustBar } from '@/components/commerce/trust-bar';
 import { Button } from '@/components/ui/button';
 
 import { useRemoveCartLineMutation, useUpdateCartLineMutation } from '@/features/cart/api/cart-api';
@@ -165,16 +167,30 @@ export function CartPageClient() {
               </span>
             </div>
           ) : null}
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Shipping</span>
+            <span className="tabular-nums">
+              {subtotal >= FREE_SHIPPING_THRESHOLD ? (
+                <span className="font-medium text-success">Free</span>
+              ) : (
+                // Within-Karachi starting rate, tax-inclusive (see /shipping copy).
+                <span className="text-muted-foreground">from Rs 155</span>
+              )}
+            </span>
+          </div>
           <div className="flex items-center justify-between border-t border-border pt-3 text-sm font-medium">
             <span>Total</span>
             <Price amount={total} currency={currency} />
           </div>
           <p className="text-xs text-muted-foreground">
-            Shipping and taxes calculated at checkout.
+            Delivery is set by your city (free over{' '}
+            <Price amount={FREE_SHIPPING_THRESHOLD} currency={currency} />) — the exact shipping and
+            any tax are shown at checkout before you pay.
           </p>
           <Button asChild size="lg" variant="gold" uppercase>
             <Link href="/checkout">Proceed to checkout</Link>
           </Button>
+          <TrustBar />
         </aside>
       </div>
 
