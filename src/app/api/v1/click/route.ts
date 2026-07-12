@@ -70,12 +70,17 @@ export const POST = createHandler(async (req) => {
   const parsed = bodySchema.safeParse(json);
   if (!parsed.success) return apiNoContent();
 
+  // Never record back-office (/admin) activity — the clickstream is
+  // storefront-only. Defense in depth: the client already skips these.
+  const events = parsed.data.events.filter((e) => !e.pagePath.startsWith('/admin'));
+  if (!events.length) return apiNoContent();
+
   const [session, guestId] = await Promise.all([getSession(req), getGuestId()]);
   const userId = session?.sub ?? null;
 
   try {
     await prisma.clickEventLog.createMany({
-      data: parsed.data.events.map((e) => ({
+      data: events.map((e) => ({
         userId,
         guestId,
         targetType: e.targetType,

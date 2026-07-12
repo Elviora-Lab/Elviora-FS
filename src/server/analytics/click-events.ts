@@ -86,11 +86,13 @@ export async function getClickDashboard(rangeDays: number): Promise<ClickDashboa
                COUNT(*)::int AS count
         FROM click_event_logs
         WHERE created_at >= ${since} AND created_at < ${until}
+          AND page_path NOT LIKE '/admin%'
         GROUP BY 1`,
       prisma.$queryRaw<TypeRow[]>`
         SELECT target_type AS type, COUNT(*)::int AS count
         FROM click_event_logs
         WHERE created_at >= ${since} AND created_at < ${until}
+          AND page_path NOT LIKE '/admin%'
         GROUP BY 1
         ORDER BY count DESC`,
       prisma.$queryRaw<TargetRow[]>`
@@ -99,6 +101,7 @@ export async function getClickDashboard(rangeDays: number): Promise<ClickDashboa
                COUNT(*)::int AS count
         FROM click_event_logs
         WHERE created_at >= ${since} AND created_at < ${until}
+          AND page_path NOT LIKE '/admin%'
         GROUP BY 1, 2
         ORDER BY count DESC
         LIMIT 15`,
@@ -108,6 +111,7 @@ export async function getClickDashboard(rangeDays: number): Promise<ClickDashboa
                COUNT(*)::int AS count
         FROM click_event_logs
         WHERE created_at >= ${since} AND created_at < ${until}
+          AND page_path NOT LIKE '/admin%'
           AND target_type = 'product' AND target_id IS NOT NULL
         GROUP BY 1, 2
         ORDER BY count DESC
@@ -116,14 +120,21 @@ export async function getClickDashboard(rangeDays: number): Promise<ClickDashboa
         SELECT page_path AS path, COUNT(*)::int AS count
         FROM click_event_logs
         WHERE created_at >= ${since} AND created_at < ${until}
+          AND page_path NOT LIKE '/admin%'
         GROUP BY 1
         ORDER BY count DESC
         LIMIT 10`,
       prisma.$queryRaw<{ count: number }[]>`
         SELECT COUNT(DISTINCT COALESCE(user_id::text, guest_id))::int AS count
         FROM click_event_logs
-        WHERE created_at >= ${since} AND created_at < ${until}`,
-      prisma.clickEventLog.count({ where: { createdAt: { gte: prevSince, lt: prevUntil } } }),
+        WHERE created_at >= ${since} AND created_at < ${until}
+          AND page_path NOT LIKE '/admin%'`,
+      prisma.clickEventLog.count({
+        where: {
+          createdAt: { gte: prevSince, lt: prevUntil },
+          NOT: { pagePath: { startsWith: '/admin' } },
+        },
+      }),
     ]);
 
   const byDay = new Map(trendRows.map((r) => [r.day, Number(r.count)]));

@@ -35,6 +35,16 @@ export const clickstreamSampleRate = (() => {
 // bare page chrome/whitespace is ignored so the stream stays signal, not noise.
 const SELECTOR = 'a, button, [role="button"], [data-track], [data-product-id]';
 
+/** Back-office prefix. The clickstream measures storefront shopper behaviour, so
+ *  activity under /admin (staff using the dashboard) is never recorded. Kept in
+ *  sync with the server ingest + dashboard query filters. */
+export const ADMIN_PATH_PREFIX = '/admin';
+
+/** False for back-office paths, which are excluded from the clickstream. */
+export function isTrackablePath(pathname: string): boolean {
+  return !pathname.startsWith(ADMIN_PATH_PREFIX);
+}
+
 /** Strip emails + long digit runs so a label can never carry PII. */
 export function stripPii(s: string): string {
   return s
@@ -67,6 +77,8 @@ function cleanHref(raw: string | null): string | undefined {
  */
 export function deriveClick(target: EventTarget | null): ClickPayload | null {
   if (!(target instanceof Element)) return null;
+  // Skip back-office pages — the clickstream is storefront-only.
+  if (!isTrackablePath(window.location.pathname)) return null;
   // `el` is the clickable (for tag/href); `host` is the nearest element carrying
   // tracking metadata — often an ancestor wrapper (e.g. a product-card <article>
   // wrapping its <a>). closest() returns the *nearest*, so a button's own
