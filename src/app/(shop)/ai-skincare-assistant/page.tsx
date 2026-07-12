@@ -6,6 +6,8 @@ import { Section, SectionHeading } from '@/design-system/primitives/section';
 import { SkincareViewTracker } from '@/components/analytics/pixel-trackers';
 import { Button } from '@/components/ui/button';
 
+import { SkinQuiz } from './skin-quiz';
+
 export const metadata = buildMetadata({
   title: 'Beauty Concierge',
   description:
@@ -26,15 +28,14 @@ export default function BeautyConciergePage() {
 
         <div className="flex flex-col gap-6 text-pretty leading-relaxed text-muted-foreground">
           <p>
-            Tell us about your routine, your preferences, and what you are hoping to find. A member
-            of our team will help you navigate shades, textures, and finishes — and build an edit
-            that feels entirely yours.
-          </p>
-          <p>
-            Consultations are complimentary and unhurried. There is no script and no pressure, just
-            considered guidance from people who love what they do.
+            Tell us about your routine, your preferences, and what you are hoping to find. Take our
+            quick match quiz below for a personalised edit — or book a one-to-one consultation with
+            our team.
           </p>
         </div>
+
+        {/* Lead-magnet quiz: captures skin type + concerns + email, fires Meta Lead */}
+        <SkinQuiz />
 
         <div className="flex flex-col gap-4">
           <h2 className="editorial-heading text-display-sm">What to expect</h2>

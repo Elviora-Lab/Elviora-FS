@@ -287,6 +287,15 @@ export const analytics = {
     ga.skincareAssistant();
   },
 
+  /** Meta Lead — a captured lead (e.g. the skin-quiz email). Attaches Advanced
+   *  Matching from the email so the Lead scores high Event Match Quality and the
+   *  person is retargetable / Lookalike-seedable. */
+  lead(p?: { email?: string | null; contentName?: string }) {
+    logDev('lead', p);
+    if (p?.email) metaPixel.identify({ email: p.email });
+    metaPixel.lead(p?.contentName ? { content_name: p.contentName } : undefined);
+  },
+
   contact() {
     logDev('contact');
     metaPixel.contact();

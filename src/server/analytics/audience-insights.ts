@@ -86,9 +86,11 @@ async function segmentCounts(): Promise<Record<SegmentKey, CountRow>> {
              COUNT(DISTINCT u.id) FILTER (WHERE u.phone IS NOT NULL)::int AS with_phone
       FROM users u WHERE EXISTS (SELECT 1 FROM product_view_logs v WHERE v.user_id = u.id)`,
     prisma.$queryRaw<CountRow[]>`
-      SELECT COUNT(DISTINCT u.id)::int AS people,
+      SELECT COUNT(DISTINCT COALESCE(a.user_id::text, lower(a.email)))::int AS people,
              COUNT(DISTINCT u.id) FILTER (WHERE u.phone IS NOT NULL)::int AS with_phone
-      FROM users u WHERE EXISTS (SELECT 1 FROM ai_skin_assessments a WHERE a.user_id = u.id)`,
+      FROM ai_skin_assessments a
+      LEFT JOIN users u ON u.id = a.user_id
+      WHERE a.user_id IS NOT NULL OR a.email IS NOT NULL`,
     prisma.$queryRaw<CountRow[]>`
       SELECT COUNT(*)::int AS people, 0::int AS with_phone
       FROM newsletter_subscribers WHERE is_active = true`,
@@ -131,9 +133,15 @@ export async function getSegmentContacts(
         SELECT DISTINCT u.email, u.phone FROM users u
         WHERE EXISTS (SELECT 1 FROM product_view_logs v WHERE v.user_id = u.id)`;
     case 'quiz':
+      // Logged-in quiz-takers (with phone) UNION guest leads (email only).
       return prisma.$queryRaw<Row[]>`
-        SELECT DISTINCT u.email, u.phone FROM users u
-        WHERE EXISTS (SELECT 1 FROM ai_skin_assessments a WHERE a.user_id = u.id)`;
+        SELECT DISTINCT email, phone FROM (
+          SELECT u.email AS email, u.phone AS phone FROM users u
+            WHERE EXISTS (SELECT 1 FROM ai_skin_assessments a WHERE a.user_id = u.id)
+          UNION
+          SELECT lower(a.email) AS email, NULL::text AS phone FROM ai_skin_assessments a
+            WHERE a.user_id IS NULL AND a.email IS NOT NULL
+        ) t`;
     case 'subscribers':
       return prisma.$queryRaw<Row[]>`
         SELECT email, NULL::text AS phone FROM newsletter_subscribers WHERE is_active = true`;
