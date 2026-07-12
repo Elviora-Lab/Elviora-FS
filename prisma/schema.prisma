@@ -966,6 +966,40 @@ model CartEventLog {
   @@map("cart_event_logs")
 }
 
+/// Append-only first-party clickstream — "who clicked what, when". High volume,
+/// so it's deliberately narrow and relation-less (plain id columns, joined at
+/// query time) like CartEventLog: analytics tolerates orphaned rows and we don't
+/// want product/user deletion to cascade-scan this table. A retention job trims
+/// rows older than CLICKSTREAM_RETENTION_DAYS; consider monthly
+/// PARTITION BY RANGE (created_at) via a migration if volume warrants.
+model ClickEventLog {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// Logged-in user, when known. No FK so a user delete needn't touch this table.
+  userId     String?  @map("user_id") @db.Uuid
+  /// Guest-session anchor (elv_guest cookie) for pre-login attribution.
+  guestId    String?  @map("guest_id") @db.VarChar(64)
+  /// Semantic bucket: product | nav | cta | banner | link | button | other.
+  targetType String   @map("target_type") @db.VarChar(24)
+  /// Stable id for the thing clicked (productId, or a data-track-id). Null when
+  /// the element carries no explicit id.
+  targetId   String?  @map("target_id") @db.VarChar(128)
+  /// Human label (trimmed text / aria-label / data-track-label), PII-stripped.
+  label      String?  @db.VarChar(160)
+  /// Destination for links (query string stripped). Null for buttons.
+  href       String?  @db.VarChar(512)
+  /// Path where the click happened (location.pathname).
+  pagePath   String   @map("page_path") @db.VarChar(512)
+  /// Index within a list/grid, when the element exposes data-index.
+  position   Int?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([createdAt])
+  @@index([targetType, createdAt])
+  @@index([targetId, createdAt])
+  @@index([userId, createdAt])
+  @@map("click_event_logs")
+}
+
 // =============================================================================
 //  LOYALTY, REFERRALS, SUBSCRIPTIONS
 // =============================================================================

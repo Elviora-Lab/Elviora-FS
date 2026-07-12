@@ -8,6 +8,7 @@ import { JsonLd } from '@/lib/seo/json-ld-component';
 import { defaultMetadata } from '@/lib/seo/metadata';
 
 import { CapiParamInit } from '@/components/analytics/capi-param-init';
+import { ClickTracker } from '@/components/analytics/click-tracker';
 import { GaIdentity } from '@/components/analytics/ga-identity';
 import { GoogleAnalytics } from '@/components/analytics/google-analytics';
 import { MetaPixel } from '@/components/analytics/meta-pixel';
@@ -44,6 +45,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen bg-background text-foreground antialiased">
         <MetaPixel />
         <CapiParamInit />
+        <ClickTracker />
         <GoogleAnalytics />
         <AppProviders>
           <GaIdentity />

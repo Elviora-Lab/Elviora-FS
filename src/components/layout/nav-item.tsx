@@ -47,6 +47,8 @@ export function NavItem({ item }: { item: NavItemType }) {
     return (
       <Link
         href={item.href}
+        data-track="nav"
+        data-track-label={item.label}
         className="rounded text-xs uppercase tracking-[0.14em] text-foreground/90 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         {item.label}
@@ -58,6 +60,8 @@ export function NavItem({ item }: { item: NavItemType }) {
     <div className="group relative">
       <Link
         href={item.href}
+        data-track="nav"
+        data-track-label={item.label}
         className="inline-flex items-center gap-1 rounded py-2 text-xs uppercase tracking-[0.14em] text-foreground/90 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         aria-haspopup="menu"
       >

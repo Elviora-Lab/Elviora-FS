@@ -21,6 +21,11 @@ const publicEnvSchema = z.object({
   // Meta (Facebook) Pixel ID. Defaults to the Elviora pixel so tracking works
   // without extra deploy config; override per environment via the env var.
   NEXT_PUBLIC_FB_PIXEL_ID: z.string().default('1197005882688887'),
+  // First-party clickstream: optional sampling rate (0–1) applied to each click
+  // before it's queued — a safety valve if volume ever spikes. Unset/invalid ⇒
+  // 1 (capture all). Capture itself is production-only (gated on the environment,
+  // like the pixel) — there is intentionally no public "enable in dev" flag.
+  NEXT_PUBLIC_CLICKSTREAM_SAMPLE: optionalStr,
   NEXT_PUBLIC_SENTRY_DSN: optionalStr,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: optionalStr,
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: optionalStr,
@@ -98,6 +103,7 @@ const publicEnvSource = {
   NEXT_PUBLIC_GA_ID: process.env.NEXT_PUBLIC_GA_ID,
   NEXT_PUBLIC_GA_DEBUG: process.env.NEXT_PUBLIC_GA_DEBUG,
   NEXT_PUBLIC_FB_PIXEL_ID: process.env.NEXT_PUBLIC_FB_PIXEL_ID,
+  NEXT_PUBLIC_CLICKSTREAM_SAMPLE: process.env.NEXT_PUBLIC_CLICKSTREAM_SAMPLE,
   NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,

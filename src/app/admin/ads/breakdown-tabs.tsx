@@ -14,6 +14,8 @@ type TabKey = keyof AdsBreakdowns;
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'placement', label: 'Placement' },
   { key: 'demographic', label: 'Age & gender' },
+  { key: 'country', label: 'Country' },
+  { key: 'region', label: 'Region' },
   { key: 'device', label: 'Device' },
 ];
 

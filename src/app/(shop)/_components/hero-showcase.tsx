@@ -62,6 +62,10 @@ export function HeroShowcase({ products }: { products: HeroProduct[] }) {
       <Link
         href={`/products/${current.slug}`}
         onClick={() => analytics.selectPromotion(heroPromo(current, index))}
+        data-track="banner"
+        data-track-id={current.slug}
+        data-track-label={current.name}
+        data-index={index}
         className="group relative block aspect-[4/5] overflow-hidden rounded-2xl bg-brand-pearl shadow-elevated"
       >
         <AnimatePresence initial={false}>

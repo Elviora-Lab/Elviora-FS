@@ -6,8 +6,10 @@ import { buildMetadata } from '@/lib/seo/metadata';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
+import { CustomerGeoChart } from './_components/customer-geo-chart';
 import { GaOverview } from './_components/ga-overview';
 
+import { getCustomerGeo } from '@/server/analytics/customer-geo';
 import { DEFAULT_GA_RANGE, isGaRange } from '@/server/analytics/ga-data-api';
 import { adminAnalyticsRepo } from '@/server/repositories/admin.repo';
 
@@ -86,11 +88,12 @@ export default async function AdminAnalyticsPage({
   const sp = await searchParams;
   const range = isGaRange(sp.range) ? sp.range : DEFAULT_GA_RANGE;
   const country = sp.country;
-  const [funnel, topViewed, topAddedToCart, topSearches] = await Promise.all([
+  const [funnel, topViewed, topAddedToCart, topSearches, geo] = await Promise.all([
     adminAnalyticsRepo.funnel(WINDOW_DAYS),
     adminAnalyticsRepo.topViewed(WINDOW_DAYS),
     adminAnalyticsRepo.topAddedToCart(WINDOW_DAYS),
     adminAnalyticsRepo.topSearches(WINDOW_DAYS),
+    getCustomerGeo(WINDOW_DAYS),
   ]);
 
   const tiles = [
@@ -161,6 +164,30 @@ export default async function AdminAnalyticsPage({
           unit="adds"
         />
       </div>
+
+      {/* Customer geography — where actual buyers are (first-party shipping data) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xl">Customers by city</CardTitle>
+          <CardDescription>
+            Where orders ship to over the last {WINDOW_DAYS} days — your real buyers, from
+            first-party checkout data. (Meta&apos;s Country/Region tabs on{' '}
+            <Link href="/admin/ads" className="underline underline-offset-2 hover:text-foreground">
+              Ad Performance
+            </Link>{' '}
+            show the aggregate geography your ads reached.)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {geo.cities.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No orders with a shipping city in the last {WINDOW_DAYS} days.
+            </p>
+          ) : (
+            <CustomerGeoChart rows={geo.cities} currency={geo.currency} />
+          )}
+        </CardContent>
+      </Card>
 
       {/* Searches */}
       <Card>

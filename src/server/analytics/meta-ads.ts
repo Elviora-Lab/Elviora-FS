@@ -109,6 +109,10 @@ export type AdsBreakdowns = {
   placement: BreakdownRow[];
   demographic: BreakdownRow[];
   device: BreakdownRow[];
+  /** Country of the reached audience (ISO code). Aggregate, ad-attributed only. */
+  country: BreakdownRow[];
+  /** Sub-national region (province/state) of the reached audience. */
+  region: BreakdownRow[];
 };
 
 export type TopAd = {
@@ -191,6 +195,8 @@ type InsightRow = {
   age?: string;
   gender?: string;
   impression_device?: string;
+  country?: string;
+  region?: string;
   date_start?: string;
 };
 
@@ -496,7 +502,10 @@ export async function getAdsBreakdownsData(datePreset: AdDatePreset): Promise<Ad
   const act = accountPath();
 
   try {
-    const [meta, placement, demographic, device] = await Promise.all([
+    // `country` and `region` cannot share one Insights call with `age,gender`
+    // (Meta rejects mixing geographic + demographic breakdowns), so each is its
+    // own request — same pattern as the existing placement/device splits.
+    const [meta, placement, demographic, device, country, region] = await Promise.all([
       fetchAccountMeta(act),
       safe(
         fetchBreakdown(act, datePreset, 'publisher_platform', (r) =>
@@ -519,11 +528,22 @@ export async function getAdsBreakdownsData(datePreset: AdDatePreset): Promise<Ad
         ),
         [],
       ),
+      safe(
+        fetchBreakdown(act, datePreset, 'country', (r) => r.country ?? 'Unknown'),
+        [],
+      ),
+      safe(
+        fetchBreakdown(act, datePreset, 'region', (r) => r.region ?? 'Unknown'),
+        [],
+      ),
     ]);
 
     return {
       ok: true,
-      data: { currency: meta.currency, breakdowns: { placement, demographic, device } },
+      data: {
+        currency: meta.currency,
+        breakdowns: { placement, demographic, device, country, region },
+      },
     };
   } catch (error) {
     return { ok: false, error: errText(error, 'Failed to load breakdowns.') };

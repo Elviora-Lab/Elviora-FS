@@ -68,7 +68,15 @@ export function ProductCard({
     });
 
   return (
-    <article className={cn('group relative flex flex-col gap-3', className)}>
+    <article
+      className={cn('group relative flex flex-col gap-3', className)}
+      // First-party clickstream: any click inside the card resolves to this
+      // product via the delegated listener (see @/lib/analytics/clickstream).
+      data-track="product"
+      data-product-id={product.id}
+      data-track-label={product.name}
+      {...(typeof index === 'number' ? { 'data-index': index } : {})}
+    >
       <Link
         href={routes.productDetail(product.slug)}
         onClick={trackSelect}
@@ -154,6 +162,9 @@ function WishlistButton({ wishlisted, onToggle }: { wishlisted?: boolean; onTogg
         onToggle();
       }}
       whileTap={prefersReduced ? undefined : { scale: 0.88 }}
+      // Override the card's product tracking so a wishlist tap logs as its own CTA.
+      data-track="cta"
+      data-track-label="wishlist-toggle"
       className={cn(
         'absolute right-3 top-3 grid size-9 place-items-center rounded-full',
         'border border-border bg-background/85 backdrop-blur-md',
