@@ -136,8 +136,19 @@ export function CheckoutClient({ addresses, cart }: { addresses: Address[]; cart
 
   function choosePayment(method: PaymentMethod) {
     setPaymentMethod(method);
-    // Selecting a method is "adding payment info" for COD/bank.
-    analytics.addPaymentInfo({ value: total, currency: cart.currency, method });
+    // Selecting a method is "adding payment info" for COD/bank. Pass line items
+    // so the deduped CAPI twin carries content_ids for content matching.
+    analytics.addPaymentInfo({
+      value: total,
+      currency: cart.currency,
+      method,
+      items: cart.lines.map((l) => ({
+        item_id: l.productId,
+        item_name: l.name,
+        price: l.unitPrice,
+        quantity: l.quantity,
+      })),
+    });
   }
 
   function handlePlaceOrder() {

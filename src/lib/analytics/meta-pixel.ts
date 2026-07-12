@@ -127,11 +127,15 @@ export const metaPixel = {
       eventID ? { eventID } : undefined,
     ),
 
-  addPaymentInfo: (p: { value: number; currency: string; method: string }) =>
-    fbTrack('AddPaymentInfo', {
-      ...moneyFields(p.value, p.currency),
-      payment_method: p.method,
-    }),
+  addPaymentInfo: (p: { value: number; currency: string; method: string }, eventID?: string) =>
+    fbTrack(
+      'AddPaymentInfo',
+      {
+        ...moneyFields(p.value, p.currency),
+        payment_method: p.method,
+      },
+      eventID ? { eventID } : undefined,
+    ),
 
   /** Purchase — pass the order id as `eventID` so the browser event dedupes
    * against the server-side Conversions API Purchase. */

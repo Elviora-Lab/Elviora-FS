@@ -38,7 +38,11 @@ function newEventId(): string {
  * server no-ops unless CAPI is configured. Production only — the browser pixel
  * is off in dev anyway, so there's nothing to dedupe against.
  */
-function capiRelay(event: 'AddToCart' | 'InitiateCheckout', eventId: string, customData: unknown) {
+function capiRelay(
+  event: 'AddToCart' | 'InitiateCheckout' | 'AddPaymentInfo',
+  eventId: string,
+  customData: unknown,
+) {
   if (!isProd || typeof window === 'undefined') return;
   try {
     void fetch('/api/v1/track', {
@@ -205,7 +209,17 @@ export const analytics = {
     items?: GaItem[];
   }) {
     logDev('add_payment_info', p);
-    metaPixel.addPaymentInfo({ value: p.value, currency: p.currency, method: p.method });
+    // Browser event + deduped server-side CAPI twin (shared eventId), matching
+    // the AddToCart / InitiateCheckout pattern so checkout tracking is
+    // consistent end-to-end and Meta counts the pair once.
+    const eventId = newEventId();
+    metaPixel.addPaymentInfo({ value: p.value, currency: p.currency, method: p.method }, eventId);
+    capiRelay('AddPaymentInfo', eventId, {
+      value: p.value,
+      currency: p.currency,
+      content_type: 'product',
+      ...(p.items?.length ? { content_ids: p.items.map((i) => i.item_id) } : {}),
+    });
     ga.addPaymentInfo(p);
   },
 

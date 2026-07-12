@@ -115,7 +115,7 @@ const EVENT_COVERAGE: CoverageRow[] = [
   { event: 'AddToCart', pixel: true, ga: true, capi: true, firstParty: 'cart_event_logs' },
   { event: 'AddToWishlist', pixel: true, ga: true, capi: false, firstParty: null },
   { event: 'InitiateCheckout', pixel: true, ga: true, capi: true, firstParty: null },
-  { event: 'AddPaymentInfo', pixel: true, ga: true, capi: false, firstParty: null },
+  { event: 'AddPaymentInfo', pixel: true, ga: true, capi: true, firstParty: null },
   { event: 'Purchase', pixel: true, ga: true, capi: true, firstParty: 'orders' },
   { event: 'Subscribe', pixel: true, ga: true, capi: false, firstParty: 'newsletter_subscribers' },
   { event: 'CouponApplied', pixel: true, ga: true, capi: false, firstParty: null },
