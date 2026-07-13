@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { publicEnv, serverEnv } from '@/config/env';
+import { isProd, publicEnv, serverEnv } from '@/config/env';
 
 /**
  * Google Analytics 4 — Measurement Protocol (server-side events).
@@ -19,7 +19,9 @@ import { publicEnv, serverEnv } from '@/config/env';
 const ENDPOINT = 'https://www.google-analytics.com/mp/collect';
 
 export function gaMpEnabled(): boolean {
-  return Boolean(serverEnv.GA_API_SECRET && publicEnv.NEXT_PUBLIC_GA_ID);
+  // Gate on `isProd` (matching the browser gtag) so local/preview orders never
+  // send a real server-side Purchase/Refund to the production GA4 property.
+  return Boolean(isProd && serverEnv.GA_API_SECRET && publicEnv.NEXT_PUBLIC_GA_ID);
 }
 
 /**

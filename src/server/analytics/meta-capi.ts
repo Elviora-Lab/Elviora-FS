@@ -2,7 +2,7 @@ import 'server-only';
 
 import { ParamBuilder } from 'capi-param-builder-nodejs';
 
-import { publicEnv, serverEnv } from '@/config/env';
+import { isProd, publicEnv, serverEnv } from '@/config/env';
 
 /**
  * Meta Conversions API (server-side events).
@@ -17,7 +17,9 @@ import { publicEnv, serverEnv } from '@/config/env';
 const GRAPH_VERSION = 'v21.0';
 
 export function capiEnabled(): boolean {
-  return Boolean(serverEnv.META_CAPI_ACCESS_TOKEN && publicEnv.NEXT_PUBLIC_FB_PIXEL_ID);
+  // Gate on `isProd` (matching the browser pixel) so local/preview order
+  // placements never fire a real server-side Purchase to the production pixel.
+  return Boolean(isProd && serverEnv.META_CAPI_ACCESS_TOKEN && publicEnv.NEXT_PUBLIC_FB_PIXEL_ID);
 }
 
 // Meta's Conversions API Parameter Builder owns normalization + SHA-256 hashing
