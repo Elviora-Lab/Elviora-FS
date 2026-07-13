@@ -11,7 +11,12 @@ import { withAction } from '../_with-action';
 import { requireAdmin } from '@/server/auth/guards';
 import { BadRequestError, NotFoundError } from '@/server/http/errors';
 import { transitionOrder } from '@/server/services/order-transitions.service';
-import { createPostExOrder, trackPostExOrder } from '@/server/shipping/postex';
+import {
+  cancelPostExOrder,
+  createPostExOrder,
+  getPostExPaymentStatus,
+  trackPostExOrder,
+} from '@/server/shipping/postex';
 
 const statusValues = Object.values(OrderStatus) as [OrderStatus, ...OrderStatus[]];
 
@@ -237,4 +242,86 @@ export const refreshPostExTracking = withAction(async (input: { trackingNumber: 
   await requireAdmin();
   const { status } = await trackPostExOrder(input.trackingNumber);
   return { status };
+});
+
+/**
+ * Cancel a PostEx booking (mis-booked parcel, address fix, etc.). Removes the
+ * shipment row so the order can be re-booked, and reverts it to PROCESSING.
+ */
+export const cancelPostExBooking = withAction(async (input: { orderId: string }) => {
+  const session = await requireAdmin();
+  const orderId = z.string().uuid().parse(input.orderId);
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: { shipments: true },
+  });
+  if (!order) throw new NotFoundError('Order not found');
+  const shipment = order.shipments.find((s) => s.courierName === 'PostEx' && s.trackingNumber);
+  if (!shipment?.trackingNumber) throw new BadRequestError('No PostEx booking to cancel');
+
+  await cancelPostExOrder(shipment.trackingNumber);
+  await prisma.shipment.delete({ where: { id: shipment.id } });
+  await transitionOrder(
+    orderId,
+    'PROCESSING',
+    `PostEx booking cancelled (${shipment.trackingNumber})`,
+    session.sub,
+  );
+
+  revalidatePath('/admin/orders');
+  revalidatePath(`/admin/orders/${orderId}`);
+  return { orderId };
+});
+
+/**
+ * Check whether PostEx has settled the COD cash for this order. When it has and
+ * we haven't recorded payment yet, reconcile: the money is collected and paid
+ * out, so the order becomes PAID. Returns the settlement details for display.
+ */
+export const refreshPostExPayment = withAction(async (input: { orderId: string }) => {
+  const session = await requireAdmin();
+  const orderId = z.string().uuid().parse(input.orderId);
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: { shipments: true },
+  });
+  if (!order) throw new NotFoundError('Order not found');
+  const trackingNumber = order.shipments.find(
+    (s) => s.courierName === 'PostEx' && s.trackingNumber,
+  )?.trackingNumber;
+  if (!trackingNumber) throw new BadRequestError('No PostEx booking on this order');
+
+  const settlement = await getPostExPaymentStatus(trackingNumber);
+
+  if (settlement.settled && order.paymentStatus !== 'PAID') {
+    await prisma.$transaction(async (tx) => {
+      const settled = await tx.payment.updateMany({
+        where: { orderId, paymentStatus: { in: ['PENDING', 'AUTHORIZED', 'FAILED'] } },
+        data: { paymentStatus: 'PAID', paidAt: new Date() },
+      });
+      if (settled.count === 0) {
+        await tx.payment.create({
+          data: {
+            orderId,
+            paymentMethod: 'COD',
+            amount: order.totalAmount,
+            paymentStatus: 'PAID',
+            paidAt: new Date(),
+          },
+        });
+      }
+      await tx.order.update({ where: { id: orderId }, data: { paymentStatus: 'PAID' } });
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId,
+          status: order.orderStatus,
+          note: `COD settled by PostEx${settlement.cprNumber ? ` (CPR ${settlement.cprNumber})` : ''}`,
+          changedBy: session.sub,
+        },
+      });
+    });
+  }
+
+  revalidatePath(`/admin/orders/${orderId}`);
+  return settlement;
 });

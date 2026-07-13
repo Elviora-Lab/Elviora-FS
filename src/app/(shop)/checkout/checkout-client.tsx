@@ -102,6 +102,26 @@ export function CheckoutClient({ addresses, cart }: { addresses: Address[]; cart
   });
   const total = totals.total;
 
+  // Non-blocking PostEx serviceability check. `false` = PostEx doesn't deliver
+  // to this city (we warn but still let them order — they may prefer another
+  // courier); `null` = unknown, so no warning. Debounced to avoid a request per
+  // keystroke; the endpoint is cached server-side.
+  const [cityServiceable, setCityServiceable] = useState<boolean | null>(null);
+  useEffect(() => {
+    const city = destinationCity.trim();
+    if (city.length < 2) {
+      setCityServiceable(null);
+      return;
+    }
+    const timer = setTimeout(() => {
+      fetch(`/api/v1/shipping/city-check?city=${encodeURIComponent(city)}`)
+        .then((r) => r.json())
+        .then((d) => setCityServiceable(typeof d.serviceable === 'boolean' ? d.serviceable : null))
+        .catch(() => setCityServiceable(null));
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [destinationCity]);
+
   // Analytics: fire begin-checkout once when the checkout loads with items
   // (Meta InitiateCheckout + GA4 begin_checkout with line items).
   useEffect(() => {
@@ -390,6 +410,12 @@ export function CheckoutClient({ addresses, cart }: { addresses: Address[]; cart
           Shipping &amp; tax for delivery to {destinationCity.trim() || 'your city'}, incl. 35% fuel
           &amp; 15% GST{paymentMethod === 'COD' ? ' and 4% COD tax' : ''}.
         </p>
+        {cityServiceable === false ? (
+          <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+            Our courier may not deliver to {destinationCity.trim() || 'this city'}. You can still
+            place the order — we&apos;ll confirm delivery and reach out if there&apos;s any issue.
+          </p>
+        ) : null}
         <Button size="lg" variant="gold" uppercase loading={pending} onClick={handlePlaceOrder}>
           Place order
         </Button>

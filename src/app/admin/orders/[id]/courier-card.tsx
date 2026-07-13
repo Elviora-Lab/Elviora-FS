@@ -10,8 +10,12 @@ import { Input } from '@/components/ui/input';
 import {
   addManualShipment,
   bookWithPostEx,
+  cancelPostExBooking,
+  refreshPostExPayment,
   refreshPostExTracking,
 } from '@/server/actions/admin/orders.actions';
+
+type Settlement = { settled: boolean; settlementDate: string | null; cprNumber: string | null };
 
 type Shipment = { courierName: string; trackingNumber: string | null } | null;
 
@@ -27,6 +31,8 @@ export function CourierCard({
   const router = useRouter();
   const [pending, start] = useTransition();
   const [status, setStatus] = useState<string | null>(null);
+  const [settlement, setSettlement] = useState<Settlement | null>(null);
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
 
   function book() {
     start(async () => {
@@ -54,7 +60,38 @@ export function CourierCard({
     });
   }
 
+  function checkSettlement() {
+    start(async () => {
+      const res = await refreshPostExPayment({ orderId });
+      if (res.success) {
+        setSettlement(res.data);
+        toast.success(res.data.settled ? 'COD settled by PostEx' : 'COD not settled yet');
+        router.refresh();
+      } else {
+        toast.error(res.message);
+      }
+    });
+  }
+
+  function cancelBooking() {
+    if (!confirmingCancel) {
+      setConfirmingCancel(true);
+      return;
+    }
+    start(async () => {
+      const res = await cancelPostExBooking({ orderId });
+      if (res.success) {
+        toast.success('PostEx booking cancelled');
+        router.refresh();
+      } else {
+        toast.error(res.message);
+        setConfirmingCancel(false);
+      }
+    });
+  }
+
   if (shipment?.trackingNumber) {
+    const tn = shipment.trackingNumber;
     return (
       <div className="flex flex-col gap-2 text-sm">
         <div>
@@ -62,12 +99,43 @@ export function CourierCard({
         </div>
         <div>
           <span className="text-muted-foreground">Tracking #:</span>{' '}
-          <span className="font-mono">{shipment.trackingNumber}</span>
+          <span className="font-mono">{tn}</span>
         </div>
         {status ? <div className="text-xs text-muted-foreground">Latest: {status}</div> : null}
-        <Button size="sm" variant="outline" loading={pending} onClick={refresh}>
-          Refresh status
-        </Button>
+        {settlement ? (
+          <div className="text-xs text-muted-foreground">
+            COD:{' '}
+            {settlement.settled
+              ? `Settled${settlement.settlementDate ? ` on ${settlement.settlementDate}` : ''}${
+                  settlement.cprNumber ? ` · CPR ${settlement.cprNumber}` : ''
+                }`
+              : 'Not settled yet'}
+          </div>
+        ) : null}
+        <div className="flex flex-wrap gap-2 pt-1">
+          <Button size="sm" variant="outline" loading={pending} onClick={refresh}>
+            Refresh status
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() =>
+              window.open(
+                `/api/v1/admin/postex/label?tracking=${encodeURIComponent(tn)}`,
+                '_blank',
+                'noopener,noreferrer',
+              )
+            }
+          >
+            Print label
+          </Button>
+          <Button size="sm" variant="outline" loading={pending} onClick={checkSettlement}>
+            Check COD
+          </Button>
+          <Button size="sm" variant="ghost" loading={pending} onClick={cancelBooking}>
+            {confirmingCancel ? 'Confirm cancel?' : 'Cancel booking'}
+          </Button>
+        </div>
       </div>
     );
   }
