@@ -35,7 +35,7 @@ const FAQS: {
   {
     id: 'returns',
     question: 'What is your returns policy?',
-    answer: 'Unopened products may be returned within 30 days of delivery for a full refund.',
+    answer: 'Unopened products may be returned within 2 to 3 days of delivery for a full refund.',
     link: { href: '/shipping', label: 'Shipping & returns details' },
   },
   {

@@ -92,12 +92,13 @@ export function productJsonLd(p: Product) {
         p.inStock === false ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock',
       url,
       seller: { '@type': 'Organization', name: siteConfig.name },
-      // 30-day returns is a store-wide, advertised policy — safe to declare.
+      // A short 2–3 day returns window is the store-wide, advertised policy.
+      // Structured data takes a single number, so we declare the outer bound (3).
       hasMerchantReturnPolicy: {
         '@type': 'MerchantReturnPolicy',
         applicableCountry: 'PK',
         returnPolicyCategory: 'https://schema.org/MerchantReturnFiniteReturnWindow',
-        merchantReturnDays: 30,
+        merchantReturnDays: 3,
         returnMethod: 'https://schema.org/ReturnByMail',
       },
     },

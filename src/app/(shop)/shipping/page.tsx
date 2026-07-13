@@ -9,7 +9,7 @@ import { Section, SectionHeading } from '@/design-system/primitives/section';
 export const metadata = buildMetadata({
   title: 'Shipping & Returns',
   description:
-    'Delivery times, shipping costs, and our 30-day returns policy for orders across Pakistan.',
+    'Delivery times, shipping costs, and our 2 to 3 day returns policy for orders across Pakistan.',
   path: '/shipping',
 });
 
@@ -48,8 +48,8 @@ export default function ShippingPage() {
         <div className="flex flex-col gap-4">
           <h2 className="editorial-heading text-display-sm">Returns</h2>
           <p className="text-pretty leading-relaxed text-muted-foreground">
-            We want you to love what you receive. Unopened products may be returned within 30 days
-            of delivery for a full refund to your original payment method. For hygiene reasons,
+            We want you to love what you receive. Unopened products may be returned within 2 to 3
+            days of delivery for a full refund to your original payment method. For hygiene reasons,
             opened cosmetics cannot be returned unless faulty.
           </p>
           <p className="text-pretty leading-relaxed text-muted-foreground">

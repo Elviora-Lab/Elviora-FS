@@ -5,7 +5,7 @@ import { cn } from '@/lib/cn';
 const SIGNALS = [
   { icon: Lock, label: 'Secure checkout' },
   { icon: Truck, label: 'Cash on delivery' },
-  { icon: RotateCcw, label: '30-day returns' },
+  { icon: RotateCcw, label: '2–3 day returns' },
   { icon: BadgeCheck, label: '100% authentic' },
 ];
 

@@ -362,7 +362,7 @@ export function ProductExperience({
             ) : null}
 
             <p className="text-xs text-muted-foreground">
-              Free shipping on orders over Rs 8,000 · 30-day returns
+              Free shipping on orders over Rs 8,000 · 2–3 day returns
             </p>
             <TrustBar />
           </div>
@@ -400,7 +400,7 @@ export function ProductExperience({
             <AccordionItem value="shipping">
               <AccordionTrigger>Shipping &amp; returns</AccordionTrigger>
               <AccordionContent>
-                Complimentary shipping on orders over Rs 8,000. Free 30-day returns on all unopened
+                Free shipping on orders over Rs 8,000. Free 2–3 day returns on all unopened
                 products.
               </AccordionContent>
             </AccordionItem>

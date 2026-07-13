@@ -12,7 +12,7 @@ const MESSAGES = [
   '🚚 Free shipping on orders over Rs 8,000',
   '✨ 10% off your first order — code WELCOME10',
   '💳 Cash on delivery available',
-  '↩️ Easy 30-day returns',
+  '↩️ Easy 2–3 day returns',
 ];
 
 const DISMISS_KEY = 'elv_announce_dismissed';
