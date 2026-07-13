@@ -135,8 +135,12 @@ const getServiceableCitiesCached = unstable_cache(
   async (): Promise<string[]> => {
     if (!isPostExConfigured()) return [];
     try {
+      // NB: the guide (§3.1.2) says to pass `operationalCityType=Delivery`, but
+      // PostEx rejects that value with HTTP 400 (no such enum constant). The
+      // param-less call returns every operational city with an `isDeliveryCity`
+      // flag, so we fetch all and filter on the flag ourselves.
       const json = await postexFetch<{ dist?: Array<Record<string, unknown>> }>(
-        '/services/integration/api/order/v2/get-operational-city?operationalCityType=Delivery',
+        '/services/integration/api/order/v2/get-operational-city',
         { method: 'GET' },
       );
       const rows = Array.isArray(json.dist) ? json.dist : [];
@@ -148,7 +152,7 @@ const getServiceableCitiesCached = unstable_cache(
       return [];
     }
   },
-  ['postex-serviceable-cities'],
+  ['postex-serviceable-cities-v2'],
   { revalidate: 60 * 60 * 24, tags: ['postex-cities'] },
 );
 
