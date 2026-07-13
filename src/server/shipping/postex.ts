@@ -5,6 +5,8 @@ import { OrderStatus, ShipmentStatus } from '@prisma/client';
 
 import { serverEnv } from '@/config/env';
 
+import { BadRequestError } from '@/server/http/errors';
+
 /**
  * PostEx (Pakistan) merchant API client.
  * Docs: https://api.postex.pk · auth via the `token` header.
@@ -49,9 +51,14 @@ async function postexFetch<T>(path: string, init?: RequestInit): Promise<T> {
     dist?: unknown;
   } | null;
 
-  // PostEx returns HTTP 200 with a `statusCode` ("200" on success).
+  // PostEx returns HTTP 200 with a `statusCode` ("200" on success). Surface its
+  // message as an HttpError so admin server-actions show the real reason
+  // (e.g. "invalid city", "duplicate order reference") instead of a generic
+  // "Something went wrong" toast.
   if (!res.ok || (json?.statusCode && String(json.statusCode) !== '200')) {
-    throw new Error(json?.statusMessage || `PostEx request failed (HTTP ${res.status})`);
+    throw new BadRequestError(
+      `PostEx: ${json?.statusMessage || `request failed (HTTP ${res.status})`}`,
+    );
   }
   return json as T;
 }
