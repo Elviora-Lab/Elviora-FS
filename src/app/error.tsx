@@ -29,6 +29,13 @@ export default function GlobalError({
         <Button onClick={reset} size="lg" className="mt-2">
           Try again
         </Button>
+        {error.digest ? (
+          // A traceable reference: this hash also appears in the server logs, so
+          // a shopper who reports it lets us find the exact error.
+          <p className="mt-1 font-mono text-[11px] text-muted-foreground/60">
+            Reference: {error.digest}
+          </p>
+        ) : null}
       </div>
     </main>
   );
