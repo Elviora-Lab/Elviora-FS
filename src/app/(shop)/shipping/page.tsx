@@ -1,5 +1,7 @@
 import Link from 'next/link';
 
+import { siteConfig } from '@/config/site';
+
 import { buildMetadata } from '@/lib/seo/metadata';
 
 import { Section, SectionHeading } from '@/design-system/primitives/section';
@@ -12,6 +14,10 @@ export const metadata = buildMetadata({
 });
 
 export default function ShippingPage() {
+  const whatsapp = siteConfig.contact.phone;
+  // wa.me needs the number in international format with no +, spaces, or dashes.
+  const waHref = `https://wa.me/${whatsapp.replace(/\D/g, '')}`;
+
   return (
     <Section>
       <div className="container flex max-w-3xl flex-col gap-12">
@@ -25,7 +31,7 @@ export default function ShippingPage() {
           <h2 className="editorial-heading text-display-sm">Shipping</h2>
           <ul className="flex flex-col gap-3 text-pretty leading-relaxed text-muted-foreground">
             <li>Nationwide delivery across Pakistan in 2 to 5 business days.</li>
-            <li>Complimentary shipping on orders over Rs 8,000.</li>
+            <li>Free shipping on orders over Rs 8,000.</li>
             <li>
               Below that, delivery is charged by our courier based on your city — from about Rs 155
               within Karachi, Rs 255 elsewhere in Sindh, and Rs 270 to other provinces (inclusive of
@@ -54,16 +60,34 @@ export default function ShippingPage() {
             >
               elviora192@gmail.com
             </a>{' '}
-            with your order number and we will guide you through the next steps.
+            or message us on WhatsApp at{' '}
+            <a
+              className="font-medium text-foreground underline underline-offset-4"
+              href={waHref}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {whatsapp}
+            </a>{' '}
+            with your order number, and we will guide you through the next steps.
           </p>
         </div>
 
         <p className="text-sm text-muted-foreground">
-          Have a question first? Visit our{' '}
+          Have a question first? Message us on WhatsApp at{' '}
+          <a
+            className="text-foreground underline underline-offset-4"
+            href={waHref}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {whatsapp}
+          </a>
+          , visit our{' '}
           <Link className="text-foreground underline underline-offset-4" href="/faq">
             FAQ
-          </Link>{' '}
-          or{' '}
+          </Link>
+          , or{' '}
           <Link className="text-foreground underline underline-offset-4" href="/contact">
             contact us
           </Link>
