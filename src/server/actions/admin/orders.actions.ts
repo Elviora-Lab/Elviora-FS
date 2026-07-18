@@ -71,10 +71,13 @@ export const bulkUpdateOrderStatus = withAction(async (input: z.infer<typeof bul
 // ---------------------------------------------------------------------------
 
 /** Book an order with PostEx, store the tracking number, and mark it shipped. */
+const orderIdInput = z.object({ orderId: z.string().uuid() });
+
 export const bookWithPostEx = withAction(async (input: { orderId: string }) => {
+  const { orderId } = orderIdInput.parse(input);
   const session = await requireAdmin();
   const order = await prisma.order.findUnique({
-    where: { id: input.orderId },
+    where: { id: orderId },
     include: { items: true, shipments: true },
   });
   if (!order) throw new NotFoundError('Order not found');
@@ -189,8 +192,8 @@ export const addManualShipment = withAction(async (input: z.infer<typeof manualS
  * none exist, and leaves an audit note in the status history.
  */
 export const markPaymentReceived = withAction(async (input: { orderId: string }) => {
+  const { orderId } = orderIdInput.parse(input);
   const session = await requireAdmin();
-  const orderId = z.string().uuid().parse(input.orderId);
 
   await prisma.$transaction(async (tx) => {
     const order = await tx.order.findUnique({
@@ -239,8 +242,11 @@ export const markPaymentReceived = withAction(async (input: { orderId: string })
 
 /** Pull the latest PostEx status for a tracking number (best-effort). */
 export const refreshPostExTracking = withAction(async (input: { trackingNumber: string }) => {
+  const { trackingNumber } = z
+    .object({ trackingNumber: z.string().trim().min(1).max(64) })
+    .parse(input);
   await requireAdmin();
-  const { status } = await trackPostExOrder(input.trackingNumber);
+  const { status } = await trackPostExOrder(trackingNumber);
   return { status };
 });
 
@@ -249,8 +255,8 @@ export const refreshPostExTracking = withAction(async (input: { trackingNumber: 
  * shipment row so the order can be re-booked, and reverts it to PROCESSING.
  */
 export const cancelPostExBooking = withAction(async (input: { orderId: string }) => {
+  const { orderId } = orderIdInput.parse(input);
   const session = await requireAdmin();
-  const orderId = z.string().uuid().parse(input.orderId);
   const order = await prisma.order.findUnique({
     where: { id: orderId },
     include: { shipments: true },
@@ -279,8 +285,8 @@ export const cancelPostExBooking = withAction(async (input: { orderId: string })
  * out, so the order becomes PAID. Returns the settlement details for display.
  */
 export const refreshPostExPayment = withAction(async (input: { orderId: string }) => {
+  const { orderId } = orderIdInput.parse(input);
   const session = await requireAdmin();
-  const orderId = z.string().uuid().parse(input.orderId);
   const order = await prisma.order.findUnique({
     where: { id: orderId },
     include: { shipments: true },

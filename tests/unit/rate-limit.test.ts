@@ -30,15 +30,21 @@ describe('enforceRateLimit (memory fallback)', () => {
 });
 
 describe('clientIp', () => {
-  it('takes the first x-forwarded-for entry', () => {
-    const req = new Request('http://x', { headers: { 'x-forwarded-for': '1.1.1.1, 2.2.2.2' } });
-    expect(clientIp(req)).toBe('1.1.1.1');
+  it('prefers the platform-set x-real-ip over x-forwarded-for', () => {
+    const req = new Request('http://x', {
+      headers: { 'x-real-ip': '9.9.9.9', 'x-forwarded-for': '1.1.1.1, 2.2.2.2' },
+    });
+    expect(clientIp(req)).toBe('9.9.9.9');
   });
 
-  it('falls back to x-real-ip then unknown', () => {
-    expect(clientIp(new Request('http://x', { headers: { 'x-real-ip': '9.9.9.9' } }))).toBe(
-      '9.9.9.9',
-    );
+  it('falls back to the LAST x-forwarded-for hop (first is client-controlled)', () => {
+    const req = new Request('http://x', {
+      headers: { 'x-forwarded-for': 'spoofed, 2.2.2.2' },
+    });
+    expect(clientIp(req)).toBe('2.2.2.2');
+  });
+
+  it('returns unknown when no proxy headers exist', () => {
     expect(clientIp(new Request('http://x'))).toBe('unknown');
   });
 });

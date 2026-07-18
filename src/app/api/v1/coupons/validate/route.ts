@@ -4,6 +4,7 @@ import { getSession } from '@/server/auth/get-session';
 import { getOrCreateGuestId } from '@/server/auth/guest-session';
 import { createHandler } from '@/server/http/handler';
 import { parseJson } from '@/server/http/parse';
+import { clientIp, enforceRateLimit } from '@/server/http/rate-limit';
 import { apiSuccess } from '@/server/http/response';
 import { cartService } from '@/server/services/cart.service';
 import { couponsService } from '@/server/services/coupons.service';
@@ -19,6 +20,9 @@ const validateBody = z.object({ code: z.string().min(1).max(64) });
  * mutates state.
  */
 export const POST = createHandler(async (req) => {
+  // Throttle by IP so coupon codes can't be brute-forced.
+  await enforceRateLimit({ key: `coupon-validate:${clientIp(req)}`, limit: 10, windowSeconds: 60 });
+
   const { code } = await parseJson(req, validateBody);
 
   const session = await getSession(req);

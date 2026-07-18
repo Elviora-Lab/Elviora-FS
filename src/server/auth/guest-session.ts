@@ -37,3 +37,22 @@ export async function getOrCreateGuestId(): Promise<string> {
   });
   return fresh;
 }
+
+/**
+ * Rotate the guest id — called on login/register so a pre-auth cookie value
+ * (which may have been set or observed before authentication) can't follow the
+ * user into the authenticated session (session fixation). Claim any guest cart
+ * BEFORE rotating, or it will be orphaned under the old id.
+ */
+export async function regenerateGuestId(): Promise<string> {
+  const jar = await cookies();
+  const fresh = nanoid(24);
+  jar.set(GUEST_COOKIE, fresh, {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: 'lax',
+    path: '/',
+    maxAge: GUEST_TTL,
+  });
+  return fresh;
+}

@@ -50,7 +50,21 @@ export async function enforceRateLimit({ key, limit, windowSeconds }: RateLimitO
   const now = Date.now();
   const entry = memory.get(key);
   if (!entry || entry.resetAt <= now) {
-    if (memory.size >= MEMORY_MAX_KEYS) memory.clear();
+    if (memory.size >= MEMORY_MAX_KEYS) {
+      // Evict expired windows first; if none are expired, drop the oldest
+      // entries (Map preserves insertion order ≈ window start order). Never
+      // clear() — that would reset every active limit at once, letting an
+      // attacker flush the limiter by burning through distinct keys.
+      for (const [k, v] of memory) {
+        if (v.resetAt <= now) memory.delete(k);
+        if (memory.size < MEMORY_MAX_KEYS) break;
+      }
+      while (memory.size >= MEMORY_MAX_KEYS) {
+        const oldest = memory.keys().next().value;
+        if (oldest === undefined) break;
+        memory.delete(oldest);
+      }
+    }
     memory.set(key, { count: 1, resetAt: now + windowSeconds * 1000 });
     return;
   }
@@ -63,12 +77,54 @@ export async function enforceRateLimit({ key, limit, windowSeconds }: RateLimitO
   }
 }
 
-/** Best-effort client IP from proxy headers (Vercel sets x-forwarded-for). */
+/**
+ * Best-effort client IP. Prefer `x-real-ip` — on Vercel the platform sets it
+ * and a client cannot override it, whereas the FIRST x-forwarded-for hop is
+ * attacker-controlled (any value the client sends is simply prepended to).
+ */
 export function clientIp(req: Request): string {
+  const real = req.headers.get('x-real-ip')?.trim();
+  if (real) return real;
   const xff = req.headers.get('x-forwarded-for');
   if (xff) {
-    const first = xff.split(',')[0]?.trim();
-    if (first) return first;
+    // Fall back to the LAST hop — appended by the proxy in front of us, not
+    // chosen by the client.
+    const hops = xff.split(',');
+    const last = hops[hops.length - 1]?.trim();
+    if (last) return last;
   }
-  return req.headers.get('x-real-ip') ?? 'unknown';
+  return 'unknown';
+}
+
+/**
+ * Client IP inside a server action, where no Request object exists.
+ * Reads the same proxy headers via next/headers (same trust order as
+ * {@link clientIp}: platform-set x-real-ip first, then the last XFF hop).
+ */
+export async function clientIpFromAction(): Promise<string> {
+  const { headers } = await import('next/headers');
+  const h = await headers();
+  const real = h.get('x-real-ip')?.trim();
+  if (real) return real;
+  const xff = h.get('x-forwarded-for');
+  if (xff) {
+    const hops = xff.split(',');
+    const last = hops[hops.length - 1]?.trim();
+    if (last) return last;
+  }
+  return 'unknown';
+}
+
+/**
+ * Non-throwing variant for best-effort beacon endpoints (click/track), which
+ * must always resolve 204. Returns false when the caller should drop the event.
+ */
+export async function isRateLimited(opts: RateLimitOptions): Promise<boolean> {
+  try {
+    await enforceRateLimit(opts);
+    return false;
+  } catch (err) {
+    if (err instanceof RateLimitedError) return true;
+    throw err;
+  }
 }

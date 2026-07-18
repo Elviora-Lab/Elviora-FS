@@ -1,12 +1,12 @@
 import { z } from 'zod';
 
-import { publicEnv } from '@/config/env';
-
 import { prisma } from '@/lib/db';
 
 import { getSession } from '@/server/auth/get-session';
 import { getGuestId } from '@/server/auth/guest-session';
 import { createHandler } from '@/server/http/handler';
+import { isSameSiteRequest } from '@/server/http/origin';
+import { clientIp, isRateLimited } from '@/server/http/rate-limit';
 import { apiNoContent } from '@/server/http/response';
 
 export const runtime = 'nodejs';
@@ -43,16 +43,14 @@ const bodySchema = z.object({ events: z.array(clickSchema).min(1).max(30) });
 const BOT_UA = /bot|crawl|spider|slurp|bing|headless|lighthouse|preview|monitor|curl|wget/i;
 
 export const POST = createHandler(async (req) => {
-  // Same-origin guard — only accept beacons from our own site.
-  const origin = req.headers.get('origin');
-  if (origin) {
-    try {
-      if (new URL(origin).host !== new URL(publicEnv.NEXT_PUBLIC_SITE_URL).host) {
-        return apiNoContent();
-      }
-    } catch {
-      return apiNoContent();
-    }
+  // Same-site guard — only accept beacons from our own pages. Requests with
+  // neither a same-site Origin nor Referer are dropped (scripted traffic).
+  if (!isSameSiteRequest(req)) return apiNoContent();
+
+  // Throttle per IP; drop silently (204) so a flood can't poison the
+  // clickstream or surface errors to the shopper.
+  if (await isRateLimited({ key: `click:${clientIp(req)}`, limit: 30, windowSeconds: 60 })) {
+    return apiNoContent();
   }
 
   const ua = req.headers.get('user-agent') ?? '';

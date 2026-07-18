@@ -15,12 +15,12 @@ export const wishlistService = {
   },
 
   async toggle(userId: string, productId: string): Promise<{ wishlisted: boolean }> {
-    // Cheaper than running both queries: try add → on duplicate, delete instead.
-    const ids = new Set(await wishlistRepo.productIdsForUser(userId));
-    if (ids.has(productId)) {
-      await wishlistRepo.remove(userId, productId);
-      return { wishlisted: false };
-    }
+    // Delete-first, no read: the deleteMany is the atomic "was it on?" check,
+    // so rapid double-toggles serialize at the DB instead of racing a stale
+    // read. Nothing deleted → it was off → add (upsert absorbs a concurrent
+    // add racing this one).
+    const { count } = await wishlistRepo.remove(userId, productId);
+    if (count > 0) return { wishlisted: false };
     await wishlistRepo.add(userId, productId);
     return { wishlisted: true };
   },

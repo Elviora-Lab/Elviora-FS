@@ -31,10 +31,12 @@ export async function ProductDetail({
   product: PdpProduct;
   trackView?: boolean;
 }) {
+  // Reviews and related products are enrichment, not the product itself — a
+  // transient DB failure on them must not 500 the whole PDP.
   const [related, reviewSummary, reviews] = await Promise.all([
     productsService.getRelated(slug, 4).catch(() => []),
-    reviewsRepo.summary(product.id),
-    reviewsRepo.listApproved(product.id, 10),
+    reviewsRepo.summary(product.id).catch(() => ({ average: 0, count: 0 })),
+    reviewsRepo.listApproved(product.id, 10).catch(() => []),
   ]);
 
   const primaryImage = product.images[0]?.imageUrl;

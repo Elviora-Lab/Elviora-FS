@@ -6,6 +6,7 @@ import { withAction } from './_with-action';
 
 import { getSession } from '@/server/auth/get-session';
 import { getOrCreateGuestId } from '@/server/auth/guest-session';
+import { clientIpFromAction, enforceRateLimit } from '@/server/http/rate-limit';
 import { cartService } from '@/server/services/cart.service';
 import { couponsService } from '@/server/services/coupons.service';
 import { addLineBody, applyCouponBody, updateLineBody } from '@/server/validators/cart.schema';
@@ -32,6 +33,13 @@ export const updateCartLine = withAction(async (input: { lineId: string; quantit
 });
 
 export const applyCoupon = withAction(async (input: { code: string }) => {
+  // Same brute-force guard as /api/v1/coupons/validate — codes are guessable.
+  await enforceRateLimit({
+    key: `coupon-validate:${await clientIpFromAction()}`,
+    limit: 10,
+    windowSeconds: 60,
+  });
+
   const body = applyCouponBody.parse(input);
   const session = await getSession();
   const sessionId = await getOrCreateGuestId();

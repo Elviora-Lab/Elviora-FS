@@ -26,19 +26,27 @@ export const stockNotifyService = {
 
     let sent = 0;
     for (const row of pending) {
+      // Claim BEFORE sending: the conditional update lets exactly one sweep
+      // win each row, so overlapping cron runs can't email the same waiter
+      // twice. A row that fails to send is un-claimed for the next sweep.
+      const { count } = await prisma.stockNotification.updateMany({
+        where: { id: row.id, notifiedAt: null },
+        data: { notifiedAt: now },
+      });
+      if (count === 0) continue; // another sweep already claimed it
+
       try {
         const { subject, html, text } = backInStockEmail({
           productName: row.product.name,
           productSlug: row.product.slug,
         });
         await sendEmail({ to: row.email, subject, html, text });
-        await prisma.stockNotification.update({
-          where: { id: row.id },
-          data: { notifiedAt: now },
-        });
         sent += 1;
       } catch {
-        // Skip a single failed send; don't abort the batch.
+        // Release the claim so a later sweep retries this waiter.
+        await prisma.stockNotification
+          .updateMany({ where: { id: row.id }, data: { notifiedAt: null } })
+          .catch(() => undefined);
       }
     }
 

@@ -171,8 +171,13 @@ export const serverEnv = (() => {
     if (!parsed.data.JWT_SECRET || parsed.data.JWT_SECRET.length < 32) {
       problems.push('JWT_SECRET must be set and at least 32 characters');
     }
-    if (parsed.data.JWT_REFRESH_SECRET && parsed.data.JWT_REFRESH_SECRET.length < 32) {
-      problems.push('JWT_REFRESH_SECRET, when set, must be at least 32 characters');
+    // A dedicated refresh secret is REQUIRED in production: falling back to
+    // JWT_SECRET would let a leaked access-signing key also mint refresh
+    // tokens (and vice versa), collapsing the two trust domains into one.
+    if (!parsed.data.JWT_REFRESH_SECRET || parsed.data.JWT_REFRESH_SECRET.length < 32) {
+      problems.push('JWT_REFRESH_SECRET must be set and at least 32 characters');
+    } else if (parsed.data.JWT_REFRESH_SECRET === parsed.data.JWT_SECRET) {
+      problems.push('JWT_REFRESH_SECRET must differ from JWT_SECRET');
     }
     if (!parsed.data.DATABASE_URL) {
       problems.push('DATABASE_URL must be set');

@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { jwtVerify, SignJWT } from 'jose';
+import { z } from 'zod';
 
 import { serverEnv } from '@/config/env';
 
@@ -13,16 +14,25 @@ const ACCESS_AUDIENCE = 'elviora:access';
 const REFRESH_AUDIENCE = 'elviora:refresh';
 const RESET_AUDIENCE = 'elviora:pwreset';
 
-export type AccessClaims = {
-  sub: string; // user id
-  role: 'CUSTOMER' | 'VIP' | 'STAFF' | 'ADMIN' | 'SUPER_ADMIN' | 'SUPPORT';
-  email: string;
-};
+// Validated (not just cast) after signature verification — a token signed with
+// the right key but carrying a malformed payload is rejected, never trusted.
+const accessClaimsSchema = z.object({
+  /** user id */
+  sub: z.string().min(1),
+  // Mirrors Prisma's UserRole enum exactly — do not add roles here that the
+  // database cannot store.
+  role: z.enum(['CUSTOMER', 'VIP', 'STAFF', 'ADMIN', 'SUPER_ADMIN']),
+  email: z.string().min(1),
+});
 
-export type RefreshClaims = {
-  sub: string;
-  jti: string; // refresh-token id (for rotation/revocation)
-};
+const refreshClaimsSchema = z.object({
+  sub: z.string().min(1),
+  /** refresh-token id (for rotation/revocation) */
+  jti: z.string().min(1),
+});
+
+export type AccessClaims = z.infer<typeof accessClaimsSchema>;
+export type RefreshClaims = z.infer<typeof refreshClaimsSchema>;
 
 function secret(kind: 'access' | 'refresh') {
   const raw =
@@ -60,7 +70,7 @@ export async function verifyAccessToken(token: string): Promise<AccessClaims> {
     issuer: ISSUER,
     audience: ACCESS_AUDIENCE,
   });
-  return payload as unknown as AccessClaims;
+  return accessClaimsSchema.parse(payload);
 }
 
 export async function verifyRefreshToken(token: string): Promise<RefreshClaims> {
@@ -68,7 +78,7 @@ export async function verifyRefreshToken(token: string): Promise<RefreshClaims> 
     issuer: ISSUER,
     audience: REFRESH_AUDIENCE,
   });
-  return payload as unknown as RefreshClaims;
+  return refreshClaimsSchema.parse(payload);
 }
 
 /**

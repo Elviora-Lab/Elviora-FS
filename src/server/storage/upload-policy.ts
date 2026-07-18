@@ -32,13 +32,17 @@ export const UPLOAD_POLICIES = {
 
 export type UploadKind = keyof typeof UPLOAD_POLICIES;
 
-export function assertUploadAllowed(kind: UploadKind, contentType: string, sizeBytes?: number) {
+export function assertUploadAllowed(kind: UploadKind, contentType: string, sizeBytes: number) {
   const policy = UPLOAD_POLICIES[kind];
   const allowed = policy.allowedTypes as readonly string[];
   if (!allowed.includes(contentType)) {
     throw new BadRequestError(`Unsupported file type for ${kind}: ${contentType}`);
   }
-  if (sizeBytes !== undefined && sizeBytes > policy.maxSizeMB * 1024 * 1024) {
+  if (sizeBytes > policy.maxSizeMB * 1024 * 1024) {
     throw new BadRequestError(`File exceeds ${policy.maxSizeMB}MB limit`);
   }
+}
+
+export function maxSizeBytesFor(kind: UploadKind): number {
+  return UPLOAD_POLICIES[kind].maxSizeMB * 1024 * 1024;
 }

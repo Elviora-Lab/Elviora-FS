@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 
 import { analytics } from '@/lib/analytics';
 import { cn } from '@/lib/cn';
@@ -68,30 +68,41 @@ export function HeroShowcase({ products }: { products: HeroProduct[] }) {
         data-index={index}
         className="group relative block aspect-[4/5] overflow-hidden rounded-2xl bg-brand-pearl shadow-elevated"
       >
-        <AnimatePresence initial={false}>
+        {/* Every slide stays mounted; slides crossfade via opacity. Keying the
+            active slide instead would remount (and re-decode) the image on
+            every rotation. */}
+        {products.map((p, idx) => (
           <motion.div
-            key={current.slug}
-            initial={reduceMotion ? false : { opacity: 0, scale: 1.05 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0 }}
+            key={p.slug}
+            initial={false}
+            animate={
+              reduceMotion
+                ? { opacity: idx === index ? 1 : 0 }
+                : { opacity: idx === index ? 1 : 0, scale: idx === index ? 1 : 1.05 }
+            }
             transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
             className="absolute inset-0"
+            aria-hidden={idx !== index}
           >
             <Image
-              src={current.imageUrl}
-              alt={current.name}
+              src={p.imageUrl}
+              alt={p.name}
               fill
-              priority={index === 0}
+              priority={idx === 0}
               sizes="(min-width:1024px) 50vw, 100vw"
               className="object-cover"
             />
           </motion.div>
-        </AnimatePresence>
+        ))}
 
         <div className="absolute inset-0 bg-gradient-to-t from-brand-noir/55 via-transparent to-transparent" />
 
-        {/* Floating shoppable card */}
-        <div className="absolute inset-x-4 bottom-4 flex items-center justify-between gap-3 rounded-xl border border-white/15 bg-background/70 p-3 backdrop-blur-md">
+        {/* Floating shoppable card. aria-live announces the rotating slide to
+            screen readers without them having to watch the carousel. */}
+        <div
+          aria-live="polite"
+          className="absolute inset-x-4 bottom-4 flex items-center justify-between gap-3 rounded-xl border border-white/15 bg-background/70 p-3 backdrop-blur-md"
+        >
           <div className="min-w-0">
             {current.brandLine ? (
               <span className="block truncate text-[10px] uppercase tracking-[0.16em] text-muted-foreground">

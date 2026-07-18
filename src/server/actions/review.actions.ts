@@ -10,6 +10,7 @@ import { withAction } from './_with-action';
 import { requireUser } from '@/server/auth/guards';
 import { verifyReviewToken } from '@/server/auth/tokens';
 import { events } from '@/server/events';
+import { clientIpFromAction, enforceRateLimit } from '@/server/http/rate-limit';
 
 const submitReviewBody = z.object({
   productId: z.string().uuid(),
@@ -21,6 +22,9 @@ const submitReviewBody = z.object({
 export const submitReview = withAction(async (input: z.infer<typeof submitReviewBody>) => {
   const body = submitReviewBody.parse(input);
   const session = await requireUser();
+
+  // A shopper has no reason to post more than a handful of reviews per hour.
+  await enforceRateLimit({ key: `review:${session.sub}`, limit: 5, windowSeconds: 3600 });
 
   // Verified purchase = at least one delivered order containing this product.
   const verified = await prisma.orderItem.count({
@@ -74,6 +78,13 @@ const submitGuestReviewBody = z.object({
 export const submitGuestReview = withAction(
   async (input: z.infer<typeof submitGuestReviewBody>) => {
     const body = submitGuestReviewBody.parse(input);
+
+    // No account to key on — throttle by IP.
+    await enforceRateLimit({
+      key: `guest-review:${await clientIpFromAction()}`,
+      limit: 5,
+      windowSeconds: 3600,
+    });
 
     let orderId: string;
     try {

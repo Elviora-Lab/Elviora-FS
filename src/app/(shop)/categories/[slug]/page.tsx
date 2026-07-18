@@ -65,8 +65,10 @@ export default async function CategoryPage({
   // The category row drives the display name, description, and subcategory
   // chips; unknown slugs still render a (likely empty) product listing.
   const [category, { items }, brands] = await Promise.all([
-    categoriesService.getBySlug(slug),
-    productsService.list({ category: slug, brand: str(sp.brand) }, sort, page, 24),
+    categoriesService.getBySlug(slug).catch(() => null),
+    productsService
+      .list({ category: slug, brand: str(sp.brand) }, sort, page, 24)
+      .catch(() => ({ items: [] })),
     brandsService.list().catch(() => []),
   ]);
 

@@ -209,7 +209,16 @@ export const adminOrdersRepo = {
     return prisma.order.findUnique({
       where: { id },
       include: {
-        user: true,
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            phone: true,
+            role: true,
+          },
+        },
         items: true,
         payments: true,
         shipments: true,

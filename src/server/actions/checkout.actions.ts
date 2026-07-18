@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { cookies, headers } from 'next/headers';
-import { PaymentMethod, Prisma } from '@prisma/client';
+import { PaymentMethod } from '@prisma/client';
 import { z } from 'zod';
 
 import { publicEnv, serverEnv } from '@/config/env';
@@ -19,6 +19,7 @@ import { sendCapiEvent } from '@/server/analytics/meta-capi';
 import { getSession } from '@/server/auth/get-session';
 import { getOrCreateGuestId } from '@/server/auth/guest-session';
 import { BadRequestError } from '@/server/http/errors';
+import { clientIpFromAction, enforceRateLimit } from '@/server/http/rate-limit';
 import { createPaymentIntent } from '@/server/payments/stripe';
 import { addressesService } from '@/server/services/addresses.service';
 import { ordersService } from '@/server/services/orders.service';
@@ -66,6 +67,13 @@ export const placeOrder = withAction(async (raw: unknown) => {
   const sessionId = await getOrCreateGuestId();
   const input = placeOrderInput.parse(raw);
 
+  // Guest checkout is unauthenticated — throttle per IP against order spam.
+  await enforceRateLimit({
+    key: `checkout:${await clientIpFromAction()}`,
+    limit: 5,
+    windowSeconds: 300,
+  });
+
   // Resolve the shipping address. Logged-in users may pick a saved address;
   // everyone else supplies one inline. Phone is required, email optional.
   let shippingAddress: {
@@ -90,12 +98,15 @@ export const placeOrder = withAction(async (raw: unknown) => {
     throw new BadRequestError('Provide a shipping address');
   }
 
-  // Find the cart: by user when logged in, else by guest session.
+  // Find the cart: by user when logged in, else by guest session. We only need
+  // the id here; the order service will read the items inside its transaction
+  // and clear the cart atomically, preventing duplicate orders from concurrent
+  // checkout requests.
   const cart = await prisma.cart.findFirst({
     where: session ? { userId: session.sub } : { sessionId },
-    include: { items: true },
+    select: { id: true },
   });
-  if (!cart || cart.items.length === 0) {
+  if (!cart) {
     throw new BadRequestError('Your bag is empty');
   }
 
@@ -123,18 +134,9 @@ export const placeOrder = withAction(async (raw: unknown) => {
     utm,
   });
 
-  // Record the chosen payment method. The actual amount is captured/cleared
-  // by the PSP webhook (Stripe) or by an operator (COD/bank transfer).
-  const payment = await prisma.payment.create({
-    data: {
-      orderId: order.id,
-      paymentMethod: input.paymentMethod,
-      // order.totalAmount is already a Decimal — pass it through, don't round-trip
-      // through a JS float.
-      amount: new Prisma.Decimal(order.totalAmount),
-      paymentStatus: 'PENDING',
-    },
-  });
+  // The PENDING payment row was created inside the order transaction
+  // (ordersService.createFromCart) — an order can never exist without one.
+  // Fetch it here only to stamp the Stripe PaymentIntent id below.
 
   // For card payments, open a Stripe PaymentIntent and return its client_secret
   // so the browser can confirm the charge. `metadata.orderId` is what the Stripe
@@ -150,8 +152,8 @@ export const placeOrder = withAction(async (raw: unknown) => {
       customerEmail: contactEmail ?? undefined,
     });
     clientSecret = intent.client_secret;
-    await prisma.payment.update({
-      where: { id: payment.id },
+    await prisma.payment.updateMany({
+      where: { orderId: order.id, paymentStatus: 'PENDING', transactionId: null },
       data: { transactionId: intent.id },
     });
   }

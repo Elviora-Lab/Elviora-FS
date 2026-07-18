@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { type ReturnStatus } from '@prisma/client';
+import { type Prisma, type ReturnStatus } from '@prisma/client';
 
 import { prisma } from '@/lib/db';
 
@@ -32,8 +32,8 @@ export const returnsRepo = {
     });
   },
 
-  setStatus(id: string, status: ReturnStatus, adminNote?: string) {
-    return prisma.returnRequest.update({
+  setStatus(id: string, status: ReturnStatus, adminNote?: string, tx?: Prisma.TransactionClient) {
+    return (tx ?? prisma).returnRequest.update({
       where: { id },
       data: { status, adminNote, resolvedAt: status === 'REQUESTED' ? null : new Date() },
     });

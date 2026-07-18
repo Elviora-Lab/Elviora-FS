@@ -13,6 +13,7 @@ import { requireAdmin } from '@/server/auth/guards';
 import { BadRequestError, NotFoundError } from '@/server/http/errors';
 import { adminProductsRepo } from '@/server/repositories/admin.repo';
 import { productsService } from '@/server/services/products.service';
+import { idInput } from '@/server/validators/admin-common.schema';
 
 const productBody = z.object({
   name: z.string().min(2).max(255),
@@ -36,10 +37,14 @@ const productBody = z.object({
 
 /** Replace a product's gallery (product-level images only; variant-linked
  *  images are left untouched). First URL becomes the primary image. */
-async function setProductImages(productId: string, images: string[]) {
-  await prisma.productImage.deleteMany({ where: { productId, variantId: null } });
+async function setProductImages(
+  productId: string,
+  images: string[],
+  db: Prisma.TransactionClient = prisma,
+) {
+  await db.productImage.deleteMany({ where: { productId, variantId: null } });
   if (images.length) {
-    await prisma.productImage.createMany({
+    await db.productImage.createMany({
       data: images.map((imageUrl, i) => ({
         productId,
         imageUrl,
@@ -53,34 +58,47 @@ async function setProductImages(productId: string, images: string[]) {
 export const createProduct = withAction(async (input: z.infer<typeof productBody>) => {
   await requireAdmin();
   const data = productBody.parse(input);
-  const product = await adminProductsRepo.create({
-    name: data.name,
-    slug: data.slug || toSlug(data.name),
-    sku: data.sku,
-    shortDescription: data.shortDescription,
-    fullDescription: data.fullDescription,
-    price: data.price,
-    comparePrice: data.comparePrice,
-    costPrice: data.costPrice,
-    isFeatured: data.isFeatured ?? false,
-    isActive: data.isActive ?? true,
-    ...(data.categoryId ? { category: { connect: { id: data.categoryId } } } : {}),
-    ...(data.brandId ? { brand: { connect: { id: data.brandId } } } : {}),
-  });
-  if (data.images?.length) await setProductImages(product.id, data.images);
-  // A product needs at least one variant to be purchasable — start with a
-  // default one mirroring the product SKU/price (stock 0 until set). Skipped
-  // silently on a variant-SKU collision; the operator can add variants below.
-  await prisma.productVariant
-    .create({
+  // Product + gallery + default variant commit together — a failure partway
+  // can't leave a half-created product (no images, not purchasable).
+  const product = await prisma.$transaction(async (tx) => {
+    const created = await tx.product.create({
       data: {
-        productId: product.id,
-        sku: `${product.sku}-V`.slice(0, 80),
+        name: data.name,
+        slug: data.slug || toSlug(data.name),
+        sku: data.sku,
+        shortDescription: data.shortDescription,
+        fullDescription: data.fullDescription,
         price: data.price,
-        stockQuantity: 0,
+        comparePrice: data.comparePrice,
+        costPrice: data.costPrice,
+        isFeatured: data.isFeatured ?? false,
+        isActive: data.isActive ?? true,
+        ...(data.categoryId ? { category: { connect: { id: data.categoryId } } } : {}),
+        ...(data.brandId ? { brand: { connect: { id: data.brandId } } } : {}),
       },
-    })
-    .catch(() => {});
+    });
+    if (data.images?.length) await setProductImages(created.id, data.images, tx);
+    // A product needs at least one variant to be purchasable — start with a
+    // default one mirroring the product SKU/price (stock 0 until set). Skipped
+    // on a variant-SKU collision (pre-checked — a swallowed create error would
+    // abort the whole transaction); the operator can add variants below.
+    const variantSku = `${created.sku}-V`.slice(0, 80);
+    const skuTaken = await tx.productVariant.findUnique({
+      where: { sku: variantSku },
+      select: { id: true },
+    });
+    if (!skuTaken) {
+      await tx.productVariant.create({
+        data: {
+          productId: created.id,
+          sku: variantSku,
+          price: data.price,
+          stockQuantity: 0,
+        },
+      });
+    }
+    return created;
+  });
   revalidatePath('/admin/products');
   return product;
 });
@@ -88,20 +106,29 @@ export const createProduct = withAction(async (input: z.infer<typeof productBody
 export const updateProduct = withAction(
   async (input: { id: string } & Partial<z.infer<typeof productBody>>) => {
     await requireAdmin();
-    const { id, ...rest } = input;
+    const { id: rawId, ...rest } = input;
+    const id = z.string().uuid().parse(rawId);
     // The scalar FKs must not leak into the checked update input — Prisma
     // rejects `categoryId` alongside the nested `category` operation.
     const { images, categoryId, brandId, ...data } = productBody.partial().parse(rest);
-    const product = await adminProductsRepo.update(id, {
-      ...data,
-      ...(categoryId !== undefined
-        ? { category: categoryId ? { connect: { id: categoryId } } : { disconnect: true } }
-        : {}),
-      ...(brandId !== undefined
-        ? { brand: brandId ? { connect: { id: brandId } } : { disconnect: true } }
-        : {}),
+    // Update + gallery replacement commit together — the delete-then-recreate
+    // in setProductImages must never survive without the recreate.
+    const product = await prisma.$transaction(async (tx) => {
+      const updated = await tx.product.update({
+        where: { id },
+        data: {
+          ...data,
+          ...(categoryId !== undefined
+            ? { category: categoryId ? { connect: { id: categoryId } } : { disconnect: true } }
+            : {}),
+          ...(brandId !== undefined
+            ? { brand: brandId ? { connect: { id: brandId } } : { disconnect: true } }
+            : {}),
+        },
+      });
+      if (images) await setProductImages(id, images, tx);
+      return updated;
     });
-    if (images) await setProductImages(id, images);
     // Drop the cached PDP (Redis + in-process) so price/availability edits show
     // immediately instead of waiting out the 120s TTL.
     await productsService.invalidate(product.slug);
@@ -113,8 +140,9 @@ export const updateProduct = withAction(
 
 export const deleteProduct = withAction(async (input: { id: string }) => {
   await requireAdmin();
+  const { id } = idInput.parse(input);
   // delete() returns the removed row, so we still have its slug to invalidate.
-  const product = await adminProductsRepo.delete(input.id);
+  const product = await adminProductsRepo.delete(id);
   await productsService.invalidate(product.slug);
   revalidatePath('/admin/products');
   return { id: input.id };
@@ -162,7 +190,8 @@ const variantUpdateBody = variantBody.omit({ productId: true }).partial();
 export const updateVariant = withAction(
   async (input: { id: string } & z.infer<typeof variantUpdateBody>) => {
     await requireAdmin();
-    const { id, ...rest } = input;
+    const { id: rawId, ...rest } = input;
+    const id = z.string().uuid().parse(rawId);
     const data = variantUpdateBody.parse(rest);
     const variant = await prisma.productVariant.update({
       where: { id },

@@ -15,6 +15,7 @@ import { sendEmail } from '@/server/email';
 import { passwordResetEmail } from '@/server/email/templates/password-reset';
 import { events } from '@/server/events';
 import { ConflictError, UnauthorizedError } from '@/server/http/errors';
+import { refreshTokensRepo } from '@/server/repositories/refresh-tokens.repo';
 import { usersRepo } from '@/server/repositories/users.repo';
 
 export const authService = {
@@ -84,6 +85,7 @@ export const authService = {
     const user = await usersRepo.findById(sub);
     if (!user) throw new UnauthorizedError('This reset link is invalid or has expired');
     await usersRepo.update(user.id, { passwordHash: await hashPassword(newPassword) });
+    await refreshTokensRepo.revokeAllForUser(user.id);
     return { ok: true as const };
   },
 

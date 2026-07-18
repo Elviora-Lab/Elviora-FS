@@ -9,7 +9,7 @@ import { refreshTokensRepo } from '@/server/repositories/refresh-tokens.repo';
 export type SessionUser = {
   id: string;
   email: string;
-  role: 'CUSTOMER' | 'VIP' | 'STAFF' | 'ADMIN' | 'SUPER_ADMIN' | 'SUPPORT';
+  role: 'CUSTOMER' | 'VIP' | 'STAFF' | 'ADMIN' | 'SUPER_ADMIN';
 };
 
 /**

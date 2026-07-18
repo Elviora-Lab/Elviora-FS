@@ -27,6 +27,29 @@ concurrency:
 jobs:
   quality:
     runs-on: ubuntu-latest
+
+    # `next build` prerenders pages that query the database, so give the job a
+    # throwaway Postgres and apply the migrations before building. This also
+    # smoke-tests every migration on each push.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: elviora_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/elviora_ci?schema=public
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/elviora_ci?schema=public
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -51,3 +74,9 @@ jobs:
 
       - name: Test
         run: npm test
+
+      - name: Migrate CI database
+        run: npx prisma migrate deploy
+
+      - name: Build
+        run: npm run build

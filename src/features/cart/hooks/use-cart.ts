@@ -17,16 +17,15 @@ import {
   updateQuantity,
 } from '@/features/cart/store/cart-slice';
 
-export function useCart() {
+/**
+ * Write-only cart API. Subscribes to NOTHING — components that only mutate the
+ * cart (e.g. the PDP's add-to-bag) should use this so they don't re-render on
+ * every cart change.
+ */
+export function useCartActions() {
   const dispatch = useAppDispatch();
-  const cart = useAppSelector(selectCart);
-  const count = useAppSelector(selectCartCount);
-  const subtotal = useAppSelector(selectCartSubtotal);
 
   return {
-    cart,
-    count,
-    subtotal,
     add: useCallback((line: CartLine) => dispatch(addLine(line)), [dispatch]),
     updateQty: useCallback(
       (productId: string, variantId: string, quantity: number) =>
@@ -43,5 +42,19 @@ export function useCart() {
       [dispatch],
     ),
     removeCoupon: useCallback(() => dispatch(removeCoupon()), [dispatch]),
+  };
+}
+
+export function useCart() {
+  const cart = useAppSelector(selectCart);
+  const count = useAppSelector(selectCartCount);
+  const subtotal = useAppSelector(selectCartSubtotal);
+  const actions = useCartActions();
+
+  return {
+    cart,
+    count,
+    subtotal,
+    ...actions,
   };
 }

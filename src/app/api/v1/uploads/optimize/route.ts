@@ -2,7 +2,7 @@ import { nanoid } from 'nanoid';
 import sharp from 'sharp';
 import { z } from 'zod';
 
-import { requireUser } from '@/server/auth/guards';
+import { requireAdmin, requireUser } from '@/server/auth/guards';
 import { BadRequestError } from '@/server/http/errors';
 import { createHandler } from '@/server/http/handler';
 import { parseJson } from '@/server/http/parse';
@@ -10,7 +10,9 @@ import { apiSuccess } from '@/server/http/response';
 import {
   deleteObject,
   getObjectBuffer,
+  getObjectSize,
   isStorageConfigured,
+  maxSizeBytesFor,
   putObject,
   UPLOAD_POLICIES,
   type UploadKind,
@@ -39,13 +41,30 @@ const body = z.object({
  */
 export const POST = createHandler(async (req) => {
   if (!isStorageConfigured()) throw new BadRequestError('Object storage is not configured');
-  await requireUser(req);
-
   const { kind, key } = await parseJson(req, body);
+
+  // Admin-only kinds: product images, banners, and blog thumbnails. Review
+  // images and avatars are allowed for any authenticated user.
+  const adminKinds: UploadKind[] = ['productImage', 'banner', 'blogThumbnail'];
+  if (adminKinds.includes(kind)) {
+    await requireAdmin(req);
+  } else {
+    await requireUser(req);
+  }
+
   const folder = UPLOAD_POLICIES[kind].folder;
   // Only touch keys under this kind's own folder — never an arbitrary object.
   if (!key.startsWith(`${folder}/`)) {
     throw new BadRequestError('Key does not match upload kind');
+  }
+
+  // Cap the input before downloading it — a HEAD request first, so an oversized
+  // object (uploaded outside the presign flow) can't DoS this endpoint via
+  // sharp. The offending object is deleted to stop storage-cost abuse.
+  const sizeBytes = await getObjectSize(key);
+  if (sizeBytes > maxSizeBytesFor(kind)) {
+    await deleteObject(key).catch(() => undefined);
+    throw new BadRequestError(`File exceeds ${UPLOAD_POLICIES[kind].maxSizeMB}MB limit`);
   }
 
   const raw = await getObjectBuffer(key);

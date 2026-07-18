@@ -2,11 +2,10 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { Check, Star } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { cn } from '@/lib/cn';
-
+import { StarRatingInput } from '@/components/commerce/star-rating-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -38,7 +37,6 @@ export function GuestReviewForm({
 function ProductReviewCard({ token, product }: { token: string; product: ReviewableProduct }) {
   const [done, setDone] = useState(product.reviewed);
   const [rating, setRating] = useState(0);
-  const [hover, setHover] = useState(0);
   const [title, setTitle] = useState('');
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -96,38 +94,19 @@ function ProductReviewCard({ token, product }: { token: string; product: Reviewa
         </p>
       ) : (
         <form onSubmit={onSubmit} className="flex flex-col gap-3">
-          <div className="flex items-center gap-1" role="radiogroup" aria-label="Rating">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <button
-                key={i}
-                type="button"
-                aria-label={`${i} star${i > 1 ? 's' : ''}`}
-                onMouseEnter={() => setHover(i)}
-                onMouseLeave={() => setHover(0)}
-                onClick={() => setRating(i)}
-                className="p-0.5"
-              >
-                <Star
-                  className={cn(
-                    'size-7 transition-colors',
-                    (hover || rating) >= i
-                      ? 'fill-brand-gold text-brand-gold'
-                      : 'text-muted-foreground/40',
-                  )}
-                />
-              </button>
-            ))}
-          </div>
+          <StarRatingInput value={rating} onChange={setRating} />
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Title (optional)"
+            aria-label="Review title (optional)"
             maxLength={200}
           />
           <textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             placeholder="How did it wear? What did you love?"
+            aria-label="Your review"
             rows={4}
             maxLength={4000}
             className="w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

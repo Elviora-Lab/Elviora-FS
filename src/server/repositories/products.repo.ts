@@ -10,7 +10,8 @@ export type ProductListFilters = {
   q?: string; // free-text
   priceMin?: number;
   priceMax?: number;
-  skinType?: string;
+  // NOTE: no skinType filter — Product carries no skin-type data (only
+  // skinConcerns). Add a relation before reintroducing it here.
   concern?: string; // skin-concern slug
   tag?: string; // tag slug
 };
@@ -60,11 +61,19 @@ export const productsRepo = {
             ],
           }
         : {}),
+      // Price filters match the TRANSACTABLE price: a product qualifies when
+      // at least one active variant falls in the range. Product.price is a
+      // display/master price and can drift from what's actually chargeable.
       ...(filters.priceMin !== undefined || filters.priceMax !== undefined
         ? {
-            price: {
-              ...(filters.priceMin !== undefined ? { gte: filters.priceMin } : {}),
-              ...(filters.priceMax !== undefined ? { lte: filters.priceMax } : {}),
+            variants: {
+              some: {
+                isActive: true,
+                price: {
+                  ...(filters.priceMin !== undefined ? { gte: filters.priceMin } : {}),
+                  ...(filters.priceMax !== undefined ? { lte: filters.priceMax } : {}),
+                },
+              },
             },
           }
         : {}),

@@ -9,6 +9,7 @@ import { withAction } from '../_with-action';
 
 import { requireAdmin } from '@/server/auth/guards';
 import { promotionsService } from '@/server/services/promotions.service';
+import { idInput, idToggleActiveInput } from '@/server/validators/admin-common.schema';
 
 const tierBody = z
   .object({
@@ -32,9 +33,10 @@ export const createSpendTier = withAction(async (input: z.infer<typeof tierBody>
 /** Activate / deactivate a single tier. */
 export const toggleSpendTier = withAction(async (input: { id: string; isActive: boolean }) => {
   await requireAdmin();
+  const { id, isActive } = idToggleActiveInput.parse(input);
   await prisma.spendDiscountTier.update({
-    where: { id: input.id },
-    data: { isActive: input.isActive },
+    where: { id },
+    data: { isActive },
   });
   revalidatePath('/admin/coupons');
   return { ok: true };
@@ -43,7 +45,8 @@ export const toggleSpendTier = withAction(async (input: { id: string; isActive: 
 /** Delete a tier. */
 export const deleteSpendTier = withAction(async (input: { id: string }) => {
   await requireAdmin();
-  await prisma.spendDiscountTier.delete({ where: { id: input.id } });
+  const { id } = idInput.parse(input);
+  await prisma.spendDiscountTier.delete({ where: { id } });
   revalidatePath('/admin/coupons');
   return { ok: true };
 });

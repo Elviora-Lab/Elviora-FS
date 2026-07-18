@@ -31,21 +31,39 @@ export const setReturnStatus = withAction(async (input: z.infer<typeof setStatus
   const rr = await returnsRepo.findById(id);
   if (!rr) throw new NotFoundError('Return request not found');
 
-  await returnsRepo.setStatus(id, status, adminNote);
-
   // Marking the return refunded flips the order to REFUNDED, which deducts it
   // from recognized revenue (orderStatus + paymentStatus both signal it) and
   // puts the returned units back in stock (idempotent — see transitionOrder).
+  // Return status, order transition + restock, and payment status all commit
+  // in ONE transaction — a return can never be REFUNDED with the order left
+  // unchanged, and concurrent refund clicks can't double-apply.
+  let refundApplied = false;
   if (status === 'REFUNDED') {
-    await transitionOrder(rr.orderId, 'REFUNDED', `Refunded via return request`, session.sub);
-    await prisma.order.update({
-      where: { id: rr.orderId },
-      data: { paymentStatus: 'REFUNDED' },
+    refundApplied = await prisma.$transaction(async (tx) => {
+      await returnsRepo.setStatus(id, status, adminNote, tx);
+      const { changed } = await transitionOrder(
+        rr.orderId,
+        'REFUNDED',
+        `Refunded via return request`,
+        session.sub,
+        tx,
+      );
+      await tx.order.update({
+        where: { id: rr.orderId },
+        data: { paymentStatus: 'REFUNDED' },
+      });
+      return changed;
     });
+  } else {
+    await returnsRepo.setStatus(id, status, adminNote);
+  }
 
-    // GA4 refund (server-side) — matched to the purchase by transaction_id.
-    // No `_ga` cookie here (this runs in the admin's session, not the buyer's),
-    // so a fallback client_id is used; GA4 still ties it to the transaction.
+  // GA4 refund (server-side) — matched to the purchase by transaction_id.
+  // No `_ga` cookie here (this runs in the admin's session, not the buyer's),
+  // so a fallback client_id is used; GA4 still ties it to the transaction.
+  // Only fired when THIS call actually performed the transition, so repeated
+  // clicks can't emit duplicate refund events.
+  if (refundApplied) {
     try {
       const ord = await prisma.order.findUnique({
         where: { id: rr.orderId },

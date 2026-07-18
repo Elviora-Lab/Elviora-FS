@@ -9,6 +9,7 @@ import { withAction } from '../_with-action';
 
 import { requireAdmin } from '@/server/auth/guards';
 import { adminBlogRepo } from '@/server/repositories/admin.repo';
+import { idInput } from '@/server/validators/admin-common.schema';
 
 const createBody = z.object({
   title: z.string().min(2).max(255),
@@ -36,7 +37,8 @@ export const createBlogPost = withAction(async (input: z.infer<typeof createBody
 
 export const deleteBlogPost = withAction(async (input: { id: string }) => {
   await requireAdmin();
-  await adminBlogRepo.delete(input.id);
+  const { id } = idInput.parse(input);
+  await adminBlogRepo.delete(id);
   revalidatePath('/admin/blog');
   revalidatePath('/blog');
   return { id: input.id };
@@ -44,7 +46,10 @@ export const deleteBlogPost = withAction(async (input: { id: string }) => {
 
 export const togglePublish = withAction(async (input: { id: string; isPublished: boolean }) => {
   await requireAdmin();
-  await adminBlogRepo.setPublished(input.id, input.isPublished);
+  const { id, isPublished } = z
+    .object({ id: z.string().uuid(), isPublished: z.boolean() })
+    .parse(input);
+  await adminBlogRepo.setPublished(id, isPublished);
   revalidatePath('/admin/blog');
   revalidatePath('/blog');
   return { id: input.id, isPublished: input.isPublished };

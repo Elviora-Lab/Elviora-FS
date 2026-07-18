@@ -1,14 +1,14 @@
 import { cookies, headers } from 'next/headers';
 import { z } from 'zod';
 
-import { publicEnv } from '@/config/env';
-
 import { prisma } from '@/lib/db';
 
 import { capiEnabled, type CapiUserData, sendCapiEvent } from '@/server/analytics/meta-capi';
 import { getSession } from '@/server/auth/get-session';
 import { getGuestId } from '@/server/auth/guest-session';
 import { createHandler } from '@/server/http/handler';
+import { isSameSiteRequest } from '@/server/http/origin';
+import { clientIp, isRateLimited } from '@/server/http/rate-limit';
 import { apiNoContent } from '@/server/http/response';
 
 export const runtime = 'nodejs';
@@ -82,16 +82,13 @@ export const POST = createHandler(async (req) => {
   // Nothing to do unless CAPI is configured.
   if (!capiEnabled()) return apiNoContent();
 
-  // Same-origin guard — only accept beacons from our own site.
-  const origin = req.headers.get('origin');
-  if (origin) {
-    try {
-      if (new URL(origin).host !== new URL(publicEnv.NEXT_PUBLIC_SITE_URL).host) {
-        return apiNoContent();
-      }
-    } catch {
-      return apiNoContent();
-    }
+  // Same-site guard — only accept beacons from our own pages. Requests with
+  // neither a same-site Origin nor Referer are dropped (scripted traffic).
+  if (!isSameSiteRequest(req)) return apiNoContent();
+
+  // Throttle per IP; drop silently (204) so a flood can't inflate CAPI events.
+  if (await isRateLimited({ key: `track:${clientIp(req)}`, limit: 30, windowSeconds: 60 })) {
+    return apiNoContent();
   }
 
   const parsed = bodySchema.safeParse(await req.json().catch(() => null));

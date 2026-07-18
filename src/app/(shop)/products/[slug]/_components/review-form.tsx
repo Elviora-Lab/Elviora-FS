@@ -2,11 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Star } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { cn } from '@/lib/cn';
-
+import { StarRatingInput } from '@/components/commerce/star-rating-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -19,7 +17,6 @@ export function ReviewForm({ productId }: { productId: string }) {
   const router = useRouter();
 
   const [rating, setRating] = useState(0);
-  const [hover, setHover] = useState(0);
   const [title, setTitle] = useState('');
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -64,39 +61,20 @@ export function ReviewForm({ productId }: { productId: string }) {
     <form onSubmit={onSubmit} className="flex flex-col gap-4 rounded-md border border-border p-5">
       <h3 className="font-serif text-lg font-light">Write a review</h3>
 
-      <div className="flex items-center gap-1" role="radiogroup" aria-label="Rating">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <button
-            key={i}
-            type="button"
-            aria-label={`${i} star${i > 1 ? 's' : ''}`}
-            onMouseEnter={() => setHover(i)}
-            onMouseLeave={() => setHover(0)}
-            onClick={() => setRating(i)}
-            className="p-0.5"
-          >
-            <Star
-              className={cn(
-                'size-6 transition-colors',
-                (hover || rating) >= i
-                  ? 'fill-brand-gold text-brand-gold'
-                  : 'text-muted-foreground/40',
-              )}
-            />
-          </button>
-        ))}
-      </div>
+      <StarRatingInput value={rating} onChange={setRating} />
 
       <Input
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         placeholder="Title (optional)"
+        aria-label="Review title (optional)"
         maxLength={200}
       />
       <textarea
         value={comment}
         onChange={(e) => setComment(e.target.value)}
         placeholder="Share your experience…"
+        aria-label="Your review"
         rows={4}
         maxLength={4000}
         className="w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

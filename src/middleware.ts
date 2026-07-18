@@ -1,11 +1,20 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
+import { z } from 'zod';
 
 import { ADMIN_PREFIXES, AUTH_ROUTES, PROTECTED_PREFIXES } from '@/config/routes';
 
 const ACCESS_COOKIE = 'elv_at';
 
 const ADMIN_ROLES = new Set(['ADMIN', 'SUPER_ADMIN', 'STAFF']);
+
+// Payload shape is validated, not cast — a correctly-signed token with a
+// malformed payload fails closed (treated as unauthenticated).
+const claimsSchema = z.object({
+  sub: z.string().min(1),
+  role: z.string().min(1),
+  email: z.string().min(1),
+});
 
 function getSecret() {
   const raw = process.env.JWT_SECRET;
@@ -21,7 +30,8 @@ async function verify(token: string) {
       issuer: 'elviora',
       audience: 'elviora:access',
     });
-    return payload as { sub: string; role: string; email: string };
+    const parsed = claimsSchema.safeParse(payload);
+    return parsed.success ? parsed.data : null;
   } catch {
     return null;
   }

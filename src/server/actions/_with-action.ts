@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { Prisma } from '@prisma/client';
 import { ZodError } from 'zod';
 
 import { HttpError } from '@/server/http/errors';
@@ -39,6 +40,24 @@ export function withAction<Args extends unknown[], T>(
       }
       if (err instanceof HttpError) {
         return { success: false, message: err.message, code: err.code };
+      }
+      // Same Prisma mapping as createHandler, so forms get "already exists"
+      // instead of a generic failure on unique violations etc.
+      if (err instanceof Prisma.PrismaClientKnownRequestError) {
+        if (err.code === 'P2002') {
+          const target = (err.meta?.target as string[] | undefined)?.join(', ');
+          return {
+            success: false,
+            code: 'CONFLICT',
+            message: target ? `A record with this ${target} already exists` : 'Duplicate value',
+          };
+        }
+        if (err.code === 'P2025') {
+          return { success: false, code: 'NOT_FOUND', message: 'Record not found' };
+        }
+        if (err.code === 'P2003') {
+          return { success: false, code: 'BAD_REQUEST', message: 'Related record is missing' };
+        }
       }
       // eslint-disable-next-line no-console
       console.error('[action:error]', err);

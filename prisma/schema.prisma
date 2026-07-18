@@ -357,7 +357,10 @@ model Product {
   @@index([isActive])
   @@index([isFeatured, isActive])
   @@index([createdAt])
-  // Trigram index is added in a follow-up migration for fuzzy name search.
+  // Price-range filters on the catalog listing.
+  @@index([price])
+  // Trigram (GIN) index on `name` for fuzzy search lives in raw SQL —
+  // 20260719010000_add_analytics_and_catalog_indexes — Prisma can't express it.
   @@map("products")
 }
 
@@ -625,6 +628,9 @@ model Order {
   @@index([paymentStatus])
   @@index([createdAt])
   @@index([userId, createdAt])
+  // Geographic sales breakdowns (admin analytics).
+  @@index([shippingCity])
+  @@index([shippingArea])
   @@map("orders")
 }
 
@@ -892,6 +898,7 @@ model NewsletterSubscriber {
   subscribedAt DateTime @default(now()) @map("subscribed_at") @db.Timestamptz
 
   @@index([isActive])
+  @@index([subscribedAt])
   @@map("newsletter_subscribers")
 }
 
@@ -963,6 +970,8 @@ model ProductViewLog {
 
   @@index([productId, viewedAt])
   @@index([userId, viewedAt])
+  // Time-window scans (funnel counts, "views in the last N days").
+  @@index([viewedAt])
   @@map("product_view_logs")
 }
 
@@ -979,6 +988,8 @@ model CartEventLog {
 
   @@index([productId, createdAt])
   @@index([userId, createdAt])
+  // Time-window scans (funnel counts, "cart adds in the last N days").
+  @@index([createdAt])
   @@map("cart_event_logs")
 }
 

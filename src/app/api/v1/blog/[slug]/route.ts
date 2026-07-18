@@ -1,5 +1,5 @@
+import { NotFoundError } from '@/server/http/errors';
 import { createHandler } from '@/server/http/handler';
-import { apiSuccess } from '@/server/http/response';
 
 export const runtime = 'nodejs';
 
@@ -10,5 +10,7 @@ export const runtime = 'nodejs';
  * /api/v1/products and /api/v1/cart.
  */
 export const GET = createHandler(async () => {
-  return apiSuccess({ items: [] }, { message: 'Not yet implemented' });
+  // 404 until implemented — a scaffold that answers 200 looks like a
+  // real (empty) endpoint to clients and crawlers.
+  throw new NotFoundError();
 });

@@ -51,7 +51,8 @@ export function AddressForm({ hasExistingAddresses }: { hasExistingAddresses: bo
         <Input name="phone" type="tel" />
       </Field>
       <Field label="Country (ISO-2) *">
-        <Input name="country" required maxLength={2} placeholder="US" defaultValue="US" />
+        {/* PK to match checkout — shipping rates are computed for Pakistan. */}
+        <Input name="country" required maxLength={2} placeholder="PK" defaultValue="PK" />
       </Field>
       <Field label="City *">
         <Input name="city" required />

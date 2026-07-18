@@ -71,6 +71,23 @@ export const cartRepo = {
     return prisma.cart.findUnique({ where: { id }, include: cartInclude });
   },
 
+  /**
+   * Claim a guest cart for a user at login, without creating anything. Used
+   * before the guest cookie is rotated (session-fixation defense) so the
+   * pre-login cart isn't orphaned under the old guest id. No-ops when the user
+   * already has a cart (uq_user_active_cart) or there is no guest cart.
+   */
+  async claimGuestCart(userId: string, sessionId: string): Promise<void> {
+    await prisma.$transaction(async (tx) => {
+      const userCart = await tx.cart.findFirst({ where: { userId }, select: { id: true } });
+      if (userCart) return;
+      await tx.cart.updateMany({
+        where: { sessionId, userId: null },
+        data: { userId, sessionId: null },
+      });
+    });
+  },
+
   async upsertLine(
     cartId: string,
     payload: {

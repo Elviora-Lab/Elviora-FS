@@ -25,7 +25,9 @@ export const registerSchema = z
     email: emailSchema,
     password: passwordSchema,
     confirmPassword: z.string().min(1, 'Confirm your password'),
-    acceptTerms: z.literal(true, { errorMap: () => ({ message: 'Please accept the terms' }) }),
+    // boolean + refine (not z.literal(true)) so the form can legally default
+    // to false — the literal type forced an unsafe `false as unknown as true`.
+    acceptTerms: z.boolean().refine((v) => v === true, { message: 'Please accept the terms' }),
   })
   .refine((d) => d.password === d.confirmPassword, {
     message: 'Passwords do not match',

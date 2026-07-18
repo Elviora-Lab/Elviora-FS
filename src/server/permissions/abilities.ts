@@ -40,7 +40,6 @@ const ROLE_ABILITIES: Record<AccessClaims['role'], readonly Ability[]> = {
     'reviews:moderate',
     'customers:read:any',
   ],
-  SUPPORT: ['orders:read:any', 'customers:read:any', 'reviews:moderate'],
   ADMIN: ['*'],
   SUPER_ADMIN: ['*'],
 };

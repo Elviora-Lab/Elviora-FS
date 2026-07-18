@@ -33,21 +33,23 @@ function Row({ ariaHidden = false }: { ariaHidden?: boolean }) {
 }
 
 export function AnnouncementBar() {
-  const [hidden, setHidden] = useState(false);
+  // 'unknown' until we've read sessionStorage on the client — rendering
+  // nothing during SSR/first paint means a dismissed bar never flashes.
+  const [state, setState] = useState<'unknown' | 'shown' | 'hidden'>('unknown');
   const [paused, setPaused] = useState(false);
 
   useEffect(() => {
     try {
-      if (window.sessionStorage.getItem(DISMISS_KEY) === '1') setHidden(true);
+      setState(window.sessionStorage.getItem(DISMISS_KEY) === '1' ? 'hidden' : 'shown');
     } catch {
-      /* storage disabled */
+      setState('shown'); // storage disabled — just show it
     }
   }, []);
 
-  if (hidden) return null;
+  if (state !== 'shown') return null;
 
   function dismiss() {
-    setHidden(true);
+    setState('hidden');
     try {
       window.sessionStorage.setItem(DISMISS_KEY, '1');
     } catch {

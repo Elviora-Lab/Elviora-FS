@@ -5,9 +5,10 @@ import { type Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db';
 
 export const couponsRepo = {
-  /** Look up an active coupon by its (case-sensitive) code. */
-  findActiveByCode(code: string) {
-    return prisma.coupon.findFirst({ where: { code, isActive: true } });
+  /** Look up an active coupon by its (case-sensitive) code. Pass `db` to read
+   *  through an open transaction (checkout evaluates inside the order tx). */
+  findActiveByCode(code: string, db: Prisma.TransactionClient = prisma) {
+    return db.coupon.findFirst({ where: { code, isActive: true } });
   },
 };
 

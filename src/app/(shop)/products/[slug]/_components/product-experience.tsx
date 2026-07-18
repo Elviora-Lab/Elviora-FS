@@ -29,7 +29,7 @@ import { Label } from '@/components/ui/label';
 import { RichText } from '@/components/ui/rich-text';
 
 import { cartApi } from '@/features/cart/api/cart-api';
-import { useCart } from '@/features/cart/hooks/use-cart';
+import { useCartActions } from '@/features/cart/hooks/use-cart';
 
 import { BackInStockNotify } from './back-in-stock-notify';
 
@@ -85,7 +85,10 @@ export function ProductExperience({
 }: Props) {
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const cart = useCart();
+  // Write-only cart API — this component never reads cart state, so it must
+  // not re-render on every cart mutation (it's the heaviest client tree on
+  // the PDP).
+  const cart = useCartActions();
   const [pending, start] = useTransition();
 
   const firstAvailable = useMemo(
@@ -173,15 +176,24 @@ export function ProductExperience({
         {/* Gallery — one image at a time */}
         <div className="relative aspect-[4/5] overflow-hidden rounded-md bg-gradient-pearl">
           {active?.url ? (
-            <Image
-              key={active.url}
-              src={active.url}
-              alt={active.alt}
-              fill
-              priority
-              sizes="(min-width:1024px) 50vw, 100vw"
-              className="object-contain"
-            />
+            // All gallery images stay mounted; the active one is revealed via
+            // opacity. Keying a single Image by URL remounted (re-decoded) it
+            // on every arrow/variant switch.
+            images.map((im, idx) => (
+              <Image
+                key={`${im.url}-${idx}`}
+                src={im.url}
+                alt={im.alt}
+                fill
+                priority={idx === 0}
+                sizes="(min-width:1024px) 50vw, 100vw"
+                className={cn(
+                  'object-contain transition-opacity duration-300',
+                  idx === activeIndex ? 'opacity-100' : 'opacity-0',
+                )}
+                aria-hidden={idx !== activeIndex}
+              />
+            ))
           ) : (
             <span
               aria-hidden

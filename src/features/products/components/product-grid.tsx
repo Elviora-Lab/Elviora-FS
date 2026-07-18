@@ -45,6 +45,14 @@ export function ProductGrid({
 }: ProductGridProps) {
   const prefersReduced = useReducedMotion();
 
+  // Cards that have already animated in. A filter/sort that reshuffles the
+  // list should only animate genuinely NEW cards — not replay the entrance
+  // stagger over products the shopper is already looking at.
+  const seenIds = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    products?.forEach((p) => seenIds.current.add(p.id));
+  });
+
   // GA4 view_item_list — fire once when the list first has products. Keyed on
   // the id set so a filter/sort that swaps the products re-reports the new list.
   const trackedKey = useRef<string>('');
@@ -122,7 +130,10 @@ export function ProductGrid({
       animate="show"
     >
       {products.map((p, i) => (
-        <motion.div key={p.id} variants={i < STAGGER_LIMIT ? item : undefined}>
+        <motion.div
+          key={p.id}
+          variants={i < STAGGER_LIMIT && !seenIds.current.has(p.id) ? item : undefined}
+        >
           <ProductCard
             product={p}
             priority={i < 4}

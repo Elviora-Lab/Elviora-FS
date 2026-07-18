@@ -38,7 +38,7 @@ export function RegisterForm() {
       email: '',
       password: '',
       confirmPassword: '',
-      acceptTerms: false as unknown as true,
+      acceptTerms: false,
     },
   });
 

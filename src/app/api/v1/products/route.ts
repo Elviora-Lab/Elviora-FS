@@ -21,7 +21,6 @@ export const GET = createHandler(async (req) => {
       q: q.q,
       priceMin: q.priceMin,
       priceMax: q.priceMax,
-      skinType: q.skinType,
       concern: q.concern,
       tag: q.tag,
     },

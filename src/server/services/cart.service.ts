@@ -24,14 +24,19 @@ export const cartService = {
       include: { product: true },
     });
     if (!variant || !variant.isActive) throw new NotFoundError('Variant not found');
-    if (variant.stockQuantity < payload.quantity) {
-      throw new BadRequestError('Requested quantity exceeds stock');
-    }
 
     const cart = await cartRepo.findOrCreate({
       userId: opts.userId ?? undefined,
       sessionId: opts.sessionId,
     });
+
+    const existing = cart.items.find(
+      (i) => i.variantId === payload.variantId && i.productId === variant.productId,
+    );
+    const totalQuantity = (existing?.quantity ?? 0) + payload.quantity;
+    if (variant.stockQuantity < totalQuantity) {
+      throw new BadRequestError('Requested quantity exceeds stock');
+    }
 
     await cartRepo.upsertLine(cart.id, {
       productId: variant.productId,

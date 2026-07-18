@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 
 import { prisma } from '@/lib/db';
@@ -45,7 +46,18 @@ export const requestReturn = withAction(async (input: z.infer<typeof requestRetu
     throw new BadRequestError('A return request already exists for this order');
   }
 
-  const created = await returnsRepo.create({ orderId, userId: session.sub, reason, comment });
+  // The pre-check above is for a friendly message only — the unique constraint
+  // on orderId is the real guard. Two concurrent submissions race past the
+  // check; the loser hits P2002, which we surface as the same message.
+  let created: Awaited<ReturnType<typeof returnsRepo.create>>;
+  try {
+    created = await returnsRepo.create({ orderId, userId: session.sub, reason, comment });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      throw new BadRequestError('A return request already exists for this order');
+    }
+    throw err;
+  }
 
   await notifyUser({
     userId: session.sub,

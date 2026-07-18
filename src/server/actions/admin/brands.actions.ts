@@ -10,6 +10,7 @@ import { withAction } from '../_with-action';
 import { requireAdmin } from '@/server/auth/guards';
 import { cache } from '@/server/cache';
 import { adminBrandsRepo } from '@/server/repositories/admin.repo';
+import { idInput } from '@/server/validators/admin-common.schema';
 
 const brandBody = z.object({
   name: z.string().min(2).max(160),
@@ -36,7 +37,8 @@ export const createBrand = withAction(async (input: z.infer<typeof brandBody>) =
 
 export const deleteBrand = withAction(async (input: { id: string }) => {
   await requireAdmin();
-  const brand = await adminBrandsRepo.delete(input.id);
+  const { id } = idInput.parse(input);
+  const brand = await adminBrandsRepo.delete(id);
   await cache.delete('brands:active');
   await cache.delete(`brands:slug:${brand.slug}`);
   revalidatePath('/admin/brands');

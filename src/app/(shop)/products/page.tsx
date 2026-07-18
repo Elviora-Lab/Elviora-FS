@@ -32,8 +32,12 @@ export default async function ProductsPage({
     : 'newest';
   const page = Math.max(1, Number(str(sp.page)) || 1);
 
+  // Same failure posture as the homepage: a catalog-service hiccup renders an
+  // empty listing, not a 500.
   const [{ items }, brands] = await Promise.all([
-    productsService.list({ q: str(sp.q), brand: str(sp.brand) }, sort, page, 24),
+    productsService
+      .list({ q: str(sp.q), brand: str(sp.brand) }, sort, page, 24)
+      .catch(() => ({ items: [] })),
     brandsService.list().catch(() => []),
   ]);
 

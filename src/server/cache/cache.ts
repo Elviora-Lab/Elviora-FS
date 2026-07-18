@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { type z } from 'zod';
+
 import { getRedis } from './redis';
 
 /**
@@ -34,7 +36,12 @@ function setLocal(key: string, value: unknown, ttlSeconds: number) {
 }
 
 export const cache = {
-  async get<T>(key: string): Promise<T | null> {
+  /**
+   * Pass `schema` to validate data crossing the Redis boundary (shared across
+   * instances and deploys — a schema change or poisoned key would otherwise be
+   * trusted blindly). Mismatches are treated as a miss and the key is dropped.
+   */
+  async get<T>(key: string, schema?: z.ZodType<T>): Promise<T | null> {
     const now = Date.now();
     const hit = local.get(key);
     if (hit && hit.expiresAt > now) {
@@ -50,7 +57,18 @@ export const cache = {
     try {
       const raw = await redis.get(key);
       if (!raw) return null;
-      const value = JSON.parse(raw) as T;
+      const parsed: unknown = JSON.parse(raw);
+      let value: T;
+      if (schema) {
+        const result = schema.safeParse(parsed);
+        if (!result.success) {
+          await redis.del(key).catch(() => undefined);
+          return null;
+        }
+        value = result.data;
+      } else {
+        value = parsed as T;
+      }
       // Mirror Redis's remaining TTL locally instead of a fixed default, so the
       // two tiers don't disagree on expiry.
       const pttl = await redis.pttl(key);
@@ -84,8 +102,13 @@ export const cache = {
     }
   },
 
-  async wrap<T>(key: string, ttlSeconds: number, producer: () => Promise<T>): Promise<T> {
-    const hit = await cache.get<T>(key);
+  async wrap<T>(
+    key: string,
+    ttlSeconds: number,
+    producer: () => Promise<T>,
+    schema?: z.ZodType<T>,
+  ): Promise<T> {
+    const hit = await cache.get<T>(key, schema);
     if (hit !== null) return hit;
 
     // Single-flight: if another caller is already producing this key, await it

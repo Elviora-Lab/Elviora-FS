@@ -33,4 +33,21 @@ export const refreshTokensRepo = {
     });
     return count;
   },
+
+  /**
+   * Purge rows that no longer serve any purpose: tokens past their JWT expiry
+   * (unverifiable anyway), and tokens revoked more than `revokedGraceDays` ago.
+   * Recently-revoked rows are kept — presenting one is how token-theft reuse
+   * is detected, so deleting them immediately would blind that check.
+   */
+  async purgeExpired(revokedGraceDays = 30) {
+    const now = new Date();
+    const revokedBefore = new Date(now.getTime() - revokedGraceDays * 24 * 60 * 60 * 1000);
+    const { count } = await prisma.refreshToken.deleteMany({
+      where: {
+        OR: [{ expiresAt: { lt: now } }, { revokedAt: { lt: revokedBefore } }],
+      },
+    });
+    return count;
+  },
 };

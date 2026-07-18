@@ -1,21 +1,27 @@
 import type { NextConfig } from 'next';
 import { withSentryConfig } from '@sentry/nextjs';
 
-// Report-only Content-Security-Policy. Sources reflect what the app actually
-// loads: Next inline hydration ('unsafe-inline'/'unsafe-eval'), GA/GTM, Meta
-// Pixel, Sentry, and the image CDNs (Shopify/Supabase/Unsplash/Cloudinary via
-// img-src https:). Kept report-only until console shows no legitimate breakage.
-const CSP_REPORT_ONLY = [
+// Enforcing Content-Security-Policy. Sources reflect what the app actually
+// loads: GA/GTM, Meta Pixel, Microsoft Clarity, Sentry, and the image CDNs
+// (Shopify/Supabase/Unsplash/Cloudinary/weserv via img-src https:).
+//
+// 'unsafe-inline' for scripts remains: Next's inline hydration payload and the
+// GTM/Pixel/Clarity bootstrap snippets are inline. Removing it requires
+// nonce-plumbing through middleware and every analytics component — tracked as
+// a follow-up. 'unsafe-eval' is dev-only (React Refresh needs it); production
+// blocks eval entirely.
+const isDevBuild = process.env.NODE_ENV !== 'production';
+const CSP = [
   "default-src 'self'",
   "base-uri 'self'",
   "object-src 'none'",
   "form-action 'self'",
   "frame-ancestors 'none'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://*.google-analytics.com https://connect.facebook.net",
+  `script-src 'self' 'unsafe-inline'${isDevBuild ? " 'unsafe-eval'" : ''} https://www.googletagmanager.com https://*.google-analytics.com https://connect.facebook.net https://www.clarity.ms https://*.clarity.ms`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
-  "connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com https://connect.facebook.net https://*.facebook.com https://*.supabase.co https://*.sentry.io",
+  "connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com https://connect.facebook.net https://*.facebook.com https://*.supabase.co https://*.sentry.io https://*.clarity.ms https://c.bing.com",
   'frame-src https://www.facebook.com https://td.doubleclick.net',
   "manifest-src 'self'",
 ].join('; ');
@@ -38,9 +44,13 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'cdn.elviora.com' },
       // Imported catalog (data/products.json) serves images from Shopify's CDN.
       { protocol: 'https', hostname: 'cdn.shopify.com' },
-      // Admins can attach product images by pasting arbitrary HTTPS URLs or
-      // uploading to object storage, so allow any HTTPS host for next/image.
-      { protocol: 'https', hostname: '**' },
+      // Admin uploads land in Supabase Storage; free-plan resizing proxies
+      // through weserv (see src/lib/image-loader.ts).
+      { protocol: 'https', hostname: '*.supabase.co' },
+      { protocol: 'https', hostname: 'images.weserv.nl' },
+      // Deliberately NO https://** wildcard: an arbitrary-host allowance lets
+      // attacker-controlled images render under the site's origin. Admins must
+      // upload (or use a whitelisted CDN) rather than paste arbitrary URLs.
     ],
     // Trimmed width ladders (was 9 device + 8 image sizes) — fewer widths means
     // fewer transformations per image, with negligible impact on how closely a
@@ -67,10 +77,7 @@ const nextConfig: NextConfig = {
             key: 'Strict-Transport-Security',
             value: 'max-age=63072000; includeSubDomains; preload',
           },
-          // Report-only first: this does NOT block anything — it logs violations
-          // to the browser console so we can tighten to an enforcing policy
-          // safely once we've confirmed nothing legitimate is flagged.
-          { key: 'Content-Security-Policy-Report-Only', value: CSP_REPORT_ONLY },
+          { key: 'Content-Security-Policy', value: CSP },
         ],
       },
     ];

@@ -7,6 +7,7 @@ import { withAction } from '../_with-action';
 
 import { requireAdmin } from '@/server/auth/guards';
 import { adminBannersRepo } from '@/server/repositories/admin.repo';
+import { idInput, idToggleActiveInput } from '@/server/validators/admin-common.schema';
 
 const createBody = z.object({
   title: z.string().min(2).max(200),
@@ -30,14 +31,16 @@ export const createBanner = withAction(async (input: z.infer<typeof createBody>)
 
 export const deleteBanner = withAction(async (input: { id: string }) => {
   await requireAdmin();
-  await adminBannersRepo.delete(input.id);
+  const { id } = idInput.parse(input);
+  await adminBannersRepo.delete(id);
   revalidatePath('/admin/banners');
   return { id: input.id };
 });
 
 export const toggleBanner = withAction(async (input: { id: string; isActive: boolean }) => {
   await requireAdmin();
-  await adminBannersRepo.setActive(input.id, input.isActive);
+  const { id, isActive } = idToggleActiveInput.parse(input);
+  await adminBannersRepo.setActive(id, isActive);
   revalidatePath('/admin/banners');
   return { id: input.id, isActive: input.isActive };
 });

@@ -3,6 +3,7 @@ import 'server-only';
 import {
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadObjectCommand,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
@@ -43,10 +44,14 @@ export function publicUrlFor(key: string): string {
 export async function presignUpload({
   key,
   contentType,
+  contentLength,
   expiresIn = 60,
 }: {
   key: string;
   contentType: string;
+  /** When provided, the Content-Length is part of the signature — an upload of
+   *  a different size than declared is rejected by the storage provider. */
+  contentLength?: number;
   expiresIn?: number;
 }): Promise<{ uploadUrl: string; publicUrl: string }> {
   if (!serverEnv.S3_BUCKET) throw new Error('S3_BUCKET is not configured');
@@ -54,12 +59,22 @@ export async function presignUpload({
     Bucket: serverEnv.S3_BUCKET,
     Key: key,
     ContentType: contentType,
+    ...(contentLength !== undefined ? { ContentLength: contentLength } : {}),
   });
   const uploadUrl = await getSignedUrl(client(), command, { expiresIn });
   return { uploadUrl, publicUrl: publicUrlFor(key) };
 }
 
 const normalizeKey = (key: string) => key.trim().replace(/^\/+/, '');
+
+/** Size of an object in bytes without downloading it (HEAD request). */
+export async function getObjectSize(key: string): Promise<number> {
+  if (!serverEnv.S3_BUCKET) throw new Error('S3_BUCKET is not configured');
+  const res = await client().send(
+    new HeadObjectCommand({ Bucket: serverEnv.S3_BUCKET, Key: normalizeKey(key) }),
+  );
+  return res.ContentLength ?? 0;
+}
 
 /** Download an object's bytes — used to optimize an already-uploaded image. */
 export async function getObjectBuffer(key: string): Promise<Buffer> {

@@ -34,11 +34,16 @@ export const couponsService = {
    * Validate a coupon against a subtotal and return the computed discount.
    * Throws {@link BadRequestError} with a human reason when invalid. This is a
    * read-only check — the usage count is incremented atomically at order time
-   * (see ordersService.createFromCart).
+   * (see ordersService.createFromCart). Pass `db` to evaluate inside an open
+   * transaction so the coupon state read is serialized with its redemption.
    */
-  async evaluate(code: string, subtotal: Prisma.Decimal | number): Promise<CouponEvaluation> {
+  async evaluate(
+    code: string,
+    subtotal: Prisma.Decimal | number,
+    db?: Prisma.TransactionClient,
+  ): Promise<CouponEvaluation> {
     const sub = new Prisma.Decimal(subtotal);
-    const coupon = await couponsRepo.findActiveByCode(code);
+    const coupon = await couponsRepo.findActiveByCode(code, db);
     if (!coupon) throw new BadRequestError('Invalid or expired coupon');
 
     const now = new Date();

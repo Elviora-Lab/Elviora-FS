@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { nanoid } from 'nanoid';
 
+import { isProd } from '@/config/env';
+
 import { getGoogleAuthUrl, isGoogleOAuthConfigured } from '@/server/auth/oauth/google';
 import { BadRequestError } from '@/server/http/errors';
 import { createHandler } from '@/server/http/handler';
@@ -17,6 +19,7 @@ export const GET = createHandler(async () => {
   res.cookies.set('elv_oauth_state', state, {
     httpOnly: true,
     sameSite: 'lax',
+    secure: isProd,
     path: '/',
     maxAge: 60 * 10, // 10 minutes
   });

@@ -7,6 +7,7 @@ import { ZodError } from 'zod';
 import { isDev } from '@/config/env';
 
 import { HttpError, InternalError } from './errors';
+import { isSameSiteRequest } from './origin';
 import { apiError } from './response';
 
 type RouteCtx<Params extends Record<string, string> = Record<string, string>> = {
@@ -18,8 +19,29 @@ type HandlerFn<Params extends Record<string, string>> = (
   ctx: RouteCtx<Params>,
 ) => Promise<Response>;
 
+const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+const SESSION_COOKIES = ['elv_at=', 'elv_rt=', 'elv_guest='];
+
+/**
+ * CSRF gate for cookie-authenticated mutations (SameSite=Lax alone doesn't
+ * cover same-site XSS or a compromised subdomain). A browser always attaches
+ * `Origin` (or at least `Referer`) to a cross-site POST, so a mutation that
+ * rides session cookies AND carries a cross-site Origin/Referer is rejected.
+ * Requests with neither header (curl, webhooks, cron) aren't a CSRF vector —
+ * they don't originate from a victim's browser — and pass through.
+ */
+function csrfError(req: Request): Response | null {
+  if (!MUTATING_METHODS.has(req.method)) return null;
+  const cookie = req.headers.get('cookie') ?? '';
+  if (!SESSION_COOKIES.some((c) => cookie.includes(c))) return null;
+  if (!req.headers.get('origin') && !req.headers.get('referer')) return null;
+  if (isSameSiteRequest(req)) return null;
+  return apiError('Cross-site request rejected', { code: 'FORBIDDEN', status: 403 });
+}
+
 /**
  * Wraps a route handler with:
+ *  - CSRF rejection of cross-site cookie-authenticated mutations
  *  - centralized error → API envelope conversion
  *  - Zod → 422 with field-level details
  *  - Prisma errors → tasteful messages (P2002 unique violation, P2025 not found)
@@ -33,6 +55,8 @@ export function createHandler<Params extends Record<string, string> = Record<str
 ): (req: Request, ctx: RouteCtx<Params>) => Promise<Response> {
   return async (req, ctx) => {
     try {
+      const csrf = csrfError(req);
+      if (csrf) return csrf;
       return await fn(req, ctx);
     } catch (err) {
       return toApiError(err, req);

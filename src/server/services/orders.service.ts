@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { Prisma } from '@prisma/client';
+import { type PaymentMethod, Prisma } from '@prisma/client';
 import { customAlphabet } from 'nanoid';
 
 import { prisma } from '@/lib/db';
@@ -63,14 +63,19 @@ export const ordersService = {
     notes?: string;
     couponCode?: string;
     /** Chosen payment method — COD adds the 4% COD tax. */
-    paymentMethod: string;
+    paymentMethod: PaymentMethod;
     /** Last-touch marketing attribution captured at checkout (elv_utm cookie). */
     utm?: { source?: string | null; medium?: string | null; campaign?: string | null };
   }) {
-    return prisma
-      .$transaction(async (tx) => {
-        const cart = await tx.cart.findUnique({
+    const runCheckoutTransaction = () =>
+      prisma.$transaction(async (tx) => {
+        // Lock the cart row first so concurrent checkout requests serialize.
+        // The lock is acquired by the update; the second request blocks until the
+        // first commits, at which point the cart items have already been deleted
+        // and the second request sees an empty cart.
+        const cart = await tx.cart.update({
           where: { id: opts.cartId },
+          data: { updatedAt: new Date() },
           include: { items: { include: { product: true, variant: true } } },
         });
         if (!cart) throw new NotFoundError('Cart not found');
@@ -94,7 +99,7 @@ export const ordersService = {
         let couponDiscount = new Prisma.Decimal(0);
         let appliedCoupon: { id: string; code: string } | null = null;
         if (opts.couponCode) {
-          const evaluation = await couponsService.evaluate(opts.couponCode, subtotal);
+          const evaluation = await couponsService.evaluate(opts.couponCode, subtotal, tx);
           couponDiscount = evaluation.discount;
           appliedCoupon = { id: evaluation.coupon.id, code: evaluation.coupon.code };
         }
@@ -103,7 +108,7 @@ export const ordersService = {
         // BEST-SINGLE-WINS: the larger of the tier vs the coupon (never both). A
         // coupon that loses is NOT redeemed, so it stays usable on a later order.
         const spendDiscount = new Prisma.Decimal(
-          await promotionsService.computeDiscount(subtotal.toNumber()),
+          await promotionsService.computeDiscount(subtotal.toNumber(), tx),
         );
         let discount = new Prisma.Decimal(0);
         let discountLabel: string | null = null;
@@ -170,6 +175,18 @@ export const ordersService = {
           include: { items: true },
         });
 
+        // The PENDING payment row rides the order transaction — an order can
+        // never exist without one. Stripe later stamps its PaymentIntent id as
+        // transactionId; COD/bank rows are settled by an operator.
+        await tx.payment.create({
+          data: {
+            orderId: order.id,
+            paymentMethod: opts.paymentMethod,
+            amount: order.totalAmount,
+            paymentStatus: 'PENDING',
+          },
+        });
+
         // Decrement stock for each variant atomically. The `stockQuantity >=
         // quantity` guard is part of the WHERE clause, so two concurrent
         // checkouts of the last unit cannot both succeed — the loser's
@@ -208,16 +225,33 @@ export const ordersService = {
         await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
 
         return order;
-      })
-      .then((order) => {
-        events.emit('order.created', {
-          orderId: order.id,
-          userId: opts.userId,
-          total: Number(order.totalAmount),
-          currency: order.currency,
-        });
-        return order;
       });
+
+    // Retry on an order-number collision (8 chars over a 32-char alphabet —
+    // rare, but material at volume). The whole transaction re-runs with a
+    // fresh number; any other error propagates immediately.
+    const MAX_ATTEMPTS = 3;
+    let order: Awaited<ReturnType<typeof runCheckoutTransaction>> | undefined;
+    for (let attempt = 1; ; attempt++) {
+      try {
+        order = await runCheckoutTransaction();
+        break;
+      } catch (err) {
+        const isOrderNumberCollision =
+          err instanceof Prisma.PrismaClientKnownRequestError &&
+          err.code === 'P2002' &&
+          (err.meta?.target as string[] | undefined)?.some((t) => t.includes('order_number'));
+        if (!isOrderNumberCollision || attempt >= MAX_ATTEMPTS) throw err;
+      }
+    }
+
+    events.emit('order.created', {
+      orderId: order.id,
+      userId: opts.userId,
+      total: Number(order.totalAmount),
+      currency: order.currency,
+    });
+    return order;
   },
 };
 
