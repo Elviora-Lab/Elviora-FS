@@ -7,10 +7,12 @@ import { siteConfig } from '@/config/site';
 
 import { cn } from '@/lib/cn';
 
-// Static import — co-located with the component. Next.js fingerprints,
-// optimizes, and serves it through its image pipeline automatically.
-// To swap the logo, replace `src/components/brand/logo.png` with a new file.
-import logoSrc from './logo.png';
+// Static import — co-located with the component. NOTE: with the custom image
+// loader (next.config `loaderFile`), local assets ship EXACTLY as stored —
+// there is no build-time resize/re-encode. Keep this file small: it renders at
+// 22–220px, so a 512px WebP (~8 KB) is plenty. The previous 1254px PNG was
+// 962 KB and single-handedly wrecked mobile LCP on every page.
+import logoSrc from './logo.webp';
 
 /**
  * Brand mark.
