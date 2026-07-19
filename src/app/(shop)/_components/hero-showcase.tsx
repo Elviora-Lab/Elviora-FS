@@ -89,6 +89,10 @@ export function HeroShowcase({ products }: { products: HeroProduct[] }) {
               alt={p.name}
               fill
               priority={idx === 0}
+              // Explicit high hint for the LCP slide; the other slides stay
+              // lazy so they don't compete with it for bandwidth.
+              fetchPriority={idx === 0 ? 'high' : 'auto'}
+              loading={idx === 0 ? undefined : 'lazy'}
               sizes="(min-width:1024px) 50vw, 100vw"
               className="object-cover"
             />

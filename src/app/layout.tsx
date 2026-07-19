@@ -45,6 +45,14 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning className={`${serif.variable} ${sans.variable}`}>
+      <head>
+        {/* Warm the connection to the product-image CDN (the LCP image origin)
+            and the free image-resize proxy, so the hero image isn't delayed by
+            TLS/DNS setup — cuts the LCP "resource load delay". */}
+        <link rel="preconnect" href="https://cdn.shopify.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://images.weserv.nl" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://cdn.shopify.com" />
+      </head>
       <body className="min-h-screen bg-background text-foreground antialiased">
         <MetaPixel />
         <Clarity />

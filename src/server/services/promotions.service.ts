@@ -5,7 +5,13 @@ import { type Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db';
 import { computeSpendDiscount, type SpendTier } from '@/lib/promotions';
 
+import { cache } from '@/server/cache';
+
 const ENABLED_KEY = 'spend_discount.enabled';
+// The storefront reads the display tiers on every homepage/cart render but they
+// only change from the admin panel — cache them and invalidate on write.
+const DISPLAY_CACHE_KEY = 'promotions:spend-tiers:display';
+const DISPLAY_TTL_SECONDS = 300;
 
 /**
  * "Spend & Save" server helpers — the source of truth for the automatic tiered
@@ -45,9 +51,16 @@ export const promotionsService = {
   },
 
   /** Tiers to expose to the storefront — empty when the feature is off. */
-  async tiersForDisplay(): Promise<SpendTier[]> {
-    if (!(await this.isEnabled())) return [];
-    return this.activeTiers();
+  tiersForDisplay(): Promise<SpendTier[]> {
+    return cache.wrap(DISPLAY_CACHE_KEY, DISPLAY_TTL_SECONDS, async () => {
+      if (!(await this.isEnabled())) return [];
+      return this.activeTiers();
+    });
+  },
+
+  /** Drop the cached storefront tiers after an admin edit. */
+  invalidateDisplay(): Promise<void> {
+    return cache.delete(DISPLAY_CACHE_KEY);
   },
 
   /**

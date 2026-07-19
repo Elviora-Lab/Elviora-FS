@@ -53,3 +53,27 @@ test('guest can add to cart from the PDP', async ({ page }) => {
     { timeout: 20_000 },
   );
 });
+
+test('promo code chip copies WELCOME10', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.goto('/');
+  const chip = page.getByRole('button', { name: /WELCOME10/ }).first();
+  await chip.click();
+  await expect(chip.getByText('Copied')).toBeVisible();
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+  expect(copied).toBe('WELCOME10');
+});
+
+test('offer ticker deep-links to the savings ladder', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('link', { name: 'See how Spend & Save works' }).click();
+  await expect(page).toHaveURL(/#savings/);
+  await expect(page.getByText('Bigger basket, bigger discount.')).toBeVisible();
+});
+
+test('bestseller ledger shows honest rank stamps', async ({ page }) => {
+  await page.goto('/');
+  const ledger = page.getByText('The bestseller ledger');
+  await ledger.scrollIntoViewIfNeeded();
+  await expect(page.getByText('01', { exact: true }).first()).toBeVisible();
+});

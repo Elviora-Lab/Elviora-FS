@@ -43,6 +43,8 @@ type ProductCardProps = {
   listId?: string;
   listName?: string;
   index?: number;
+  /** 1-based rank stamp (bestseller ledger) — leads the badge stack. */
+  rank?: number;
 };
 
 /**
@@ -60,6 +62,7 @@ export function ProductCard({
   listId,
   listName,
   index,
+  rank,
 }: ProductCardProps) {
   const discountPct =
     typeof product.compareAt === 'number' && product.compareAt > product.price
@@ -131,6 +134,11 @@ export function ProductCard({
         ) : null}
 
         <div className="absolute left-3 top-3 flex flex-col items-start gap-1.5">
+          {typeof rank === 'number' ? (
+            <span className="grid size-9 place-items-center rounded-xl border border-brand-amber/50 bg-brand-amber/20 font-serif text-sm font-bold text-brand-slate shadow-soft backdrop-blur-sm dark:text-brand-amber">
+              {String(rank).padStart(2, '0')}
+            </span>
+          ) : null}
           {discountPct > 0 ? <Badge variant="deal">-{discountPct}%</Badge> : null}
           {product.isNew ? <Badge variant="info">New</Badge> : null}
           {product.isBestseller ? <Badge variant="gold">Bestseller</Badge> : null}

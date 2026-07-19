@@ -82,9 +82,6 @@ export function CartDrawer() {
 
   return (
     <Sheet open={open} onOpenChange={(o) => (o ? null : dispatch(closeCart()))}>
-      <SheetTrigger asChild>
-        <span />
-      </SheetTrigger>
       <SheetContent side="right" className="w-full sm:max-w-md">
         <SheetHeader>
           <SheetTitle>Your cart</SheetTitle>

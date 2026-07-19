@@ -3,11 +3,11 @@ import { cn } from '@/lib/cn';
 // Brand statements — the payoff words that define the line. Alternating filled
 // and outlined type gives the band an editorial, couture rhythm.
 const WORDS = [
-  'Cook smarter',
-  'Store more',
-  'Clean faster',
+  'Sharper mornings',
+  'Cleaner counters',
+  'Smarter storage',
   'Built to last',
-  'Everyday value',
+  'Cash at your door',
   'Home, organized',
 ];
 

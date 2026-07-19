@@ -13,7 +13,7 @@ const ADVANCE_MS = 5500;
 
 function Stars({ rating }: { rating: number }) {
   return (
-    <div className="flex gap-0.5" aria-label={`${rating} out of 5 stars`}>
+    <div className="flex gap-0.5" role="img" aria-label={`${rating} out of 5 stars`}>
       {Array.from({ length: 5 }, (_, i) => (
         <Star
           key={i}
@@ -123,7 +123,7 @@ export function ReviewsCarousel({ reviews }: { reviews: ShowcaseReview[] }) {
             <ChevronRight className="size-5" />
           </button>
 
-          <div className="mt-6 flex justify-center gap-2">
+          <div className="mt-6 flex justify-center">
             {reviews.map((r, i) => (
               <button
                 key={r.id}
@@ -131,11 +131,17 @@ export function ReviewsCarousel({ reviews }: { reviews: ShowcaseReview[] }) {
                 onClick={() => setIndex(i)}
                 aria-label={`Go to review ${i + 1}`}
                 aria-current={i === index}
-                className={cn(
-                  'h-1.5 rounded-full transition-all',
-                  i === index ? 'w-6 bg-foreground' : 'w-1.5 bg-border hover:bg-muted-foreground',
-                )}
-              />
+                className="group grid size-6 place-items-center"
+              >
+                <span
+                  className={cn(
+                    'block h-1.5 rounded-full transition-all',
+                    i === index
+                      ? 'w-6 bg-foreground'
+                      : 'w-1.5 bg-border group-hover:bg-muted-foreground',
+                  )}
+                />
+              </button>
             ))}
           </div>
         </>

@@ -99,7 +99,11 @@ export const createProduct = withAction(async (input: z.infer<typeof productBody
     }
     return created;
   });
+  // A brand-new product must appear in cached storefront lists immediately.
+  await productsService.invalidateLists();
   revalidatePath('/admin/products');
+  revalidatePath('/products');
+  revalidatePath('/');
   return product;
 });
 

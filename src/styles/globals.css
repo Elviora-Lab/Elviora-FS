@@ -236,6 +236,42 @@
     color: hsl(var(--foreground));
   }
 
+  /* surface-mist — the pale-teal informational band (Spend & Save). Same
+   * pinning rationale as surface-cloud: the gradient is light-literal, so the
+   * text tokens must be pinned to light-mode ink or dark mode renders
+   * light-on-light. Muted ink is pushed darker for small text on the tint. */
+  .surface-mist {
+    @apply bg-gradient-mist;
+    --background: 187 35% 94%;
+    --foreground: 212 45% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 212 45% 12%;
+    --muted: 187 25% 88%;
+    --muted-foreground: 212 28% 28%;
+    --border: 187 25% 78%;
+    --input: 187 25% 78%;
+    --primary: 211 67% 21%;
+    --primary-foreground: 40 33% 98%;
+    --accent: 187 62% 26%;
+    --accent-foreground: 40 33% 98%;
+    color: hsl(var(--foreground));
+  }
+  .dark .surface-mist {
+    --background: 187 35% 94%;
+    --foreground: 212 45% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 212 45% 12%;
+    --muted: 187 25% 88%;
+    --muted-foreground: 212 28% 28%;
+    --border: 187 25% 78%;
+    --input: 187 25% 78%;
+    --primary: 211 67% 21%;
+    --primary-foreground: 40 33% 98%;
+    --accent: 187 62% 26%;
+    --accent-foreground: 40 33% 98%;
+    color: hsl(var(--foreground));
+  }
+
   /* surface-navy — a dark navy band (footer, feature strips) that pins tokens
    * to dark values in BOTH themes, so light-mode pages can carry a navy block
    * without per-element color overrides. */
@@ -251,6 +287,10 @@
     --input: 212 26% 22%;
     --primary: 40 30% 92%;
     --primary-foreground: 212 45% 10%;
+    /* Bright mint on navy — the light-mode success (36% lightness) sinks into
+       the band and fails contrast, so lift it well above the dark card. */
+    --success: 152 48% 62%;
+    --success-foreground: 212 45% 10%;
     /* Bright teal on navy — the light-mode accent (30% lightness) would sink
        into the band and fail contrast for low-vision users. */
     --accent: 187 60% 55%;
