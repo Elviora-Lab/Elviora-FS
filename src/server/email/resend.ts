@@ -15,7 +15,7 @@ function client(): Resend | null {
   return cached;
 }
 
-const DEFAULT_FROM = `${siteConfig.name} <elviora192@gmail.com>`;
+const DEFAULT_FROM = `${siteConfig.name} <support@kitchenly.com.pk>`;
 
 export type SendEmailInput = {
   to: string | string[];

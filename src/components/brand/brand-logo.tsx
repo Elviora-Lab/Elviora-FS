@@ -1,30 +1,20 @@
-'use client';
-
-import { useState } from 'react';
-import Image from 'next/image';
-
 import { siteConfig } from '@/config/site';
 
 import { cn } from '@/lib/cn';
 
-// Static import — co-located with the component. NOTE: with the custom image
-// loader (next.config `loaderFile`), local assets ship EXACTLY as stored —
-// there is no build-time resize/re-encode. Keep this file small: it renders at
-// 22–220px, so a 512px WebP (~8 KB) is plenty. The previous 1254px PNG was
-// 962 KB and single-handedly wrecked mobile LCP on every page.
-import logoSrc from './logo.webp';
-
 /**
- * Brand mark.
+ * Kitchenly brand mark — pure SVG, no image asset.
  *
- * Sourced from `public/logo.png` — save your logo there.
- * If the file is missing or fails to load, the component gracefully falls
- * back to the editorial wordmark — no broken-image icons, ever.
+ * A rounded tile with a geometric "K" and an ember "burner-on" dot. Colors
+ * ride the semantic tokens (primary / primary-foreground), so the mark
+ * adapts automatically on light pages, dark mode, and navy bands
+ * (surface-navy repins the tokens and the tile inverts by itself). The
+ * ember dot is the one constant — the brand's pilot light.
  *
  * Variants:
- *  - "mark":      square image only, sits beside the wordmark in tight layouts
- *  - "wordmark":  text-only editorial treatment
- *  - "stack":     large square + tagline (auth-side panels)
+ *  - "mark":      square tile only, sits beside the wordmark in tight layouts
+ *  - "wordmark":  text-only treatment
+ *  - "stack":     large tile + tagline (auth-side panels)
  */
 type Variant = 'mark' | 'wordmark' | 'stack';
 
@@ -32,75 +22,67 @@ type BrandLogoProps = {
   variant?: Variant;
   size?: number;
   className?: string;
+  /** Kept for API compatibility with the old image-based logo — unused. */
   priority?: boolean;
 };
 
-export function BrandLogo({
-  variant = 'mark',
-  size = 36,
-  className,
-  priority = false,
-}: BrandLogoProps) {
-  const [imageFailed, setImageFailed] = useState(false);
+function Mark({ size, className }: { size: number; className?: string }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 48 48"
+      role="img"
+      aria-label={siteConfig.name}
+      className={cn('shrink-0', className)}
+    >
+      <rect x="1" y="1" width="46" height="46" rx="12" className="fill-primary" />
+      {/* Geometric K */}
+      <path
+        d="M16 13v22"
+        className="stroke-primary-foreground"
+        strokeWidth="4.5"
+        strokeLinecap="round"
+      />
+      <path
+        d="M31 14 18.5 25.5 32 35"
+        fill="none"
+        className="stroke-primary-foreground"
+        strokeWidth="4.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* Ember pilot light */}
+      <circle cx="36.5" cy="36.5" r="3.5" className="fill-brand-ember" />
+    </svg>
+  );
+}
 
+export function BrandLogo({ variant = 'mark', size = 36, className }: BrandLogoProps) {
   if (variant === 'wordmark') {
     return <Wordmark size={size} className={className} />;
-  }
-
-  // For mark + stack we try the image first, fall back to wordmark on error.
-  if (imageFailed) {
-    if (variant === 'stack') {
-      return (
-        <div className={cn('flex flex-col items-center gap-2', className)}>
-          <Wordmark size={Math.round(size / 6)} />
-          <span className="text-[10px] uppercase tracking-[0.32em] text-muted-foreground">
-            The Art of Radiant Beauty
-          </span>
-        </div>
-      );
-    }
-    // mark fallback — small wordmark sized to roughly match the requested mark.
-    return <Wordmark size={Math.round(size / 2.2)} className={className} />;
   }
 
   if (variant === 'stack') {
     return (
       <div className={cn('flex flex-col items-center gap-3', className)}>
-        <Image
-          src={logoSrc}
-          alt={siteConfig.name}
-          width={size}
-          height={size}
-          priority={priority}
-          onError={() => setImageFailed(true)}
-          className="rounded-md"
-        />
-        <span className="text-[10px] uppercase tracking-[0.32em] text-muted-foreground">
-          The Art of Radiant Beauty
+        <Mark size={size} />
+        <span className="text-[10px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
+          {siteConfig.tagline}
         </span>
       </div>
     );
   }
 
   // mark
-  return (
-    <Image
-      src={logoSrc}
-      alt={siteConfig.name}
-      width={size}
-      height={size}
-      priority={priority}
-      onError={() => setImageFailed(true)}
-      className={cn('rounded-md object-cover', className)}
-    />
-  );
+  return <Mark size={size} className={className} />;
 }
 
 function Wordmark({ size, className }: { size: number; className?: string }) {
   return (
     <span
-      className={cn('font-serif font-light uppercase tracking-[0.22em] text-foreground', className)}
-      style={{ fontSize: size }}
+      className={cn('font-serif font-semibold tracking-tight text-foreground', className)}
+      style={{ fontSize: size * 1.4, lineHeight: 1 }}
     >
       {siteConfig.name}
     </span>
@@ -114,15 +96,15 @@ function Wordmark({ size, className }: { size: number; className?: string }) {
 export function BrandLockup({
   size = 36,
   className,
-  priority = false,
+  priority: _priority = false,
 }: {
   size?: number;
   className?: string;
   priority?: boolean;
 }) {
   return (
-    <span className={cn('inline-flex items-center gap-3', className)}>
-      <BrandLogo variant="mark" size={size} priority={priority} />
+    <span className={cn('inline-flex items-center gap-2.5', className)}>
+      <BrandLogo variant="mark" size={size} />
       <BrandLogo variant="wordmark" size={Math.round(size * 0.55)} />
     </span>
   );

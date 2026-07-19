@@ -6,7 +6,7 @@ import { Section, SectionHeading } from '@/design-system/primitives/section';
 
 export const metadata = buildMetadata({
   title: 'Terms of Service',
-  description: 'The terms that govern your use of the Elviora storefront and your purchases.',
+  description: 'The terms that govern your use of the Kitchenly storefront and your purchases.',
   path: '/terms',
 });
 
@@ -23,7 +23,7 @@ export default function TermsPage() {
         <div className="flex flex-col gap-4">
           <h2 className="editorial-heading text-display-sm">Using our site</h2>
           <p className="text-pretty leading-relaxed text-muted-foreground">
-            You may browse and shop Elviora for personal, non-commercial use. You agree not to
+            You may browse and shop Kitchenly for personal, non-commercial use. You agree not to
             misuse the site, interfere with its operation, or attempt to access it in any
             unauthorised way.
           </p>
@@ -45,8 +45,8 @@ export default function TermsPage() {
         <div className="flex flex-col gap-4">
           <h2 className="editorial-heading text-display-sm">Intellectual property</h2>
           <p className="text-pretty leading-relaxed text-muted-foreground">
-            All content on this site — including text, imagery, and the Elviora name and marks —
-            belongs to Elviora and may not be used without our written permission.
+            All content on this site — including text, imagery, and the Kitchenly name and marks —
+            belongs to Kitchenly and may not be used without our written permission.
           </p>
         </div>
 
@@ -56,9 +56,9 @@ export default function TermsPage() {
             For any questions about these terms, email{' '}
             <a
               className="font-medium text-foreground underline underline-offset-4"
-              href="mailto:elviora192@gmail.com"
+              href="mailto:support@kitchenly.com.pk"
             >
-              elviora192@gmail.com
+              support@kitchenly.com.pk
             </a>
             .
           </p>

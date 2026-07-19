@@ -4,7 +4,8 @@ import { Section, SectionHeading } from '@/design-system/primitives/section';
 
 export const metadata = buildMetadata({
   title: 'Accessibility',
-  description: 'Our commitment to making the Elviora experience usable and welcoming for everyone.',
+  description:
+    'Our commitment to making the Kitchenly experience usable and welcoming for everyone.',
   path: '/accessibility',
 });
 
@@ -14,8 +15,8 @@ export default function AccessibilityPage() {
       <div className="container flex max-w-3xl flex-col gap-12">
         <SectionHeading
           eyebrow="Accessibility"
-          title="Beauty for everyone."
-          description="We want every visitor to move through Elviora with ease, whatever device or assistive technology they use."
+          title="A store for everyone."
+          description="We want every visitor to move through Kitchenly with ease, whatever device or assistive technology they use."
         />
 
         <div className="flex flex-col gap-6 text-pretty leading-relaxed text-muted-foreground">
@@ -36,9 +37,9 @@ export default function AccessibilityPage() {
             If you encounter any barrier on our site, please email{' '}
             <a
               className="font-medium text-foreground underline underline-offset-4"
-              href="mailto:elviora192@gmail.com"
+              href="mailto:support@kitchenly.com.pk"
             >
-              elviora192@gmail.com
+              support@kitchenly.com.pk
             </a>{' '}
             and we will do our best to help and to fix the issue.
           </p>

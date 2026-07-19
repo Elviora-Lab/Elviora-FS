@@ -12,7 +12,8 @@ import { categoriesService } from '@/server/services/categories.service';
 
 export const metadata = buildMetadata({
   title: 'Shop by category',
-  description: 'Browse Elviora — makeup for lips, eyes, face, and nails. Skincare coming soon.',
+  description:
+    'Browse Kitchenly categories — kitchen tools, home organization, cleaning, and everyday essentials.',
   path: '/categories',
 });
 
@@ -52,7 +53,7 @@ export default async function CategoriesIndexPage() {
         <SectionHeading
           eyebrow="The House"
           title="Shop by category"
-          description="A curated edit, organised the way your ritual actually unfolds."
+          description="Organized the way your home actually works — room by room, task by task."
         />
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {cards.map((cat) =>
@@ -60,7 +61,7 @@ export default async function CategoriesIndexPage() {
               <div
                 key={cat.href}
                 aria-disabled="true"
-                className="surface-pearl relative flex aspect-[4/5] cursor-default flex-col justify-end overflow-hidden rounded-md p-6 opacity-70"
+                className="surface-cloud relative flex aspect-[4/5] cursor-default flex-col justify-end overflow-hidden rounded-md p-6 opacity-70"
               >
                 <div className="relative flex flex-col gap-1">
                   <span className="eyebrow">Coming soon</span>
@@ -80,27 +81,27 @@ export default async function CategoriesIndexPage() {
                       alt={cat.label}
                       fill
                       sizes="(min-width:1024px) 25vw, (min-width:768px) 50vw, 100vw"
-                      className="object-cover transition-transform duration-700 ease-editorial group-hover:scale-[1.05]"
+                      className="object-cover transition-transform duration-700 ease-swift group-hover:scale-[1.05]"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-brand-noir/75 via-brand-noir/15 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-brand-ink/75 via-brand-ink/15 to-transparent" />
                   </>
                 ) : (
                   <>
-                    <div className="surface-pearl absolute inset-0" />
+                    <div className="surface-cloud absolute inset-0" />
                     <div className="absolute inset-0 bg-gradient-to-t from-foreground/15 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
                   </>
                 )}
                 <div
-                  className={`relative flex flex-col gap-1 ${cat.image ? 'text-brand-ivory' : ''}`}
+                  className={`relative flex flex-col gap-1 ${cat.image ? 'text-brand-cloud' : ''}`}
                 >
-                  <span className={`eyebrow ${cat.image ? 'text-brand-ivory/80' : ''}`}>
+                  <span className={`eyebrow ${cat.image ? 'text-brand-cloud/80' : ''}`}>
                     Discover
                   </span>
                   <h3 className="font-serif text-2xl font-light">{cat.label}</h3>
                   {cat.subLabels?.length ? (
                     <p
                       className={`text-xs leading-relaxed ${
-                        cat.image ? 'text-brand-ivory/80' : 'text-muted-foreground'
+                        cat.image ? 'text-brand-cloud/80' : 'text-muted-foreground'
                       }`}
                     >
                       {cat.subLabels.join(' · ')}

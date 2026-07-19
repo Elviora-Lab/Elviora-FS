@@ -5,7 +5,7 @@ import { Section, SectionHeading } from '@/design-system/primitives/section';
 export const metadata = buildMetadata({
   title: 'Press',
   description:
-    'Press resources and media enquiries for Elviora — our story, assets, and contacts in one place.',
+    'Press resources and media enquiries for Kitchenly — our story, assets, and contacts in one place.',
   path: '/press',
 });
 
@@ -21,9 +21,9 @@ export default function PressPage() {
 
         <div className="flex flex-col gap-6 text-pretty leading-relaxed text-muted-foreground">
           <p>
-            Elviora is a luxury beauty house founded in Karachi, built on considered formulas and a
-            quiet sense of ritual. We welcome conversations with editors, stylists, and storytellers
-            who share our love of craft.
+            Kitchenly is a home essentials brand founded in Karachi, built on tested products and a
+            practical point of view. We welcome conversations with editors, reviewers, and
+            storytellers who share our love of craft.
           </p>
           <p>
             High-resolution imagery, brand assets, and founder background are available on request.
@@ -36,9 +36,9 @@ export default function PressPage() {
             Reach our press team at{' '}
             <a
               className="font-medium text-foreground underline underline-offset-4"
-              href="mailto:elviora192@gmail.com"
+              href="mailto:support@kitchenly.com.pk"
             >
-              elviora192@gmail.com
+              support@kitchenly.com.pk
             </a>{' '}
             and we will respond within two business days.
           </p>

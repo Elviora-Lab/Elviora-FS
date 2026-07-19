@@ -79,7 +79,7 @@ export async function GET() {
   <g:brand>${esc(p.brand?.name || siteConfig.name)}</g:brand>
   <g:condition>new</g:condition>
   <g:identifier_exists>no</g:identifier_exists>
-  <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Cosmetics</g:google_product_category>
+  <g:google_product_category>Home &amp; Garden &gt; Kitchen &amp; Dining</g:google_product_category>
   ${p.category?.name ? `<g:product_type>${esc(p.category.name)}</g:product_type>` : ''}
 </item>`;
     })

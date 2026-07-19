@@ -26,7 +26,7 @@ export function ShadeSpotlight({ product }: { product: NonNullable<ShadeSpotligh
           sizes="(min-width:1024px) 45vw, 100vw"
           className="animate-fade-in object-cover"
         />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-brand-noir/20 to-transparent" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-brand-ink/20 to-transparent" />
         <span className="absolute left-5 top-5 inline-flex items-center gap-2 rounded-full bg-background/85 px-3 py-1.5 text-xs font-medium uppercase tracking-[0.14em] text-foreground shadow-soft backdrop-blur">
           <span
             aria-hidden
@@ -73,7 +73,7 @@ export function ShadeSpotlight({ product }: { product: NonNullable<ShadeSpotligh
         </div>
 
         <div className="flex flex-wrap gap-3">
-          <Button asChild size="lg" variant="gold" uppercase>
+          <Button asChild size="lg" variant="cta" uppercase>
             <Link href={`/products/${product.slug}`}>Shop this shade</Link>
           </Button>
           <Button asChild size="lg" variant="outline">

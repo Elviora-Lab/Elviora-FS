@@ -148,7 +148,7 @@ export function ShippingLabel({ order }: { order: LabelOrder }) {
 
       <footer className="mt-2 flex justify-between text-[7pt] uppercase tracking-[0.18em] text-black/55">
         <span>{siteConfig.tagline}</span>
-        <span>elviora.com</span>
+        <span>kitchenly.com.pk</span>
       </footer>
     </article>
   );

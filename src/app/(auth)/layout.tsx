@@ -7,12 +7,12 @@ import { BrandLogo } from '@/components/brand/brand-logo';
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
-      <aside className="relative hidden bg-brand-charcoal lg:block">
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-10 p-12 text-brand-ivory">
+      <aside className="relative hidden bg-brand-slate lg:block">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-10 p-12 text-brand-cloud">
           <Link href="/" aria-label={`${siteConfig.name} home`}>
             <BrandLogo variant="mark" size={220} priority />
           </Link>
-          <blockquote className="max-w-md text-center font-serif text-2xl font-light leading-snug text-brand-ivory/85">
+          <blockquote className="max-w-md text-center font-serif text-2xl font-light leading-snug text-brand-cloud/85">
             “Refinement is the discipline of removing — until only what matters remains.”
           </blockquote>
         </div>

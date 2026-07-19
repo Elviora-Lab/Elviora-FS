@@ -11,7 +11,11 @@ const badgeVariants = cva(
         default: 'border-transparent bg-foreground text-background',
         outline: 'border-border text-foreground',
         muted: 'border-transparent bg-muted text-muted-foreground',
-        gold: 'border-brand-gold/30 bg-brand-champagne/40 text-brand-charcoal',
+        gold: 'border-brand-amber/40 bg-brand-amber/15 text-brand-slate dark:text-brand-amber',
+        // Discount / promo — solid ember, made to be seen from across the grid.
+        deal: 'border-transparent bg-brand-ember text-white shadow-soft',
+        // Informational teal (e.g. "New", feature chips).
+        info: 'border-transparent bg-brand-mist text-brand-teal',
         success: 'border-success/30 bg-success/15 text-success',
         danger: 'border-destructive/30 bg-destructive/15 text-destructive',
       },

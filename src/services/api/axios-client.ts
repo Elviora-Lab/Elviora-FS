@@ -16,6 +16,6 @@ export const apiClient: AxiosInstance = axios.create({
   headers: {
     Accept: 'application/json',
     'Content-Type': 'application/json',
-    'x-client': 'elviora-web',
+    'x-client': 'kitchenly-web',
   },
 });

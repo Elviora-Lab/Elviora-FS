@@ -75,7 +75,7 @@ export function SpendDiscountManager({ tiers, enabled }: { tiers: AdminTier[]; e
         </div>
         <Button
           size="sm"
-          variant={enabled ? 'outline' : 'gold'}
+          variant={enabled ? 'outline' : 'cta'}
           loading={pending}
           onClick={() => run(() => setSpendDiscountEnabled({ enabled: !enabled }), 'Updated')}
         >

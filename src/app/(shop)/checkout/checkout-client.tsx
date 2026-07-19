@@ -374,7 +374,7 @@ export function CheckoutClient({ addresses, cart }: { addresses: Address[]; cart
             </li>
           ))}
         </ul>
-        <div className="luxe-divider" />
+        <div className="soft-divider" />
         <RewardsLadder subtotal={cart.subtotal} currency={cart.currency} />
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Subtotal</span>
@@ -416,7 +416,7 @@ export function CheckoutClient({ addresses, cart }: { addresses: Address[]; cart
             place the order — we&apos;ll confirm delivery and reach out if there&apos;s any issue.
           </p>
         ) : null}
-        <Button size="lg" variant="gold" uppercase loading={pending} onClick={handlePlaceOrder}>
+        <Button size="lg" variant="cta" uppercase loading={pending} onClick={handlePlaceOrder}>
           Place order
         </Button>
         <TrustBar className="pt-1" />

@@ -11,7 +11,8 @@ import { blogRepo } from '@/server/repositories/blog.repo';
 
 export const metadata = buildMetadata({
   title: 'The Journal',
-  description: 'Editorial — colour stories, rituals, and conversations from the Elviora studio.',
+  description:
+    'Home guides — organization ideas, kitchen tips, and product know-how from the Kitchenly team.',
   path: '/blog',
 });
 
@@ -43,14 +44,14 @@ export default async function BlogIndexPage() {
           <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
             {posts.map((post) => (
               <Link key={post.id} href={`/blog/${post.slug}`} className="group flex flex-col gap-3">
-                <div className="relative aspect-[3/2] overflow-hidden rounded-md bg-gradient-pearl">
+                <div className="relative aspect-[3/2] overflow-hidden rounded-md bg-gradient-cloud">
                   {post.thumbnail ? (
                     <Image
                       src={post.thumbnail}
                       alt={post.title}
                       fill
                       sizes="(min-width:1024px) 33vw, (min-width:768px) 50vw, 100vw"
-                      className="object-cover transition-transform duration-700 ease-editorial group-hover:scale-[1.04]"
+                      className="object-cover transition-transform duration-700 ease-swift group-hover:scale-[1.04]"
                     />
                   ) : null}
                 </div>

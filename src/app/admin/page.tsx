@@ -48,7 +48,7 @@ export default async function AdminDashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {tiles.map((k) => {
           const card = (
-            <Card className={k.accent ? 'border-brand-gold/40' : ''}>
+            <Card className={k.accent ? 'border-brand-amber/40' : ''}>
               <CardHeader>
                 <CardDescription>{k.label}</CardDescription>
                 <CardTitle className="text-3xl">{k.value}</CardTitle>

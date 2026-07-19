@@ -35,16 +35,21 @@ export function QuantitySelector({
       <button
         type="button"
         onClick={dec}
-        className="grid size-10 place-items-center transition-colors hover:bg-muted"
+        className="grid size-10 place-items-center transition-all hover:bg-muted active:scale-90"
         aria-label="Decrease quantity"
       >
         <Minus className="size-3.5" />
       </button>
-      <span className="min-w-10 text-center text-sm tabular-nums">{value}</span>
+      <span
+        key={value}
+        className="min-w-10 animate-pop-in text-center text-sm font-medium tabular-nums"
+      >
+        {value}
+      </span>
       <button
         type="button"
         onClick={inc}
-        className="grid size-10 place-items-center transition-colors hover:bg-muted"
+        className="grid size-10 place-items-center transition-all hover:bg-muted active:scale-90"
         aria-label="Increase quantity"
       >
         <Plus className="size-3.5" />

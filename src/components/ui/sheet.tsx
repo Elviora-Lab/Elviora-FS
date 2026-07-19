@@ -31,7 +31,7 @@ const SheetOverlay = React.forwardRef<
 });
 
 const sheetVariants = cva(
-  'fixed z-50 gap-4 border-border bg-card shadow-elevated transition ease-editorial data-[state=open]:animate-in data-[state=closed]:animate-out',
+  'fixed z-50 gap-4 border-border bg-card shadow-elevated transition ease-swift data-[state=open]:animate-in data-[state=closed]:animate-out',
   {
     variants: {
       side: {

@@ -4,7 +4,7 @@ import { Section, SectionHeading } from '@/design-system/primitives/section';
 
 export const metadata = buildMetadata({
   title: 'Privacy Policy',
-  description: 'How Elviora collects, uses, and protects your personal information.',
+  description: 'How Kitchenly collects, uses, and protects your personal information.',
   path: '/privacy',
 });
 
@@ -32,7 +32,7 @@ export default function PrivacyPage() {
           <h2 className="editorial-heading text-display-sm">How we use it</h2>
           <p className="text-pretty leading-relaxed text-muted-foreground">
             We use your information to process orders, provide client care, improve our products and
-            experience, and — only with your consent — to send you updates about Elviora. We never
+            experience, and — only with your consent — to send you updates about Kitchenly. We never
             sell your personal data.
           </p>
         </div>
@@ -51,9 +51,9 @@ export default function PrivacyPage() {
             Questions about your privacy? Email{' '}
             <a
               className="font-medium text-foreground underline underline-offset-4"
-              href="mailto:elviora192@gmail.com"
+              href="mailto:support@kitchenly.com.pk"
             >
-              elviora192@gmail.com
+              support@kitchenly.com.pk
             </a>
             .
           </p>

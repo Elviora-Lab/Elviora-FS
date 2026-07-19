@@ -52,7 +52,7 @@ export default async function NotificationsPage() {
                 aria-hidden
                 className={cn(
                   'mt-1.5 size-2 shrink-0 rounded-full',
-                  n.isRead ? 'bg-transparent' : 'bg-brand-rosegold',
+                  n.isRead ? 'bg-transparent' : 'bg-brand-ember',
                 )}
               />
               <div className="flex flex-col gap-0.5">

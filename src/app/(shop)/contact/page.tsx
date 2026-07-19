@@ -8,7 +8,7 @@ import { ContactLink } from '@/components/analytics/pixel-trackers';
 export const metadata = buildMetadata({
   title: 'Contact',
   description:
-    'Reach the Elviora client care team — we are here to help with orders, products, and anything in between.',
+    'Reach the Kitchenly support team — we are here to help with orders, products, and anything in between.',
   path: '/contact',
 });
 
@@ -28,9 +28,9 @@ export default function ContactPage() {
             Write to{' '}
             <ContactLink
               className="font-medium text-foreground underline underline-offset-4"
-              href="mailto:elviora192@gmail.com"
+              href="mailto:support@kitchenly.com.pk"
             >
-              elviora192@gmail.com
+              support@kitchenly.com.pk
             </ContactLink>{' '}
             and a member of our client care team will reply within one business day.
           </p>

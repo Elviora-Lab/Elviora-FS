@@ -127,8 +127,8 @@ export async function ProductDetail({
         {related.length > 0 ? (
           <section className="flex flex-col gap-6 pt-8">
             <header className="flex flex-col gap-1">
-              <span className="eyebrow">You may also love</span>
-              <h2 className="editorial-heading text-display-sm">Considered alongside</h2>
+              <span className="eyebrow">Goes well with</span>
+              <h2 className="editorial-heading text-display-sm">Frequently bought together</h2>
             </header>
             <div className="grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-4">
               {related.map((p) => (

@@ -8,10 +8,10 @@ import { cn } from '@/lib/cn';
 // Repeated exposure to reasons-to-buy: the Spend & Save reward, the free-shipping
 // threshold, the first-order code, and COD/returns reassurance.
 const MESSAGES = [
-  '🎁 Spend Rs 1,000, save Rs 50 — up to Rs 250 off',
-  '🚚 Free shipping on orders over Rs 8,000',
-  '✨ 10% off your first order — code WELCOME10',
-  '💳 Cash on delivery available',
+  '🏷️ Spend Rs 1,000, save Rs 50 — up to Rs 250 off',
+  '🚚 Free delivery on orders over Rs 8,000',
+  '🔧 10% off your first order — code WELCOME10',
+  '💳 Cash on delivery, nationwide',
   '↩️ Easy 2–3 day returns',
 ];
 

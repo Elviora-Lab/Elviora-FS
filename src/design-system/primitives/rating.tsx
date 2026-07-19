@@ -25,8 +25,8 @@ export function Rating({ value, max = 5, size = 14, reviewCount, className }: Ra
               height={size}
               strokeWidth={1.5}
               className={cn(
-                'text-brand-gold',
-                filled ? 'fill-brand-gold' : half ? 'fill-brand-gold/40' : 'fill-transparent',
+                'text-brand-amber',
+                filled ? 'fill-brand-amber' : half ? 'fill-brand-amber/40' : 'fill-transparent',
               )}
               aria-hidden
             />

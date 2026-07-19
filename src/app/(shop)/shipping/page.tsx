@@ -24,7 +24,7 @@ export default function ShippingPage() {
         <SectionHeading
           eyebrow="Delivery"
           title="Shipping & returns"
-          description="Everything you need to know about getting Elviora to your door — and sending it back if it is not quite right."
+          description="Everything you need to know about getting Kitchenly to your door — and sending it back if it is not quite right."
         />
 
         <div className="flex flex-col gap-4">
@@ -50,15 +50,15 @@ export default function ShippingPage() {
           <p className="text-pretty leading-relaxed text-muted-foreground">
             We want you to love what you receive. Unopened products may be returned within 2 to 3
             days of delivery for a full refund to your original payment method. For hygiene reasons,
-            opened cosmetics cannot be returned unless faulty.
+            used items cannot be returned unless faulty.
           </p>
           <p className="text-pretty leading-relaxed text-muted-foreground">
             To start a return, email{' '}
             <a
               className="font-medium text-foreground underline underline-offset-4"
-              href="mailto:elviora192@gmail.com"
+              href="mailto:support@kitchenly.com.pk"
             >
-              elviora192@gmail.com
+              support@kitchenly.com.pk
             </a>{' '}
             or message us on WhatsApp at{' '}
             <a

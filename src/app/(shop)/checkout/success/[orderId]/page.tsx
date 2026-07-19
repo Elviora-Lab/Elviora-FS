@@ -91,7 +91,7 @@ export default async function OrderSuccessPage({ params }: { params: Params }) {
               <Badge variant="muted">{order.orderStatus}</Badge>
             </div>
 
-            <div className="luxe-divider" />
+            <div className="soft-divider" />
 
             <ul className="flex flex-col gap-2 text-sm">
               {order.items.map((item) => (
@@ -105,7 +105,7 @@ export default async function OrderSuccessPage({ params }: { params: Params }) {
               ))}
             </ul>
 
-            <div className="luxe-divider" />
+            <div className="soft-divider" />
 
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Subtotal</span>

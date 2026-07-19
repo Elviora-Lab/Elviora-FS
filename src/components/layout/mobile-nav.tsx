@@ -2,14 +2,14 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Search } from 'lucide-react';
 
 import { mainNav } from '@/config/navigation';
 import { siteConfig } from '@/config/site';
 
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { closeMobileNav, openSearch } from '@/store/slices/ui-slice';
+import { closeMobileNav } from '@/store/slices/ui-slice';
 
 import { BrandLogo } from '@/components/brand/brand-logo';
 import {
@@ -46,6 +46,7 @@ export function MobileNav() {
   const open = useAppSelector((s) => s.ui.mobileNavOpen);
   const dispatch = useAppDispatch();
   const pathname = usePathname();
+  const router = useRouter();
 
   // Close on navigation — `usePathname` updates after the route commits.
   useEffect(() => {
@@ -62,7 +63,7 @@ export function MobileNav() {
         <SheetHeader className="border-b border-border px-5 py-4">
           <SheetTitle asChild>
             <Link href="/" onClick={close} aria-label={`${siteConfig.name} home`}>
-              <BrandLogo variant="wordmark" size={22} />
+              <BrandLogo variant="wordmark" size={18} />
             </Link>
           </SheetTitle>
           <SheetDescription className="sr-only">Main navigation</SheetDescription>
@@ -75,11 +76,11 @@ export function MobileNav() {
             variant="outline"
             className="flex-1 justify-start"
             onClick={() => {
-              dispatch(openSearch());
               close();
+              router.push('/search');
             }}
           >
-            <Search className="size-4" /> Search
+            <Search className="size-4" /> Search products
           </Button>
         </div>
 

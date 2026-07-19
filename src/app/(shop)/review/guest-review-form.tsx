@@ -105,7 +105,7 @@ function ProductReviewCard({ token, product }: { token: string; product: Reviewa
           <textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            placeholder="How did it wear? What did you love?"
+            placeholder="How is it holding up? What do you use it for?"
             aria-label="Your review"
             rows={4}
             maxLength={4000}

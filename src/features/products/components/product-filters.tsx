@@ -38,13 +38,14 @@ export function ProductFilters({ brands = [] }: { brands?: BrandOption[] }) {
   );
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
       {brands.length > 1 ? (
         <div className="flex flex-wrap items-center gap-2">
           <span className="eyebrow mr-2">Brand</span>
           <Button
             size="sm"
             variant={!activeBrand ? 'primary' : 'outline'}
+            className="rounded-full"
             onClick={() => setParam('brand', null)}
           >
             All brands
@@ -54,6 +55,7 @@ export function ProductFilters({ brands = [] }: { brands?: BrandOption[] }) {
               key={b.slug}
               size="sm"
               variant={activeBrand === b.slug ? 'primary' : 'outline'}
+              className="rounded-full"
               onClick={() => setParam('brand', b.slug)}
             >
               {b.name}
@@ -69,6 +71,7 @@ export function ProductFilters({ brands = [] }: { brands?: BrandOption[] }) {
             key={o.value}
             size="sm"
             variant={activeSort === o.value ? 'primary' : 'outline'}
+            className="rounded-full"
             onClick={() => setParam('sort', o.value)}
           >
             {o.label}

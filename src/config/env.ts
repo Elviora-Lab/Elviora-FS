@@ -10,19 +10,19 @@ const apiUrl = z.preprocess(emptyToUndef, z.string().default('/api/v1'));
 
 const publicEnvSchema = z.object({
   NEXT_PUBLIC_SITE_URL: z.string().url().default('http://localhost:3000'),
-  NEXT_PUBLIC_SITE_NAME: z.string().default('Elviora'),
+  NEXT_PUBLIC_SITE_NAME: z.string().default('Kitchenly'),
   NEXT_PUBLIC_API_URL: apiUrl,
   NEXT_PUBLIC_CDN_URL: optionalUrl,
   NEXT_PUBLIC_ENVIRONMENT: z.enum(['development', 'staging', 'production']).default('development'),
   NEXT_PUBLIC_GTM_ID: optionalStr,
   NEXT_PUBLIC_GA_ID: optionalStr,
   // Microsoft Clarity project id — session replay + heatmaps. Loads in
-  // production only (like the pixel). Defaults to the Elviora project; override
+  // production only (like the pixel). Defaults to the store's project; override
   // per environment via the env var, or set it blank to disable.
   NEXT_PUBLIC_CLARITY_ID: z.string().default('xleyclgkht'),
   // "true" ⇒ GA4 events carry debug_mode so they show in DebugView.
   NEXT_PUBLIC_GA_DEBUG: optionalStr,
-  // Meta (Facebook) Pixel ID. Defaults to the Elviora pixel so tracking works
+  // Meta (Facebook) Pixel ID. Defaults to the store's pixel so tracking works
   // without extra deploy config; override per environment via the env var.
   NEXT_PUBLIC_FB_PIXEL_ID: z.string().default('1197005882688887'),
   // First-party clickstream: optional sampling rate (0–1) applied to each click

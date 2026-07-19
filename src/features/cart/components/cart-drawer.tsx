@@ -38,7 +38,10 @@ export function CartDrawerTrigger() {
     >
       <ShoppingBag className="size-5" />
       {count > 0 ? (
-        <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-foreground px-1.5 text-[10px] font-medium tabular-nums text-background">
+        <span
+          key={count}
+          className="absolute -right-1 -top-1 grid h-5 min-w-5 animate-pop-in place-items-center rounded-full bg-brand-ember px-1.5 text-[10px] font-semibold tabular-nums text-white shadow-soft"
+        >
           {count}
         </span>
       ) : null}
@@ -84,23 +87,23 @@ export function CartDrawer() {
       </SheetTrigger>
       <SheetContent side="right" className="w-full sm:max-w-md">
         <SheetHeader>
-          <SheetTitle>Your shopping bag</SheetTitle>
+          <SheetTitle>Your cart</SheetTitle>
           <SheetDescription>
             {count > 0
-              ? `${count} item${count === 1 ? '' : 's'} — complimentary samples included.`
-              : 'Your bag is currently empty.'}
+              ? `${count} item${count === 1 ? '' : 's'} — free delivery over Rs 8,000.`
+              : 'Your cart is currently empty.'}
           </SheetDescription>
         </SheetHeader>
 
         <div className="my-6 flex-1 overflow-y-auto pr-1">
           {cart.lines.length === 0 ? (
             <EmptyState
-              title="Bag is empty"
-              description="Discover our editorial picks and start your ritual."
+              title="Your cart is empty"
+              description="Stock up on kitchen tools, storage, and everyday essentials."
               action={
-                <Button asChild>
+                <Button asChild variant="cta">
                   <Link href="/products" onClick={() => dispatch(closeCart())}>
-                    Browse products
+                    Start shopping
                   </Link>
                 </Button>
               }
@@ -109,7 +112,7 @@ export function CartDrawer() {
             <ul className="flex flex-col gap-5">
               {cart.lines.map((line) => (
                 <li key={`${line.productId}-${line.variantId}`} className="flex gap-4">
-                  <div className="relative size-24 shrink-0 overflow-hidden rounded-md bg-gradient-pearl">
+                  <div className="relative size-24 shrink-0 overflow-hidden rounded-md border border-border bg-white">
                     {line.imageUrl ? (
                       <Image
                         src={line.imageUrl}
@@ -121,9 +124,9 @@ export function CartDrawer() {
                     ) : (
                       <span
                         aria-hidden
-                        className="absolute inset-0 grid place-items-center font-serif text-[9px] uppercase tracking-[0.2em] text-brand-charcoal/30"
+                        className="absolute inset-0 grid place-items-center font-serif text-[9px] uppercase tracking-[0.2em] text-brand-steel/40"
                       >
-                        Elviora
+                        Kitchenly
                       </span>
                     )}
                   </div>
@@ -131,7 +134,7 @@ export function CartDrawer() {
                     <Link
                       href={`/products/${line.slug}`}
                       onClick={() => dispatch(closeCart())}
-                      className="font-serif text-base font-light underline-offset-4 hover:underline"
+                      className="line-clamp-2 text-sm font-medium leading-snug transition-colors hover:text-accent"
                     >
                       {line.name}
                     </Link>
@@ -166,14 +169,14 @@ export function CartDrawer() {
             <p className="text-balance text-xs text-muted-foreground">
               Shipping, taxes and discounts calculated at checkout.
             </p>
-            <Button asChild size="lg" variant="gold" uppercase>
+            <Button asChild size="lg" variant="cta" uppercase>
               <Link href="/checkout" onClick={() => dispatch(closeCart())}>
                 Checkout
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline">
               <Link href="/cart" onClick={() => dispatch(closeCart())}>
-                View bag
+                View cart
               </Link>
             </Button>
           </SheetFooter>

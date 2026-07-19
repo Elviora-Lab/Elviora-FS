@@ -18,19 +18,20 @@ export default function ImportProductsPage() {
         </Link>
         <h1 className="editorial-heading text-display-md">Bulk import</h1>
         <p className="text-sm text-muted-foreground">
-          Upload or paste a CSV. Products are matched by name — existing ones are updated, new ones
-          are created with a default sellable variant. Only <strong>name</strong> and{' '}
-          <strong>price</strong> are required.
+          Upload or paste a CSV — either the simple template, or a{' '}
+          <strong>Shopify product export</strong> (Products → Export). Shopify variants, option
+          values, compare-at prices, inventory, and image galleries are all imported. Products match
+          by handle, variants by SKU, so re-importing a newer export safely updates the catalog.
         </p>
       </header>
 
       <BulkImport />
 
       <div className="rounded-md border border-border bg-muted/30 p-4 text-xs text-muted-foreground">
-        <p className="mb-2 font-medium text-foreground">Example CSV</p>
-        <pre className="overflow-x-auto whitespace-pre">{`name,price,sku,category,brand,description,imageUrl,stock,isActive
-Rose Glow Serum,1299,RGS-01,Face,Elviora,Luminous daily serum,https://cdn.example.com/rgs.jpg,100,true
-Velvet Matte Lip,599,VML-02,Lips,Elviora,Long-wear liquid lip,,50,true`}</pre>
+        <p className="mb-2 font-medium text-foreground">Simple CSV example</p>
+        <pre className="overflow-x-auto">{`name,price,sku,category,brand,description,imageUrl,stock,isActive
+Adjustable Spice Rack,1499,KIT-SR-01,Storage,Kitchenly,Two-tier expandable rack,https://cdn.example.com/rack.jpg,100,true
+Microfibre Mop Set,999,KIT-MP-02,Cleaning,Kitchenly,Flat mop with washable pads,,50,true`}</pre>
       </div>
     </div>
   );

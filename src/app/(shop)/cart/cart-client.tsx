@@ -107,7 +107,7 @@ export function CartPageClient() {
         <ul className="flex flex-col divide-y divide-border">
           {cart.lines.map((line) => (
             <li key={`${line.productId}-${line.variantId}`} className="flex gap-6 py-6">
-              <div className="relative size-28 shrink-0 overflow-hidden rounded-md bg-gradient-pearl">
+              <div className="relative size-28 shrink-0 overflow-hidden rounded-md bg-gradient-cloud">
                 {line.imageUrl ? (
                   <Image
                     src={line.imageUrl}
@@ -119,9 +119,9 @@ export function CartPageClient() {
                 ) : (
                   <span
                     aria-hidden
-                    className="absolute inset-0 grid place-items-center font-serif text-[10px] uppercase tracking-[0.2em] text-brand-charcoal/30"
+                    className="absolute inset-0 grid place-items-center font-serif text-[10px] uppercase tracking-[0.2em] text-brand-slate/30"
                   >
-                    Elviora
+                    Kitchenly
                   </span>
                 )}
               </div>
@@ -187,7 +187,7 @@ export function CartPageClient() {
             <Price amount={FREE_SHIPPING_THRESHOLD} currency={currency} />) — the exact shipping and
             any tax are shown at checkout before you pay.
           </p>
-          <Button asChild size="lg" variant="gold" uppercase>
+          <Button asChild size="lg" variant="cta" uppercase>
             <Link href="/checkout">Proceed to checkout</Link>
           </Button>
           <TrustBar />

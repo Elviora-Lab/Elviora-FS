@@ -32,10 +32,10 @@ type EventName = keyof DomainEvents;
 // events are emitted); a module-level `new EventEmitter()` would give each
 // bundle its own instance, so emits would never reach the listeners. A
 // process-global singleton bridges them.
-const globalForBus = globalThis as unknown as { __elvioraEmitter?: EventEmitter };
-const emitter = globalForBus.__elvioraEmitter ?? new EventEmitter();
+const globalForBus = globalThis as unknown as { __kitchenlyEmitter?: EventEmitter };
+const emitter = globalForBus.__kitchenlyEmitter ?? new EventEmitter();
 emitter.setMaxListeners(64);
-globalForBus.__elvioraEmitter = emitter;
+globalForBus.__kitchenlyEmitter = emitter;
 
 export const events = {
   emit<E extends EventName>(event: E, payload: DomainEvents[E]) {

@@ -66,7 +66,7 @@ export function HeroShowcase({ products }: { products: HeroProduct[] }) {
         data-track-id={current.slug}
         data-track-label={current.name}
         data-index={index}
-        className="group relative block aspect-[4/5] overflow-hidden rounded-2xl bg-brand-pearl shadow-elevated"
+        className="group relative block aspect-square overflow-hidden rounded-2xl border border-border bg-white shadow-elevated"
       >
         {/* Every slide stays mounted; slides crossfade via opacity. Keying the
             active slide instead would remount (and re-decode) the image on
@@ -95,7 +95,7 @@ export function HeroShowcase({ products }: { products: HeroProduct[] }) {
           </motion.div>
         ))}
 
-        <div className="absolute inset-0 bg-gradient-to-t from-brand-noir/55 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-brand-ink/55 via-transparent to-transparent" />
 
         {/* Floating shoppable card. aria-live announces the rotating slide to
             screen readers without them having to watch the carousel. */}
@@ -112,7 +112,7 @@ export function HeroShowcase({ products }: { products: HeroProduct[] }) {
             <span className="block truncate font-serif text-base font-light">{current.name}</span>
             <Price amount={current.price} currency="PKR" />
           </div>
-          <span className="shrink-0 rounded-full bg-foreground px-4 py-2 text-[11px] uppercase tracking-[0.14em] text-background transition group-hover:bg-brand-rosegold group-hover:text-brand-noir">
+          <span className="shrink-0 rounded-full bg-foreground px-4 py-2 text-[11px] uppercase tracking-[0.14em] text-background transition group-hover:bg-brand-ember group-hover:text-brand-ink">
             Shop
           </span>
         </div>
@@ -129,7 +129,7 @@ export function HeroShowcase({ products }: { products: HeroProduct[] }) {
               onClick={() => setIndex(idx)}
               className={cn(
                 'h-1.5 rounded-full transition-all',
-                idx === index ? 'w-6 bg-brand-rosegold' : 'w-1.5 bg-border hover:bg-foreground/40',
+                idx === index ? 'w-6 bg-brand-ember' : 'w-1.5 bg-border hover:bg-foreground/40',
               )}
             />
           ))}

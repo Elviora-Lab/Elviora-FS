@@ -88,6 +88,6 @@ export default function imageLoader({ src, width, quality }: ImageLoaderProps): 
     return weserv(url, width, quality);
   }
 
-  // Any other host (cdn.elviora.com, arbitrary admin URLs): serve as-is.
+  // Any other host (the store CDN, arbitrary admin URLs): serve as-is.
   return src;
 }

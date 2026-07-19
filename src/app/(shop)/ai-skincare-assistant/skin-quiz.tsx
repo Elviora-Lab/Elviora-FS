@@ -83,7 +83,7 @@ export function SkinQuiz() {
           ) : null}
           . {email ? 'Your personalised picks are on their way to your inbox.' : ''}
         </p>
-        <Button asChild variant="gold" uppercase>
+        <Button asChild variant="cta" uppercase>
           <Link href="/products">Shop your edit</Link>
         </Button>
       </div>

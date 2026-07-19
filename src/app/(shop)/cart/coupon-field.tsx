@@ -77,7 +77,7 @@ export function CouponField() {
 
   if (couponCode) {
     return (
-      <div className="flex items-center justify-between rounded-md border border-brand-rosegold/40 bg-brand-blush/20 px-3 py-2 text-sm">
+      <div className="flex items-center justify-between rounded-md border border-brand-ember/40 bg-brand-mist/20 px-3 py-2 text-sm">
         <span>
           <span className="font-medium">{couponCode}</span> applied
           {couponDiscount != null ? (

@@ -38,7 +38,7 @@ async function orderRecipient(orderId: string) {
 
 // Registration guard on globalThis so listeners attach exactly once per
 // process even if this module is evaluated in more than one bundle context.
-const globalForListeners = globalThis as unknown as { __elvioraListenersReady?: boolean };
+const globalForListeners = globalThis as unknown as { __kitchenlyListenersReady?: boolean };
 
 /**
  * Wire domain-event listeners exactly once per server instance. Invoked from
@@ -54,8 +54,8 @@ const globalForListeners = globalThis as unknown as { __elvioraListenersReady?: 
  * bus (see the Stripe webhook, which updates order state directly).
  */
 export function registerEventListeners() {
-  if (globalForListeners.__elvioraListenersReady) return;
-  globalForListeners.__elvioraListenersReady = true;
+  if (globalForListeners.__kitchenlyListenersReady) return;
+  globalForListeners.__kitchenlyListenersReady = true;
 
   events.on('user.registered', async ({ email, name }) => {
     const { subject, html } = welcomeEmail({ name });

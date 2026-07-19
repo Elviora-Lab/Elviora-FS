@@ -51,7 +51,7 @@ export default async function AddressesPage() {
                         <div className="text-xs text-muted-foreground">{a.phone}</div>
                       ) : null}
                     </div>
-                    {a.isDefault ? <Badge variant="gold">Default</Badge> : null}
+                    {a.isDefault ? <Badge variant="info">Default</Badge> : null}
                   </div>
                   <address className="text-sm not-italic leading-relaxed text-muted-foreground">
                     {a.addressLine1}

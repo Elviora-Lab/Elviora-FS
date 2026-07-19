@@ -11,9 +11,9 @@ export const alt = `${siteConfig.name} — ${siteConfig.tagline}`;
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
-const BG = '#1b1a18';
-const GOLD = '#c9a86a';
-const CREAM = '#efe9df';
+const BG = '#0d2137';
+const GOLD = '#f07020';
+const CREAM = '#faf9f6';
 
 export default function OpengraphImage() {
   return new ImageResponse(

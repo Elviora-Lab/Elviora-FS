@@ -25,7 +25,7 @@ function InvalidLink({ message }: { message?: string }) {
             'The link may have expired or already been used. If you bought from us, check your delivery email for the latest link.'
           }
         />
-        <Button asChild variant="gold" uppercase>
+        <Button asChild variant="cta" uppercase>
           <Link href="/products">Continue shopping</Link>
         </Button>
       </div>

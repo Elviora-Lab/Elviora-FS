@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Mail, Phone } from 'lucide-react';
 
 import { footerNav } from '@/config/navigation';
 import { siteConfig } from '@/config/site';
@@ -6,13 +7,18 @@ import { siteConfig } from '@/config/site';
 import { BrandLockup } from '@/components/brand/brand-logo';
 import { NewsletterForm } from '@/components/layout/newsletter-form';
 
+/**
+ * Kitchenly footer — a deep navy anchor band. `surface-navy` repins the
+ * semantic tokens, so text, borders, the brand lockup, and the newsletter
+ * form all invert automatically without per-element overrides.
+ */
 export function SiteFooter() {
   return (
-    <footer className="surface-pearl border-t border-border/60">
+    <footer className="surface-navy">
       <div className="container py-16">
         <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-5">
           <div className="flex max-w-md flex-col gap-4 lg:col-span-2">
-            <BrandLockup size={48} />
+            <BrandLockup size={44} />
             <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
               {siteConfig.description}
             </p>
@@ -21,7 +27,9 @@ export function SiteFooter() {
 
           {Object.entries(footerNav).map(([heading, items]) => (
             <div key={heading} className="flex flex-col gap-3">
-              <h4 className="eyebrow">{heading}</h4>
+              <h4 className="text-xs font-semibold uppercase tracking-[0.14em] text-accent">
+                {heading}
+              </h4>
               <ul className="flex flex-col gap-2.5">
                 {items.map((item) => (
                   <li key={item.href}>
@@ -38,12 +46,33 @@ export function SiteFooter() {
           ))}
         </div>
 
-        <div className="luxe-divider my-10" />
+        <div className="soft-divider my-10" />
 
         <div className="flex flex-col gap-4 text-xs text-muted-foreground md:flex-row md:items-center md:justify-between">
           <p>
-            © {new Date().getFullYear()} {siteConfig.name}. All rights reserved.
+            © {new Date().getFullYear()} {siteConfig.name} — {siteConfig.tagline}. All rights
+            reserved.
           </p>
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            <a
+              href={`mailto:${siteConfig.contact.email}`}
+              className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
+            >
+              <Mail className="size-3.5" /> {siteConfig.contact.email}
+            </a>
+            <a
+              href={`tel:${siteConfig.contact.phone.replace(/\s/g, '')}`}
+              className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
+            >
+              <Phone className="size-3.5" /> {siteConfig.contact.phone}
+            </a>
+            <span className="rounded-md border border-border px-2 py-1 text-[10px] uppercase tracking-[0.1em]">
+              Cash on Delivery
+            </span>
+            <span className="rounded-md border border-border px-2 py-1 text-[10px] uppercase tracking-[0.1em]">
+              Card Payments
+            </span>
+          </div>
         </div>
       </div>
     </footer>

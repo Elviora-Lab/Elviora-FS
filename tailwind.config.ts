@@ -68,21 +68,19 @@ const config: Config = {
           DEFAULT: 'hsl(var(--popover) / <alpha-value>)',
           foreground: 'hsl(var(--popover-foreground) / <alpha-value>)',
         },
-        // Brand tokens — cosmetics palette
+        // Brand tokens — Kitchenly smart-living palette
         brand: {
-          ivory: 'hsl(var(--brand-ivory) / <alpha-value>)',
-          pearl: 'hsl(var(--brand-pearl) / <alpha-value>)',
-          champagne: 'hsl(var(--brand-champagne) / <alpha-value>)',
-          gold: 'hsl(var(--brand-gold) / <alpha-value>)',
-          rosegold: 'hsl(var(--brand-rosegold) / <alpha-value>)',
-          blush: 'hsl(var(--brand-blush) / <alpha-value>)',
-          rose: 'hsl(var(--brand-rose) / <alpha-value>)',
-          mauve: 'hsl(var(--brand-mauve) / <alpha-value>)',
-          plum: 'hsl(var(--brand-plum) / <alpha-value>)',
-          beige: 'hsl(var(--brand-beige) / <alpha-value>)',
-          nude: 'hsl(var(--brand-nude) / <alpha-value>)',
-          charcoal: 'hsl(var(--brand-charcoal) / <alpha-value>)',
-          noir: 'hsl(var(--brand-noir) / <alpha-value>)',
+          cloud: 'hsl(var(--brand-cloud) / <alpha-value>)',
+          sand: 'hsl(var(--brand-sand) / <alpha-value>)',
+          stone: 'hsl(var(--brand-stone) / <alpha-value>)',
+          mist: 'hsl(var(--brand-mist) / <alpha-value>)',
+          teal: 'hsl(var(--brand-teal) / <alpha-value>)',
+          ember: 'hsl(var(--brand-ember) / <alpha-value>)',
+          amber: 'hsl(var(--brand-amber) / <alpha-value>)',
+          steel: 'hsl(var(--brand-steel) / <alpha-value>)',
+          navy: 'hsl(var(--brand-navy) / <alpha-value>)',
+          slate: 'hsl(var(--brand-slate) / <alpha-value>)',
+          ink: 'hsl(var(--brand-ink) / <alpha-value>)',
         },
       },
       fontFamily: {
@@ -115,12 +113,12 @@ const config: Config = {
         sm: 'calc(var(--radius) - 4px)',
       },
       boxShadow: {
-        soft: '0 2px 12px -2px rgb(0 0 0 / 0.06)',
-        card: '0 4px 20px -4px rgb(0 0 0 / 0.08)',
-        elevated: '0 10px 40px -10px rgb(0 0 0 / 0.15)',
-        luxe: '0 20px 60px -20px hsl(var(--brand-gold) / 0.25)',
-        // Soft rose-gold halo — for hover states and featured surfaces.
-        glow: '0 0 44px -10px hsl(var(--brand-rosegold) / 0.45)',
+        soft: '0 2px 12px -2px rgb(9 24 43 / 0.06)',
+        card: '0 4px 20px -4px rgb(9 24 43 / 0.08)',
+        elevated: '0 10px 40px -10px rgb(9 24 43 / 0.16)',
+        pop: '0 16px 44px -16px hsl(var(--brand-navy) / 0.35)',
+        // Soft teal halo — for hover states and featured surfaces.
+        glow: '0 0 44px -10px hsl(var(--brand-teal) / 0.35)',
       },
       spacing: {
         '4.5': '1.125rem',
@@ -130,8 +128,9 @@ const config: Config = {
         '128': '32rem',
       },
       transitionTimingFunction: {
-        editorial: 'cubic-bezier(0.22, 1, 0.36, 1)',
-        luxe: 'cubic-bezier(0.65, 0, 0.35, 1)',
+        // Swift, settled ease for micro-interactions (out-quart-ish).
+        swift: 'cubic-bezier(0.22, 1, 0.36, 1)',
+        snappy: 'cubic-bezier(0.65, 0, 0.35, 1)',
       },
       keyframes: {
         'accordion-down': {
@@ -154,6 +153,18 @@ const config: Config = {
           from: { transform: 'translateX(0)' },
           to: { transform: 'translateX(-50%)' },
         },
+        // Micro-interactions: a quick settle-in pop (badges, hearts, counts)
+        // and a gentle attention wiggle (cart icon on add).
+        'pop-in': {
+          '0%': { opacity: '0', transform: 'scale(0.6)' },
+          '60%': { transform: 'scale(1.12)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        wiggle: {
+          '0%, 100%': { transform: 'rotate(0deg)' },
+          '25%': { transform: 'rotate(-8deg)' },
+          '75%': { transform: 'rotate(8deg)' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
@@ -162,17 +173,22 @@ const config: Config = {
         'fade-up': 'fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1)',
         shimmer: 'shimmer 1.6s infinite',
         marquee: 'marquee 30s linear infinite',
+        'pop-in': 'pop-in 0.35s cubic-bezier(0.22, 1, 0.36, 1)',
+        wiggle: 'wiggle 0.4s ease-in-out',
       },
       backgroundImage: {
-        'gradient-gold':
-          'linear-gradient(135deg, hsl(var(--brand-champagne)) 0%, hsl(var(--brand-rosegold)) 55%, hsl(var(--brand-gold)) 100%)',
-        'gradient-pearl':
-          'linear-gradient(180deg, hsl(var(--brand-pearl)) 0%, hsl(var(--brand-ivory)) 100%)',
-        // Cosmetic accents: a blush-to-champagne wash and a deep plum-noir.
-        'gradient-blush':
-          'linear-gradient(135deg, hsl(var(--brand-blush)) 0%, hsl(var(--brand-champagne)) 100%)',
-        'gradient-noir':
-          'linear-gradient(160deg, hsl(var(--brand-plum)) 0%, hsl(var(--brand-noir)) 100%)',
+        // CTA wash: ember → deep ember.
+        'gradient-ember':
+          'linear-gradient(135deg, hsl(var(--brand-ember)) 0%, hsl(24 80% 44%) 100%)',
+        // Light warm band (hero, feature strips).
+        'gradient-cloud':
+          'linear-gradient(180deg, hsl(var(--brand-sand)) 0%, hsl(var(--brand-cloud)) 100%)',
+        // Pale teal wash for informational bands.
+        'gradient-mist':
+          'linear-gradient(135deg, hsl(var(--brand-mist)) 0%, hsl(var(--brand-cloud)) 100%)',
+        // Deep navy band (footer, dark strips).
+        'gradient-navy':
+          'linear-gradient(160deg, hsl(var(--brand-navy)) 0%, hsl(var(--brand-ink)) 100%)',
       },
     },
   },

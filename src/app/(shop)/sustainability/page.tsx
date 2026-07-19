@@ -5,7 +5,7 @@ import { Section, SectionHeading } from '@/design-system/primitives/section';
 export const metadata = buildMetadata({
   title: 'Sustainability',
   description:
-    'How Elviora approaches responsible beauty — thoughtful packaging, honest sourcing, and steady progress.',
+    'How Kitchenly approaches responsible retail — durable products, thoughtful packaging, and steady progress.',
   path: '/sustainability',
 });
 
@@ -14,7 +14,7 @@ export default function SustainabilityPage() {
     <Section>
       <div className="container flex max-w-3xl flex-col gap-12">
         <SectionHeading
-          eyebrow="Responsible beauty"
+          eyebrow="Our promise"
           title="Better, made carefully."
           description="We believe luxury and responsibility belong together. We are not perfect — but we are committed to honest, steady progress."
         />

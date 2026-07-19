@@ -19,7 +19,7 @@ function Stars({ rating }: { rating: number }) {
           key={i}
           className={cn(
             'size-4',
-            i < rating ? 'fill-brand-gold text-brand-gold' : 'fill-transparent text-border',
+            i < rating ? 'fill-brand-amber text-brand-amber' : 'fill-transparent text-border',
           )}
         />
       ))}
@@ -52,7 +52,7 @@ export function ReviewsCarousel({ reviews }: { reviews: ShowcaseReview[] }) {
       aria-roledescription="carousel"
     >
       <div className="relative overflow-hidden rounded-xl border border-border/70 bg-card px-6 py-10 shadow-card sm:px-12">
-        <Quote aria-hidden className="absolute right-6 top-6 size-10 text-brand-blush/50" />
+        <Quote aria-hidden className="absolute right-6 top-6 size-10 text-brand-mist/50" />
 
         <div
           key={review.id}

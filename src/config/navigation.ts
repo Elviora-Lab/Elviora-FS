@@ -11,11 +11,10 @@ export type NavItem = {
 
 export const mainNav: NavItem[] = [
   {
-    label: 'Makeup',
-    // No `makeup` parent category exists in the DB — all current products are
-    // makeup, so the parent links to the full catalog and the children come
-    // from the shared taxonomy (real `categories.slug` values, route
-    // `/categories/[slug]`), including one level of subcategories.
+    label: 'Shop',
+    // The mega menu is data-driven: children come from the shared taxonomy
+    // (real `categories.slug` values, route `/categories/[slug]`), including
+    // one level of subcategories — so it re-shapes itself as the catalog does.
     href: '/products',
     children: CATEGORY_TREE.map((cat) => ({
       label: cat.name,
@@ -26,27 +25,25 @@ export const mainNav: NavItem[] = [
       })),
     })),
   },
-  // Skincare isn't part of the current catalog yet.
-  { label: 'Skincare', href: '/categories/skincare', comingSoon: true },
   { label: 'Best Sellers', href: '/products?sort=popular' },
   { label: 'New Arrivals', href: '/products?sort=newest' },
-  { label: 'The Journal', href: '/blog' },
+  { label: 'Home Guides', href: '/blog' },
 ];
 
 export const footerNav: Record<string, NavItem[]> = {
   Shop: [
     { label: 'New Arrivals', href: '/products?sort=newest' },
-    { label: 'Bestsellers', href: '/products?sort=popular' },
+    { label: 'Best Sellers', href: '/products?sort=popular' },
     { label: 'Gift Cards', href: '/gift-cards' },
   ],
-  Concierge: [
+  Help: [
     { label: 'Contact', href: '/contact' },
     { label: 'FAQ', href: '/faq' },
     { label: 'Shipping & Returns', href: '/shipping' },
   ],
-  House: [
+  Company: [
     { label: 'Our Story', href: '/about' },
-    { label: 'Sustainability', href: '/sustainability' },
+    { label: 'Our Promise', href: '/sustainability' },
     { label: 'Press', href: '/press' },
     { label: 'Careers', href: '/careers' },
   ],

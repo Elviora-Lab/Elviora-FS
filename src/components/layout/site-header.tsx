@@ -1,25 +1,46 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Menu, Search } from 'lucide-react';
 
 import { mainNav } from '@/config/navigation';
 import { siteConfig } from '@/config/site';
 
 import { useAppDispatch } from '@/store/hooks';
-import { openMobileNav, openSearch } from '@/store/slices/ui-slice';
+import { openMobileNav } from '@/store/slices/ui-slice';
 
 import { cn } from '@/lib/cn';
 
 import { BrandLockup, BrandLogo } from '@/components/brand/brand-logo';
 import { NavItem } from '@/components/layout/nav-item';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 
 import { CartDrawerTrigger } from '@/features/cart/components/cart-drawer';
 
+/**
+ * Kitchenly header — search-first, two rows on desktop.
+ *
+ * Household shopping is utility-driven: people arrive knowing the thing they
+ * need ("spice rack", "drain brush"), so the search field gets the header's
+ * prime real estate. Row two is the category nav (the existing mega-menu
+ * NavItem). On mobile it collapses to hamburger + logo + search + cart.
+ */
 export function SiteHeader({ className }: { className?: string }) {
   const dispatch = useAppDispatch();
+  const router = useRouter();
+
+  // ⌘K / Ctrl+K jumps to search — the field advertises it, so honor it.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        router.push('/search');
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [router]);
 
   return (
     <header
@@ -29,46 +50,84 @@ export function SiteHeader({ className }: { className?: string }) {
         className,
       )}
     >
-      <div className="container flex h-16 items-center gap-4">
+      <div className="container flex h-16 items-center gap-3">
         <button
           type="button"
           onClick={() => dispatch(openMobileNav())}
-          className="grid size-10 place-items-center rounded-full hover:bg-muted lg:hidden"
+          className="grid size-10 place-items-center rounded-full transition-colors hover:bg-muted active:scale-95 lg:hidden"
           aria-label="Open menu"
         >
           <Menu className="size-5" />
         </button>
 
-        <Link href="/" aria-label={`${siteConfig.name} home`} className="inline-flex items-center">
+        <Link
+          href="/"
+          aria-label={`${siteConfig.name} home`}
+          className="inline-flex shrink-0 items-center"
+        >
           {/* Mark only on mobile (save space next to the icon row);
               full mark + wordmark on lg+ where there's room. */}
           <span className="lg:hidden">
-            <BrandLogo variant="mark" size={36} priority />
+            <BrandLogo variant="mark" size={36} />
           </span>
           <span className="hidden lg:inline">
-            <BrandLockup size={36} priority />
+            <BrandLockup size={36} />
           </span>
         </Link>
 
-        <nav className="ml-8 hidden items-center gap-7 lg:flex">
-          {mainNav.map((item) => (
-            <NavItem key={item.href} item={item} />
-          ))}
-        </nav>
+        {/* Search field — the header's centerpiece. A styled trigger that
+            routes to the working /search page (the old openSearch dispatch
+            went to state nothing rendered). */}
+        <button
+          type="button"
+          onClick={() => router.push('/search')}
+          data-track="cta"
+          data-track-label="header-search"
+          className={cn(
+            'group mx-auto hidden h-11 w-full max-w-xl items-center gap-2.5 rounded-full md:flex',
+            'border border-input bg-background/80 px-4 text-left',
+            'transition-all duration-300 ease-swift hover:border-accent/60 hover:shadow-soft',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+          )}
+          aria-label="Search products"
+        >
+          <Search className="size-4 shrink-0 text-muted-foreground transition-colors group-hover:text-accent" />
+          <span className="flex-1 truncate text-sm text-muted-foreground">
+            Search kitchen tools, storage, cleaning…
+          </span>
+          <kbd className="hidden rounded-md border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground lg:inline">
+            ⌘K
+          </kbd>
+        </button>
 
-        <div className="ml-auto flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
+        <div className="ml-auto flex shrink-0 items-center gap-1 md:ml-0">
+          <Link
+            href="/search"
+            className="grid size-10 place-items-center rounded-full transition-colors hover:bg-muted active:scale-95 md:hidden"
             aria-label="Search"
-            onClick={() => dispatch(openSearch())}
           >
             <Search className="size-5" />
-          </Button>
-          <Separator orientation="vertical" className="mx-2 h-6" />
+          </Link>
           <CartDrawerTrigger />
         </div>
       </div>
+
+      {/* Category nav row (desktop) */}
+      <nav className="hidden border-t border-border/40 lg:block">
+        <div className="container flex h-11 items-center gap-7">
+          {mainNav.map((item) => (
+            <NavItem key={item.href} item={item} />
+          ))}
+          <Link
+            href="/products"
+            className="ml-auto text-xs font-semibold uppercase tracking-[0.12em] text-brand-ember transition-colors hover:text-brand-ember/80"
+            data-track="nav"
+            data-track-label="all-products"
+          >
+            All Products
+          </Link>
+        </div>
+      </nav>
     </header>
   );
 }

@@ -175,7 +175,7 @@ export function ProductsTable({
                       />
                     </td>
                     <td className="px-4 py-3">
-                      <div className="relative size-10 overflow-hidden rounded-md bg-gradient-pearl">
+                      <div className="relative size-10 overflow-hidden rounded-md bg-gradient-cloud">
                         {p.imageUrl ? (
                           <Image
                             src={p.imageUrl}
@@ -197,7 +197,11 @@ export function ProductsTable({
                     <td className="px-4 py-3">
                       <span
                         className={
-                          p.stock === 0 ? 'text-destructive' : p.stock < 10 ? 'text-brand-gold' : ''
+                          p.stock === 0
+                            ? 'text-destructive'
+                            : p.stock < 10
+                              ? 'text-brand-amber'
+                              : ''
                         }
                       >
                         {p.stock}

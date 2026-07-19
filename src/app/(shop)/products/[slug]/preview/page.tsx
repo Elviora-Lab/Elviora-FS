@@ -37,12 +37,12 @@ export default async function ProductPreviewPage({ params }: { params: Params })
 
   return (
     <>
-      <div className="border-b border-brand-gold/30 bg-brand-champagne/40 text-brand-charcoal">
+      <div className="border-b border-brand-amber/30 bg-brand-stone/40 text-brand-slate">
         <div className="container flex flex-wrap items-center justify-between gap-3 py-3">
           <p className="flex items-center gap-2 text-sm">
             <Eye className="size-4" />
             <span className="font-medium">Admin preview</span>
-            <span className="text-brand-charcoal/70">
+            <span className="text-brand-slate/70">
               {product.isActive
                 ? 'This product is live on the storefront.'
                 : 'This product is hidden — not visible to the public.'}

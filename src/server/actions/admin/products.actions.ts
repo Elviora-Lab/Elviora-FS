@@ -361,3 +361,239 @@ export const bulkImportProducts = withAction(async (input: { rows: unknown[] }) 
   revalidatePath('/products');
   return { created, updated, failed };
 });
+
+// ---------------------------------------------------------------------------
+// Shopify catalog import
+// ---------------------------------------------------------------------------
+
+const shopifyVariant = z.object({
+  sku: z.string().trim().max(80).optional(),
+  price: z.coerce.number().min(0).max(10_000_000),
+  compareAt: z.coerce.number().min(0).max(10_000_000).optional(),
+  stock: z.coerce.number().int().min(0).max(1_000_000).optional(),
+  size: z.string().trim().max(64).optional(),
+  shade: z.string().trim().max(64).optional(),
+  fragrance: z.string().trim().max(64).optional(),
+  imageUrl: z.string().url().optional(),
+});
+
+const shopifyProduct = z.object({
+  handle: z
+    .string()
+    .trim()
+    .min(1)
+    .max(255)
+    .regex(/^[a-z0-9-]+$/i),
+  title: z.string().trim().min(2).max(255),
+  description: z.string().max(65_000).optional(),
+  vendor: z.string().trim().max(160).optional(),
+  category: z.string().trim().max(120).optional(),
+  isActive: z.boolean().default(true),
+  seoTitle: z.string().trim().max(255).optional(),
+  seoDescription: z.string().trim().max(500).optional(),
+  images: z
+    .array(
+      z.object({
+        url: z.string().url(),
+        position: z.number().int().min(1),
+        alt: z.string().max(255).optional(),
+      }),
+    )
+    .max(50)
+    .default([]),
+  variants: z.array(shopifyVariant).min(1).max(100),
+});
+
+const shopifyImportBody = z.object({
+  products: z.array(shopifyProduct).min(1).max(500),
+  /** Treat the file as the FULL catalog: hide store products not present in it. */
+  deactivateOthers: z.boolean().default(false),
+});
+
+/** Strip HTML tags for the short description (Shopify descriptions are HTML). */
+function plainText(html: string): string {
+  return html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Import a Shopify product-export CSV (parsed client-side into product groups).
+ *
+ * Idempotent by design so re-exports can be re-imported safely:
+ *  - products match by slug (the Shopify handle) — update or create
+ *  - variants match by SKU — update or create; variants missing from the file
+ *    are deactivated (never deleted — order history may reference them)
+ *  - product-level images are replaced to mirror the file's gallery order
+ *  - brand (vendor) and category are upserted by slug
+ */
+export const importShopifyProducts = withAction(
+  async (input: z.input<typeof shopifyImportBody>) => {
+    await requireAdmin();
+    const { products, deactivateOthers } = shopifyImportBody.parse(input);
+
+    let created = 0;
+    let updated = 0;
+    let failed = 0;
+    const errors: Array<{ handle: string; message: string }> = [];
+    const importedSlugs: string[] = [];
+
+    for (const p of products) {
+      try {
+        await prisma.$transaction(async (tx) => {
+          const slug = toSlug(p.handle);
+
+          let brandId: string | null = null;
+          if (p.vendor) {
+            const brand = await tx.brand.upsert({
+              where: { slug: toSlug(p.vendor) },
+              update: {},
+              create: { name: p.vendor, slug: toSlug(p.vendor) },
+            });
+            brandId = brand.id;
+          }
+
+          let categoryId: string | null = null;
+          if (p.category) {
+            const catSlug = toSlug(p.category);
+            if (catSlug) {
+              const category = await tx.category.upsert({
+                where: { slug: catSlug },
+                update: {},
+                create: { name: p.category, slug: catSlug },
+              });
+              categoryId = category.id;
+            }
+          }
+
+          const minPrice = Math.min(...p.variants.map((v) => v.price));
+          const compareAt = p.variants.find((v) => (v.compareAt ?? 0) > minPrice)?.compareAt;
+          const description = p.description ? plainText(p.description) : null;
+
+          const existing = await tx.product.findUnique({ where: { slug }, select: { id: true } });
+          const common = {
+            name: p.title,
+            shortDescription: description ? description.slice(0, 500) : null,
+            fullDescription: p.description ?? null,
+            price: new Prisma.Decimal(minPrice),
+            comparePrice: compareAt != null ? new Prisma.Decimal(compareAt) : null,
+            isActive: p.isActive,
+            seoTitle: p.seoTitle ?? null,
+            seoDescription: p.seoDescription?.slice(0, 500) ?? null,
+            brandId,
+            categoryId,
+          };
+
+          let productId: string;
+          if (existing) {
+            await tx.product.update({ where: { id: existing.id }, data: common });
+            productId = existing.id;
+          } else {
+            const rec = await tx.product.create({
+              data: { ...common, slug, sku: (p.variants[0]?.sku || `SHP-${slug}`).slice(0, 80) },
+            });
+            productId = rec.id;
+          }
+
+          // Variants: upsert by SKU; deactivate the ones the file no longer has.
+          const fileSkus: string[] = [];
+          for (const [i, v] of p.variants.entries()) {
+            const sku = (v.sku || `SHP-${slug}-${i + 1}`).slice(0, 80);
+            fileSkus.push(sku);
+            const data = {
+              productId,
+              sku,
+              price: new Prisma.Decimal(v.price),
+              stockQuantity: v.stock ?? 0,
+              size: v.size || null,
+              shade: v.shade || null,
+              fragrance: v.fragrance || null,
+              isActive: true,
+            };
+            const found = await tx.productVariant.findUnique({
+              where: { sku },
+              select: { id: true, productId: true },
+            });
+            if (found && found.productId !== productId) {
+              throw new BadRequestError(`SKU ${sku} already belongs to another product`);
+            }
+            if (found) await tx.productVariant.update({ where: { id: found.id }, data });
+            else await tx.productVariant.create({ data });
+          }
+          await tx.productVariant.updateMany({
+            where: { productId, sku: { notIn: fileSkus } },
+            data: { isActive: false },
+          });
+
+          // Product-level gallery mirrors the file (variant-linked rows kept).
+          await tx.productImage.deleteMany({ where: { productId, variantId: null } });
+          const gallery = [...p.images].sort((a, b) => a.position - b.position);
+          if (gallery.length) {
+            await tx.productImage.createMany({
+              data: gallery.map((img, i) => ({
+                productId,
+                imageUrl: img.url,
+                altText: img.alt?.slice(0, 255) || p.title,
+                isPrimary: i === 0,
+                sortOrder: i,
+              })),
+            });
+          }
+
+          // Variant-specific images (Shopify "Variant image URL") — linked so
+          // the PDP can jump the gallery when that variant is selected.
+          const variantImages = p.variants
+            .map((v, i) => ({ url: v.imageUrl, sku: fileSkus[i] }))
+            .filter((x): x is { url: string; sku: string } => Boolean(x.url && x.sku));
+          for (const [i, vi] of variantImages.entries()) {
+            const variant = await tx.productVariant.findUnique({
+              where: { sku: vi.sku },
+              select: { id: true },
+            });
+            if (variant) {
+              await tx.productImage.create({
+                data: {
+                  productId,
+                  variantId: variant.id,
+                  imageUrl: vi.url,
+                  altText: p.title,
+                  isPrimary: false,
+                  sortOrder: gallery.length + i,
+                },
+              });
+            }
+          }
+
+          if (existing) updated++;
+          else created++;
+          importedSlugs.push(slug);
+        });
+        await productsService.invalidate(toSlug(p.handle));
+      } catch (err) {
+        failed++;
+        errors.push({
+          handle: p.handle,
+          message: err instanceof Error ? err.message.slice(0, 200) : 'Unknown error',
+        });
+      }
+    }
+
+    // Full-catalog mode: anything not in this file goes dark (reversible).
+    let deactivated = 0;
+    if (deactivateOthers && importedSlugs.length > 0) {
+      const res = await prisma.product.updateMany({
+        where: { slug: { notIn: importedSlugs }, isActive: true },
+        data: { isActive: false },
+      });
+      deactivated = res.count;
+    }
+
+    revalidatePath('/admin/products');
+    revalidatePath('/products');
+    revalidatePath('/');
+    return { created, updated, failed, deactivated, errors: errors.slice(0, 20) };
+  },
+);

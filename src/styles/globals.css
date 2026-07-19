@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /* ---------------------------------------------------------------
-   Elviora — Design Tokens (CSS variables)
+   Kitchenly — Design Tokens (CSS variables)
    ---------------------------------------------------------------
    All values are HSL channels (no comma, no `hsl()`) so Tailwind can
    apply opacity modifiers via `hsl(var(--token) / <alpha-value>)`.
@@ -11,55 +11,53 @@
 
 @layer base {
   :root {
-    /* — Brand palette — inspired by the cosmetics world:
-       rose-gold, champagne, blush, mauve, plum-noir, nude. — */
-    --brand-ivory: 36 44% 96%;
-    --brand-pearl: 34 32% 93%;
-    --brand-champagne: 36 48% 83%;
-    --brand-gold: 36 60% 56%;
-    --brand-rosegold: 16 58% 66%;
-    --brand-blush: 350 58% 90%;
-    --brand-rose: 350 46% 80%;
-    --brand-mauve: 325 22% 60%;
-    --brand-plum: 318 32% 24%;
-    --brand-beige: 30 28% 81%;
-    --brand-nude: 26 34% 85%;
-    --brand-charcoal: 320 16% 13%;
-    --brand-noir: 320 18% 7%;
+    /* — Brand palette — smart-living homeware:
+       deep navy, workshop teal, ember orange, warm sand neutrals. — */
+    --brand-cloud: 40 33% 97%; /* warm white */
+    --brand-sand: 39 30% 93%; /* light beige surface */
+    --brand-stone: 38 24% 84%; /* darker beige / borders on sand */
+    --brand-mist: 187 35% 91%; /* pale teal wash */
+    --brand-teal: 187 62% 30%; /* workshop teal accent */
+    --brand-ember: 24 88% 52%; /* orange CTA accent */
+    --brand-amber: 38 92% 50%; /* rating stars */
+    --brand-steel: 213 16% 52%; /* blue-gray support text on dark */
+    --brand-navy: 211 67% 21%; /* primary #12355B */
+    --brand-slate: 212 40% 15%; /* deep navy-slate */
+    --brand-ink: 212 50% 9%; /* near-black navy */
 
-    /* — Semantic tokens (light) — warm blush-ivory + rose-gold — */
-    --background: 34 42% 98%;
-    --foreground: 320 16% 13%;
+    /* — Semantic tokens (light) — warm white + navy ink — */
+    --background: 40 33% 98%;
+    --foreground: 212 45% 12%;
 
-    --card: 36 50% 99%;
-    --card-foreground: 320 16% 13%;
+    --card: 0 0% 100%;
+    --card-foreground: 212 45% 12%;
 
-    --popover: 36 50% 99%;
-    --popover-foreground: 320 16% 13%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 212 45% 12%;
 
-    --primary: 320 18% 15%;
-    --primary-foreground: 36 44% 96%;
+    --primary: 211 67% 21%;
+    --primary-foreground: 40 33% 98%;
 
-    --secondary: 32 30% 92%;
-    --secondary-foreground: 320 18% 15%;
+    --secondary: 39 28% 92%;
+    --secondary-foreground: 211 67% 21%;
 
-    --muted: 32 24% 94%;
-    --muted-foreground: 320 8% 40%;
+    --muted: 40 22% 93%;
+    --muted-foreground: 212 16% 38%;
 
-    --accent: 16 58% 60%;
-    --accent-foreground: 36 44% 98%;
+    --accent: 187 62% 30%;
+    --accent-foreground: 40 33% 98%;
 
     --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 152 46% 38%;
+    --success: 152 46% 36%;
     --success-foreground: 0 0% 100%;
 
-    --border: 30 24% 87%;
-    --input: 30 24% 87%;
-    --ring: 16 58% 60%;
+    --border: 38 20% 86%;
+    --input: 38 20% 84%;
+    --ring: 187 62% 30%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
     /* — Typography — */
     --font-serif: 'Cormorant Garamond', Georgia, serif;
@@ -67,38 +65,38 @@
   }
 
   .dark {
-    /* Warm "rose-noir": a deep aubergine base (not cold slate) with champagne
-       ink and a rose-gold accent — a luxe cosmetics-counter-at-night feel. */
-    --background: 320 16% 7%;
-    --foreground: 36 32% 92%;
+    /* Navy workshop at night: deep blue-slate base, warm sand ink, ember +
+       teal accents. Practical, not moody. */
+    --background: 212 45% 8%;
+    --foreground: 40 28% 93%;
 
-    --card: 322 15% 10%;
-    --card-foreground: 36 32% 92%;
+    --card: 212 40% 11%;
+    --card-foreground: 40 28% 93%;
 
-    --popover: 322 16% 9%;
-    --popover-foreground: 36 32% 92%;
+    --popover: 212 42% 10%;
+    --popover-foreground: 40 28% 93%;
 
-    --primary: 36 40% 91%;
-    --primary-foreground: 320 20% 10%;
+    --primary: 40 30% 92%;
+    --primary-foreground: 212 45% 10%;
 
-    --secondary: 320 12% 16%;
-    --secondary-foreground: 36 32% 92%;
+    --secondary: 212 32% 16%;
+    --secondary-foreground: 40 28% 93%;
 
-    --muted: 320 10% 15%;
-    --muted-foreground: 28 20% 73%;
+    --muted: 212 30% 15%;
+    --muted-foreground: 213 18% 70%;
 
-    --accent: 18 66% 66%;
-    --accent-foreground: 320 22% 9%;
+    --accent: 187 55% 45%;
+    --accent-foreground: 212 45% 8%;
 
     --destructive: 0 62% 52%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 152 42% 50%;
-    --success-foreground: 320 22% 8%;
+    --success: 152 42% 48%;
+    --success-foreground: 212 45% 8%;
 
-    --border: 320 12% 19%;
-    --input: 320 12% 19%;
-    --ring: 18 66% 66%;
+    --border: 212 26% 19%;
+    --input: 212 26% 19%;
+    --ring: 187 55% 45%;
   }
 
   * {
@@ -124,14 +122,14 @@
     overflow-x: hidden;
   }
 
-  /* Ambient depth in dark mode — faint rose-gold + plum washes so the deep
-   * noir reads as a lit boudoir rather than a flat black. Fixed so it stays
-   * put while scrolling. Alphas are intentionally low to avoid muddiness. */
+  /* Ambient depth in dark mode — faint teal + navy washes so the deep slate
+   * reads as a lit workshop rather than a flat black. Fixed so it stays put
+   * while scrolling. Alphas are intentionally low to avoid muddiness. */
   .dark body {
     background-image:
-      radial-gradient(55% 45% at 12% -5%, hsl(var(--brand-rosegold) / 0.08), transparent 70%),
-      radial-gradient(50% 45% at 100% 0%, hsl(var(--brand-plum) / 0.22), transparent 72%),
-      radial-gradient(60% 50% at 50% 110%, hsl(var(--brand-mauve) / 0.07), transparent 70%);
+      radial-gradient(55% 45% at 12% -5%, hsl(var(--brand-teal) / 0.09), transparent 70%),
+      radial-gradient(50% 45% at 100% 0%, hsl(var(--brand-navy) / 0.3), transparent 72%),
+      radial-gradient(60% 50% at 50% 110%, hsl(var(--brand-steel) / 0.06), transparent 70%);
     background-attachment: fixed;
   }
 
@@ -154,7 +152,7 @@
   }
 
   ::selection {
-    @apply bg-brand-champagne/40 text-foreground;
+    @apply bg-brand-mist text-brand-slate;
   }
 
   :focus-visible {
@@ -174,8 +172,8 @@
 }
 
 @layer components {
-  .container-luxe {
-    @apply container max-w-[var(--container-luxe,1440px)];
+  .container-wide {
+    @apply container max-w-[var(--container-wide,1440px)];
   }
 
   .text-balance {
@@ -187,11 +185,11 @@
   }
 
   .editorial-heading {
-    @apply text-balance font-serif font-light tracking-tight;
+    @apply text-balance font-serif font-medium tracking-tight;
   }
 
   .eyebrow {
-    @apply text-xs uppercase tracking-[0.18em] text-muted-foreground;
+    @apply text-xs font-semibold uppercase tracking-[0.14em] text-accent;
   }
 
   .surface-glass {
@@ -199,46 +197,69 @@
   }
 
   /*
-   * surface-pearl — an editorial light surface (footer, hero) that pins
+   * surface-cloud — a light warm surface (hero, feature bands) that pins
    * semantic tokens to their light-mode values regardless of OS theme.
    *
-   * Why: bg-gradient-pearl is a literal HSL gradient and stays light in
+   * Why: bg-gradient-cloud is a literal HSL gradient and stays light in
    * dark mode, but `text-foreground` / `text-muted-foreground` / borders /
    * buttons are all theme-aware. In dark mode they invert to near-white →
    * white-on-white text. Repinning the vars inside this scope fixes every
    * Tailwind utility that reads them — text, borders, AND button variants
    * (bg-primary, bg-foreground, etc.) — without per-element overrides.
    */
-  .surface-pearl {
-    @apply bg-gradient-pearl;
-    --background: 34 42% 98%;
-    --foreground: 320 16% 13%;
-    --card: 36 50% 99%;
-    --card-foreground: 320 16% 13%;
-    --muted: 32 24% 94%;
-    --muted-foreground: 320 10% 30%; /* darker than default for stronger contrast on warm pearl */
-    --border: 30 24% 80%;
-    --input: 30 24% 80%;
-    --primary: 320 18% 15%;
-    --primary-foreground: 36 44% 96%;
+  .surface-cloud {
+    @apply bg-gradient-cloud;
+    --background: 40 33% 98%;
+    --foreground: 212 45% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 212 45% 12%;
+    --muted: 40 22% 93%;
+    --muted-foreground: 212 20% 32%; /* darker than default for stronger contrast on sand */
+    --border: 38 22% 80%;
+    --input: 38 22% 80%;
+    --primary: 211 67% 21%;
+    --primary-foreground: 40 33% 98%;
     color: hsl(var(--foreground));
   }
-  .dark .surface-pearl {
-    /* Same overrides apply in dark mode — surface stays editorial-light. */
-    --background: 34 42% 98%;
-    --foreground: 320 16% 13%;
-    --card: 36 50% 99%;
-    --card-foreground: 320 16% 13%;
-    --muted: 32 24% 94%;
-    --muted-foreground: 320 10% 30%;
-    --border: 30 24% 80%;
-    --input: 30 24% 80%;
-    --primary: 320 18% 15%;
-    --primary-foreground: 36 44% 96%;
+  .dark .surface-cloud {
+    /* Same overrides apply in dark mode — surface stays light. */
+    --background: 40 33% 98%;
+    --foreground: 212 45% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 212 45% 12%;
+    --muted: 40 22% 93%;
+    --muted-foreground: 212 20% 32%;
+    --border: 38 22% 80%;
+    --input: 38 22% 80%;
+    --primary: 211 67% 21%;
+    --primary-foreground: 40 33% 98%;
     color: hsl(var(--foreground));
   }
 
-  .luxe-divider {
+  /* surface-navy — a dark navy band (footer, feature strips) that pins tokens
+   * to dark values in BOTH themes, so light-mode pages can carry a navy block
+   * without per-element color overrides. */
+  .surface-navy {
+    @apply bg-gradient-navy;
+    --background: 212 45% 10%;
+    --foreground: 40 28% 94%;
+    --card: 212 40% 13%;
+    --card-foreground: 40 28% 94%;
+    --muted: 212 30% 16%;
+    --muted-foreground: 213 20% 72%;
+    --border: 212 26% 22%;
+    --input: 212 26% 22%;
+    --primary: 40 30% 92%;
+    --primary-foreground: 212 45% 10%;
+    /* Bright teal on navy — the light-mode accent (30% lightness) would sink
+       into the band and fail contrast for low-vision users. */
+    --accent: 187 60% 55%;
+    --accent-foreground: 212 45% 10%;
+    --ring: 187 60% 55%;
+    color: hsl(var(--foreground));
+  }
+
+  .soft-divider {
     @apply h-px w-full bg-gradient-to-r from-transparent via-border to-transparent;
   }
 }

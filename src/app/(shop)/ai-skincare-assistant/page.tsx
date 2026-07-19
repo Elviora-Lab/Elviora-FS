@@ -11,7 +11,7 @@ import { SkinQuiz } from './skin-quiz';
 export const metadata = buildMetadata({
   title: 'Beauty Concierge',
   description:
-    'Book a personal consultation with the Elviora Beauty Concierge for considered, one-to-one guidance.',
+    'Get one-to-one product guidance from the Kitchenly team — tell us about your home and we will point you to the right tools.',
   path: '/ai-skincare-assistant',
 });
 
@@ -41,7 +41,7 @@ export default function BeautyConciergePage() {
           <h2 className="editorial-heading text-display-sm">What to expect</h2>
           <ul className="flex flex-col gap-3 text-pretty leading-relaxed text-muted-foreground">
             <li>A relaxed conversation about your goals and current routine.</li>
-            <li>Tailored product suggestions across the Elviora collection.</li>
+            <li>Tailored product suggestions across the Kitchenly range.</li>
             <li>Honest advice — including when something is not right for you.</li>
           </ul>
         </div>

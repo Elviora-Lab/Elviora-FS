@@ -157,7 +157,7 @@ export default async function CustomerOrderDetailPage({ params }: { params: Para
                   currency={order.currency}
                 />
               )}
-              <div className="luxe-divider my-1" />
+              <div className="soft-divider my-1" />
               <div className="flex items-center justify-between">
                 <span className="eyebrow">Total</span>
                 <Price amount={Number(order.totalAmount)} currency={order.currency} size="lg" />

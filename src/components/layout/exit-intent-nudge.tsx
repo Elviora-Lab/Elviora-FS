@@ -88,7 +88,7 @@ export function ExitIntentNudge() {
           {CODE}
         </button>
 
-        <Button asChild size="lg" variant="gold" uppercase onClick={() => setOpen(false)}>
+        <Button asChild size="lg" variant="cta" uppercase onClick={() => setOpen(false)}>
           <Link href="/checkout">Complete my order</Link>
         </Button>
         <button

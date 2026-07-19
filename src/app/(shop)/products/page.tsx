@@ -13,7 +13,8 @@ import { productsService } from '@/server/services/products.service';
 
 export const metadata = buildMetadata({
   title: 'All products',
-  description: 'Browse Elviora’s full edit of high-pigment lips, eyes, face, and nails.',
+  description:
+    'Browse the full Kitchenly range — kitchen gadgets, storage, cleaning, and household essentials.',
   path: '/products',
 });
 
@@ -45,8 +46,11 @@ export default async function ProductsPage({
     <Section>
       <div className="container flex flex-col gap-8">
         <header className="flex flex-col gap-2">
-          <span className="eyebrow">The Edit</span>
+          <span className="eyebrow">Catalog</span>
           <h1 className="editorial-heading text-display-lg">All products</h1>
+          <p className="max-w-xl text-sm text-muted-foreground">
+            Every gadget, organizer, and essential we stock — quality-checked and ready to ship.
+          </p>
         </header>
         <ProductFilters brands={brands.map((b) => ({ name: b.name, slug: b.slug }))} />
         <ProductResults products={items} listId="catalog" listName="All products" />

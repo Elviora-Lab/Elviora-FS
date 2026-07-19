@@ -3,12 +3,12 @@ import { cn } from '@/lib/cn';
 // Brand statements — the payoff words that define the line. Alternating filled
 // and outlined type gives the band an editorial, couture rhythm.
 const WORDS = [
-  'High-pigment',
-  'Second-skin',
-  'Glass-finish',
-  'Cruelty-free',
-  'Small-batch',
-  'Made luminous',
+  'Cook smarter',
+  'Store more',
+  'Clean faster',
+  'Built to last',
+  'Everyday value',
+  'Home, organized',
 ];
 
 function Row() {
@@ -24,8 +24,8 @@ function Row() {
           >
             {word}
           </span>
-          <span aria-hidden className="text-brand-gold">
-            ✦
+          <span aria-hidden className="text-brand-ember">
+            ●
           </span>
         </span>
       ))}

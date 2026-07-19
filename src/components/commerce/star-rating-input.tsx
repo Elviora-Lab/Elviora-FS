@@ -57,7 +57,7 @@ export function StarRatingInput({
             className={cn(
               'size-6 transition-colors',
               (hover || value) >= i
-                ? 'fill-brand-gold text-brand-gold'
+                ? 'fill-brand-amber text-brand-amber'
                 : 'text-muted-foreground/40',
             )}
           />

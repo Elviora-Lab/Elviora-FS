@@ -85,6 +85,9 @@ export function ProductExperience({
 }: Props) {
   const router = useRouter();
   const dispatch = useAppDispatch();
+  // Brief "Added" confirmation on the CTA after a successful add — visible
+  // feedback right where the tap happened (the drawer opening can be missed).
+  const [justAdded, setJustAdded] = useState(false);
   // Write-only cart API — this component never reads cart state, so it must
   // not re-render on every cart mutation (it's the heaviest client tree on
   // the PDP).
@@ -159,7 +162,9 @@ export function ProductExperience({
     start(async () => {
       const result = await addToCart({ variantId: selected.id, quantity });
       if (result.success) {
-        toast.success('Added to bag');
+        toast.success('Added to cart');
+        setJustAdded(true);
+        setTimeout(() => setJustAdded(false), 1600);
         dispatch(openCart());
         dispatch(cartApi.util.invalidateTags(['Cart']));
         router.refresh();
@@ -173,58 +178,91 @@ export function ProductExperience({
   return (
     <>
       <div className="grid gap-10 lg:grid-cols-2">
-        {/* Gallery — one image at a time */}
-        <div className="relative aspect-[4/5] overflow-hidden rounded-md bg-gradient-pearl">
-          {active?.url ? (
-            // All gallery images stay mounted; the active one is revealed via
-            // opacity. Keying a single Image by URL remounted (re-decoded) it
-            // on every arrow/variant switch.
-            images.map((im, idx) => (
-              <Image
-                key={`${im.url}-${idx}`}
-                src={im.url}
-                alt={im.alt}
-                fill
-                priority={idx === 0}
-                sizes="(min-width:1024px) 50vw, 100vw"
-                className={cn(
-                  'object-contain transition-opacity duration-300',
-                  idx === activeIndex ? 'opacity-100' : 'opacity-0',
-                )}
-                aria-hidden={idx !== activeIndex}
-              />
-            ))
-          ) : (
-            <span
-              aria-hidden
-              className="absolute inset-0 grid place-items-center font-serif text-3xl font-light uppercase tracking-[0.22em] text-brand-charcoal/30"
-            >
-              Elviora
-            </span>
-          )}
+        {/* Gallery column: main image + thumbnail strip share one grid cell,
+            so the buy column always sits beside them on lg+. */}
+        <div className="flex flex-col gap-3">
+          <div className="relative aspect-square overflow-hidden rounded-xl border border-border bg-white">
+            {active?.url ? (
+              // All gallery images stay mounted; the active one is revealed via
+              // opacity. Keying a single Image by URL remounted (re-decoded) it
+              // on every arrow/variant switch.
+              images.map((im, idx) => (
+                <Image
+                  key={`${im.url}-${idx}`}
+                  src={im.url}
+                  alt={im.alt}
+                  fill
+                  priority={idx === 0}
+                  sizes="(min-width:1024px) 50vw, 100vw"
+                  className={cn(
+                    'object-contain transition-opacity duration-300',
+                    idx === activeIndex ? 'opacity-100' : 'opacity-0',
+                  )}
+                  aria-hidden={idx !== activeIndex}
+                />
+              ))
+            ) : (
+              <span
+                aria-hidden
+                className="absolute inset-0 grid place-items-center font-serif text-3xl font-light uppercase tracking-[0.22em] text-brand-slate/30"
+              >
+                Kitchenly
+              </span>
+            )}
 
+            {total > 1 ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => go(-1)}
+                  aria-label="Previous image"
+                  className="absolute left-3 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-background/80 text-foreground shadow-soft backdrop-blur transition hover:bg-background"
+                >
+                  <ChevronLeft className="size-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => go(1)}
+                  aria-label="Next image"
+                  className="absolute right-3 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-background/80 text-foreground shadow-soft backdrop-blur transition hover:bg-background"
+                >
+                  <ChevronRight className="size-5" />
+                </button>
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-background/80 px-2.5 py-1 text-xs tabular-nums text-foreground backdrop-blur">
+                  {activeIndex + 1} / {total}
+                </div>
+              </>
+            ) : null}
+          </div>
+
+          {/* Thumbnail strip — tap to jump; the active thumb carries a teal
+              ring. Capped so shade-heavy legacy products don't spawn dozens of
+              image requests; arrows still reach every image. */}
           {total > 1 ? (
-            <>
-              <button
-                type="button"
-                onClick={() => go(-1)}
-                aria-label="Previous image"
-                className="absolute left-3 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-background/80 text-foreground shadow-soft backdrop-blur transition hover:bg-background"
-              >
-                <ChevronLeft className="size-5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => go(1)}
-                aria-label="Next image"
-                className="absolute right-3 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-background/80 text-foreground shadow-soft backdrop-blur transition hover:bg-background"
-              >
-                <ChevronRight className="size-5" />
-              </button>
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-background/80 px-2.5 py-1 text-xs tabular-nums text-foreground backdrop-blur">
-                {activeIndex + 1} / {total}
-              </div>
-            </>
+            <div className="scrollbar-hide flex gap-2 overflow-x-auto pb-1">
+              {images.slice(0, 12).map((im, idx) => (
+                <button
+                  key={`${im.url}-thumb-${idx}`}
+                  type="button"
+                  onClick={() => setActiveIndex(idx)}
+                  aria-label={`Show image ${idx + 1}`}
+                  aria-current={idx === activeIndex}
+                  className={cn(
+                    'relative size-16 shrink-0 overflow-hidden rounded-lg border bg-white transition-all duration-200',
+                    idx === activeIndex
+                      ? 'border-accent ring-2 ring-accent/40'
+                      : 'border-border opacity-70 hover:opacity-100',
+                  )}
+                >
+                  <Image src={im.url} alt="" fill sizes="64px" className="object-cover" />
+                </button>
+              ))}
+              {total > 12 ? (
+                <span className="grid size-16 shrink-0 place-items-center rounded-lg border border-border text-xs font-medium text-muted-foreground">
+                  +{total - 12}
+                </span>
+              ) : null}
+            </div>
           ) : null}
         </div>
 
@@ -281,7 +319,7 @@ export function ProductExperience({
             {variants.length > 1 ? (
               <div className="flex flex-col gap-2.5">
                 <div className="flex items-baseline justify-between">
-                  <Label>Choose your variant</Label>
+                  <Label>Choose an option</Label>
                   {selected ? (
                     <span className="text-xs uppercase tracking-[0.1em] text-muted-foreground">
                       {selected.name}
@@ -302,20 +340,23 @@ export function ProductExperience({
                         aria-label={v.name}
                         aria-pressed={isActive}
                         className={cn(
-                          'relative grid size-8 place-items-center overflow-hidden rounded-full border transition-all',
+                          'relative overflow-hidden border transition-all duration-200 active:scale-95',
                           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                          v.hex
+                            ? 'grid size-8 place-items-center rounded-full'
+                            : 'rounded-lg px-3.5 py-2 text-xs font-medium',
                           isActive
-                            ? 'border-transparent ring-2 ring-foreground ring-offset-2 ring-offset-card'
-                            : 'border-border/60 hover:scale-110',
+                            ? v.hex
+                              ? 'border-transparent ring-2 ring-foreground ring-offset-2 ring-offset-card'
+                              : 'border-primary bg-primary text-primary-foreground shadow-soft'
+                            : v.hex
+                              ? 'border-border/60 hover:scale-110'
+                              : 'border-border bg-background text-foreground hover:border-accent/60 hover:text-accent',
                           disabled && 'cursor-not-allowed opacity-40',
                         )}
                         style={v.hex ? { backgroundColor: v.hex } : undefined}
                       >
-                        {!v.hex ? (
-                          <span className="text-[10px] font-medium uppercase text-muted-foreground">
-                            {v.name.slice(0, 4)}
-                          </span>
-                        ) : null}
+                        {!v.hex ? v.name : null}
                         {disabled ? (
                           <span
                             aria-hidden
@@ -358,13 +399,24 @@ export function ProductExperience({
 
             <Button
               size="xl"
-              variant="gold"
+              variant="cta"
               uppercase
               loading={pending}
               disabled={!canAdd || outOfStock}
               onClick={handleAdd}
+              className={cn(justAdded && 'bg-success bg-none')}
             >
-              {outOfStock ? 'Out of stock' : canAdd ? 'Add to bag' : 'Unavailable'}
+              {justAdded ? (
+                <>
+                  <Check className="size-5" /> Added
+                </>
+              ) : outOfStock ? (
+                'Out of stock'
+              ) : canAdd ? (
+                'Add to cart'
+              ) : (
+                'Unavailable'
+              )}
             </Button>
             {/* Sentinel: when this scrolls out of view, the sticky CTA appears. */}
             <div ref={ctaRef} aria-hidden className="h-px" />
@@ -374,7 +426,7 @@ export function ProductExperience({
             ) : null}
 
             <p className="text-xs text-muted-foreground">
-              Free shipping on orders over Rs 8,000 · 2–3 day returns
+              Free delivery over Rs 8,000 · Cash on delivery · 2–3 day returns
             </p>
             <TrustBar />
           </div>
@@ -393,7 +445,7 @@ export function ProductExperience({
 
             {ingredients.length > 0 ? (
               <AccordionItem value="ingredients">
-                <AccordionTrigger>Hero ingredients</AccordionTrigger>
+                <AccordionTrigger>Materials &amp; details</AccordionTrigger>
                 <AccordionContent>
                   <ul className="flex flex-col gap-2">
                     {ingredients.map((ing) => (
@@ -412,8 +464,8 @@ export function ProductExperience({
             <AccordionItem value="shipping">
               <AccordionTrigger>Shipping &amp; returns</AccordionTrigger>
               <AccordionContent>
-                Free shipping on orders over Rs 8,000. Free 2–3 day returns on all unopened
-                products.
+                Free delivery on orders over Rs 8,000, cash on delivery nationwide. Easy 2–3 day
+                returns on unused items in original packaging.
               </AccordionContent>
             </AccordionItem>
           </Accordion>
@@ -429,7 +481,7 @@ export function ProductExperience({
             </div>
             <Button
               size="lg"
-              variant="gold"
+              variant="cta"
               uppercase
               loading={pending}
               onClick={handleAdd}

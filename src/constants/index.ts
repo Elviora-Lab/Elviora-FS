@@ -7,9 +7,9 @@ export const QUERY_KEYS = {
 } as const;
 
 export const STORAGE_KEYS = {
-  cart: 'elviora.cart.v1',
-  wishlist: 'elviora.wishlist.v1',
-  recentSearches: 'elviora.recent-searches.v1',
+  cart: 'kitchenly.cart.v1',
+  wishlist: 'kitchenly.wishlist.v1',
+  recentSearches: 'kitchenly.recent-searches.v1',
 } as const;
 
 export const PAGINATION = {

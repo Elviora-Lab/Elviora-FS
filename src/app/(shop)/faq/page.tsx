@@ -13,7 +13,7 @@ import {
 export const metadata = buildMetadata({
   title: 'FAQ',
   description:
-    'Answers to the questions we hear most — shipping, returns, payments, and product care at Elviora.',
+    'Answers to the questions we hear most — delivery, returns, payments, and product care at Kitchenly.',
   path: '/faq',
 });
 
@@ -48,7 +48,7 @@ const FAQS: {
     id: 'authenticity',
     question: 'Are your products authentic?',
     answer:
-      'Every product sold on Elviora is sourced directly and guaranteed authentic, with full ingredient transparency on each listing.',
+      'Every product sold on Kitchenly is sourced directly and quality-checked before dispatch, with materials and care details on each listing.',
   },
   {
     id: 'order',

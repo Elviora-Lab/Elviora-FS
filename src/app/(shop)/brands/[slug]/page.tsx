@@ -30,7 +30,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   }
   return buildMetadata({
     title: brand.name,
-    description: brand.description ?? `Shop ${brand.name} at Elviora.`,
+    description: brand.description ?? `Shop ${brand.name} at Kitchenly.`,
     path: `/brands/${slug}`,
     image: brand.logo ?? undefined,
   });

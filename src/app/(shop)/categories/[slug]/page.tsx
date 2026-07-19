@@ -41,7 +41,9 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const name = category?.name ?? prettify(slug);
   return buildMetadata({
     title: name,
-    description: category?.description ?? `Shop ${name} from Elviora — refined, ritual-led colour.`,
+    description:
+      category?.description ??
+      `Shop ${name} at Kitchenly — practical, quality-checked essentials for your home.`,
     path: `/categories/${slug}`,
   });
 }

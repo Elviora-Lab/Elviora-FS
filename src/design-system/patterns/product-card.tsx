@@ -3,9 +3,10 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion, useReducedMotion } from 'framer-motion';
-import { Heart } from 'lucide-react';
+import { ArrowRight, Heart } from 'lucide-react';
 
 import { routes } from '@/config/routes';
+import { siteConfig } from '@/config/site';
 
 import { analytics } from '@/lib/analytics';
 import { cn } from '@/lib/cn';
@@ -28,6 +29,8 @@ export type ProductCardData = {
   reviewCount?: number;
   isNew?: boolean;
   isBestseller?: boolean;
+  /** Optional stock hint — rendered only when the data source provides it. */
+  stockState?: 'in' | 'low' | 'out';
 };
 
 type ProductCardProps = {
@@ -42,6 +45,12 @@ type ProductCardProps = {
   index?: number;
 };
 
+/**
+ * Kitchenly product card — practical shopping anatomy:
+ * white card on a sand image well, discount % up front, rating + stock
+ * signals, and a slide-up "View product" bar so the whole card reads as one
+ * tap target. Hover lifts the card; the heart pops on toggle.
+ */
 export function ProductCard({
   product,
   onWishlistToggle,
@@ -52,6 +61,11 @@ export function ProductCard({
   listName,
   index,
 }: ProductCardProps) {
+  const discountPct =
+    typeof product.compareAt === 'number' && product.compareAt > product.price
+      ? Math.round(((product.compareAt - product.price) / product.compareAt) * 100)
+      : 0;
+
   const trackSelect = () =>
     analytics.selectItem({
       listId,
@@ -69,7 +83,11 @@ export function ProductCard({
 
   return (
     <article
-      className={cn('group relative flex flex-col gap-3', className)}
+      className={cn(
+        'group relative flex flex-col overflow-hidden rounded-xl border border-border bg-card',
+        'transition-all duration-300 ease-swift hover:-translate-y-1 hover:border-accent/30 hover:shadow-elevated',
+        className,
+      )}
       // First-party clickstream: any click inside the card resolves to this
       // product via the delegated listener (see @/lib/analytics/clickstream).
       data-track="product"
@@ -80,7 +98,7 @@ export function ProductCard({
       <Link
         href={routes.productDetail(product.slug)}
         onClick={trackSelect}
-        className="relative block aspect-[3/4] overflow-hidden rounded-md bg-gradient-pearl"
+        className="relative block aspect-square overflow-hidden bg-white"
       >
         {product.imageUrl ? (
           <Image
@@ -89,16 +107,16 @@ export function ProductCard({
             fill
             priority={priority}
             sizes="(min-width:1280px) 25vw, (min-width:768px) 33vw, 50vw"
-            className="object-cover transition-transform duration-700 ease-editorial group-hover:scale-[1.03]"
+            className="object-cover transition-transform duration-500 ease-swift group-hover:scale-105"
           />
         ) : (
-          // Placeholder when no image is attached — keeps the editorial layout
-          // intact and avoids `<Image src="">` warnings.
+          // Placeholder when no image is attached — keeps the grid intact and
+          // avoids `<Image src="">` warnings.
           <span
             aria-hidden
-            className="absolute inset-0 grid place-items-center font-serif text-3xl font-light uppercase tracking-[0.2em] text-brand-charcoal/30"
+            className="absolute inset-0 grid place-items-center font-serif text-2xl font-medium text-brand-navy/30"
           >
-            Elviora
+            {siteConfig.name}
           </span>
         )}
         {product.hoverImageUrl ? (
@@ -107,49 +125,68 @@ export function ProductCard({
             alt=""
             fill
             sizes="(min-width:1280px) 25vw, (min-width:768px) 33vw, 50vw"
-            className="object-cover opacity-0 transition-opacity duration-500 ease-editorial group-hover:opacity-100"
+            className="object-cover opacity-0 transition-opacity duration-500 ease-swift group-hover:opacity-100"
             aria-hidden
           />
         ) : null}
 
-        <div className="absolute left-3 top-3 flex flex-col gap-1.5">
-          {product.isNew ? <Badge variant="gold">New</Badge> : null}
-          {product.isBestseller ? <Badge variant="muted">Bestseller</Badge> : null}
+        <div className="absolute left-3 top-3 flex flex-col items-start gap-1.5">
+          {discountPct > 0 ? <Badge variant="deal">-{discountPct}%</Badge> : null}
+          {product.isNew ? <Badge variant="info">New</Badge> : null}
+          {product.isBestseller ? <Badge variant="gold">Bestseller</Badge> : null}
         </div>
 
         {onWishlistToggle ? (
           <WishlistButton wishlisted={wishlisted} onToggle={() => onWishlistToggle(product.id)} />
         ) : null}
+
+        {/* Slide-up CTA — the card's "add" affordance. Always visible on
+            touch (no hover), revealed on pointer devices. */}
+        <span
+          className={cn(
+            'absolute inset-x-0 bottom-0 flex items-center justify-center gap-1.5 bg-primary/95 py-2.5',
+            'text-xs font-semibold uppercase tracking-[0.12em] text-primary-foreground backdrop-blur-sm',
+            'translate-y-0 lg:translate-y-full lg:transition-transform lg:duration-300 lg:ease-swift lg:group-hover:translate-y-0',
+          )}
+        >
+          View product <ArrowRight className="size-3.5" />
+        </span>
       </Link>
 
-      <div className="flex flex-col gap-1">
-        {product.brandLine ? <span className="eyebrow">{product.brandLine}</span> : null}
+      <div className="flex flex-1 flex-col gap-1.5 p-4">
+        {product.brandLine ? (
+          <span className="text-[11px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
+            {product.brandLine}
+          </span>
+        ) : null}
         <Link
           href={routes.productDetail(product.slug)}
           onClick={trackSelect}
-          className="font-serif text-base font-light leading-snug decoration-1 underline-offset-4 hover:underline"
+          title={product.name}
+          className="truncate text-sm font-medium leading-snug text-foreground transition-colors hover:text-accent"
         >
           {product.name}
         </Link>
         {typeof product.rating === 'number' ? (
-          <Rating value={product.rating} reviewCount={product.reviewCount} />
+          <Rating value={product.rating} reviewCount={product.reviewCount} size={13} />
         ) : null}
-        <Price
-          amount={product.price}
-          compareAt={product.compareAt}
-          currency={product.currency}
-          className="mt-1"
-          showSavings
-        />
+        <div className="mt-auto flex items-end justify-between gap-2 pt-1.5">
+          <Price amount={product.price} compareAt={product.compareAt} currency={product.currency} />
+          {product.stockState === 'low' ? (
+            <span className="text-[11px] font-medium text-brand-ember">Low stock</span>
+          ) : product.stockState === 'out' ? (
+            <span className="text-[11px] font-medium text-muted-foreground">Out of stock</span>
+          ) : null}
+        </div>
       </div>
     </article>
   );
 }
 
 /**
- * Wishlist heart with three improvements over the previous CSS-only version:
+ * Wishlist heart:
  *  - Visible at rest on touch devices (no hover state on phones).
- *  - Subtle tap pulse for tactile feedback.
+ *  - Tap pulse + pop-in fill for tactile feedback.
  *  - Visible focus ring for keyboard users.
  */
 function WishlistButton({ wishlisted, onToggle }: { wishlisted?: boolean; onToggle: () => void }) {
@@ -161,16 +198,16 @@ function WishlistButton({ wishlisted, onToggle }: { wishlisted?: boolean; onTogg
         e.preventDefault();
         onToggle();
       }}
-      whileTap={prefersReduced ? undefined : { scale: 0.88 }}
+      whileTap={prefersReduced ? undefined : { scale: 0.85 }}
       // Override the card's product tracking so a wishlist tap logs as its own CTA.
       data-track="cta"
       data-track-label="wishlist-toggle"
       className={cn(
         'absolute right-3 top-3 grid size-9 place-items-center rounded-full',
-        'border border-border bg-background/85 backdrop-blur-md',
+        'border border-border bg-background/90 shadow-soft backdrop-blur-md',
         // Always visible on touch; hover-revealed on lg+.
         'opacity-100 lg:opacity-0 lg:group-hover:opacity-100',
-        'transition-opacity duration-300',
+        'transition-all duration-300 hover:scale-110',
         'focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
         wishlisted && 'lg:opacity-100',
       )}
@@ -180,7 +217,7 @@ function WishlistButton({ wishlisted, onToggle }: { wishlisted?: boolean; onTogg
       <Heart
         className={cn(
           'size-4 transition-colors',
-          wishlisted ? 'fill-destructive text-destructive' : 'text-foreground/70',
+          wishlisted ? 'animate-pop-in fill-destructive text-destructive' : 'text-foreground/70',
         )}
       />
     </motion.button>
@@ -189,11 +226,13 @@ function WishlistButton({ wishlisted, onToggle }: { wishlisted?: boolean; onTogg
 
 export function ProductCardSkeleton() {
   return (
-    <div className="flex flex-col gap-3">
-      <div className="shimmer aspect-[3/4] rounded-md bg-muted/60" />
-      <div className="shimmer h-3 w-20 rounded bg-muted/60" />
-      <div className="shimmer h-4 w-3/4 rounded bg-muted/60" />
-      <div className="shimmer h-4 w-1/3 rounded bg-muted/60" />
+    <div className="flex flex-col overflow-hidden rounded-xl border border-border bg-card">
+      <div className="shimmer aspect-square bg-muted/60" />
+      <div className="flex flex-col gap-2 p-4">
+        <div className="shimmer h-3 w-20 rounded bg-muted/60" />
+        <div className="shimmer h-4 w-3/4 rounded bg-muted/60" />
+        <div className="shimmer h-4 w-1/3 rounded bg-muted/60" />
+      </div>
     </div>
   );
 }
