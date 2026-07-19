@@ -4,8 +4,10 @@ import { buildMetadata } from '@/lib/seo/metadata';
 
 import { Section } from '@/design-system/primitives/section';
 
+import { InfiniteProducts } from '@/features/products/components/infinite-products';
 import { ProductFilters } from '@/features/products/components/product-filters';
-import { ProductResults } from '@/features/products/components/product-results';
+
+import { CatalogPagination } from '../_components/catalog-pagination';
 
 import { type ProductListSort } from '@/server/repositories/products.repo';
 import { brandsService } from '@/server/services/brands.service';
@@ -20,6 +22,7 @@ export const metadata = buildMetadata({
 
 const SORTS: ProductListSort[] = ['newest', 'popular', 'rating', 'price-asc', 'price-desc'];
 const str = (v: string | string[] | undefined) => (typeof v === 'string' ? v : undefined);
+const PAGE_SIZE = 24;
 
 export default async function ProductsPage({
   searchParams,
@@ -35,10 +38,10 @@ export default async function ProductsPage({
 
   // Same failure posture as the homepage: a catalog-service hiccup renders an
   // empty listing, not a 500.
-  const [{ items }, brands] = await Promise.all([
+  const [{ items, total }, brands] = await Promise.all([
     productsService
-      .list({ q: str(sp.q), brand: str(sp.brand) }, sort, page, 24)
-      .catch(() => ({ items: [] })),
+      .list({ q: str(sp.q), brand: str(sp.brand) }, sort, page, PAGE_SIZE)
+      .catch(() => ({ items: [], total: 0 })),
     brandsService.list().catch(() => []),
   ]);
 
@@ -53,7 +56,27 @@ export default async function ProductsPage({
           </p>
         </header>
         <ProductFilters brands={brands.map((b) => ({ name: b.name, slug: b.slug }))} />
-        <ProductResults products={items} listId="catalog" listName="All products" />
+        <InfiniteProducts
+          // Remount on filter/sort change so results never append onto a stale list.
+          key={`${str(sp.q) ?? ''}|${str(sp.brand) ?? ''}|${sort}`}
+          initialProducts={items}
+          total={total}
+          pageSize={PAGE_SIZE}
+          query={{ q: str(sp.q), brand: str(sp.brand), sort }}
+          listId="catalog"
+          listName="All products"
+        />
+        {/* Without JS (and for crawlers) infinite scroll can't run — real page
+            links keep the rest of the catalog reachable. */}
+        <noscript>
+          <CatalogPagination
+            page={page}
+            pageSize={PAGE_SIZE}
+            total={total}
+            basePath="/products"
+            params={{ q: str(sp.q), brand: str(sp.brand), sort: str(sp.sort) }}
+          />
+        </noscript>
 
         <JsonLd
           data={breadcrumbJsonLd([

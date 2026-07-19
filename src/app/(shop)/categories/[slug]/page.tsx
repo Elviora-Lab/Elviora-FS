@@ -14,8 +14,10 @@ import {
   type SubcategoryChip,
   SubcategoryNav,
 } from '@/features/categories/components/subcategory-nav';
+import { InfiniteProducts } from '@/features/products/components/infinite-products';
 import { ProductFilters } from '@/features/products/components/product-filters';
-import { ProductResults } from '@/features/products/components/product-results';
+
+import { CatalogPagination } from '../../_components/catalog-pagination';
 
 import { type ProductListSort } from '@/server/repositories/products.repo';
 import { brandsService } from '@/server/services/brands.service';
@@ -27,6 +29,7 @@ type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 const SORTS: ProductListSort[] = ['newest', 'popular', 'rating', 'price-asc', 'price-desc'];
 const str = (v: string | string[] | undefined) => (typeof v === 'string' ? v : undefined);
+const PAGE_SIZE = 24;
 
 function prettify(slug: string) {
   return slug
@@ -66,11 +69,11 @@ export default async function CategoryPage({
 
   // The category row drives the display name, description, and subcategory
   // chips; unknown slugs still render a (likely empty) product listing.
-  const [category, { items }, brands] = await Promise.all([
+  const [category, { items, total }, brands] = await Promise.all([
     categoriesService.getBySlug(slug).catch(() => null),
     productsService
-      .list({ category: slug, brand: str(sp.brand) }, sort, page, 24)
-      .catch(() => ({ items: [] })),
+      .list({ category: slug, brand: str(sp.brand) }, sort, page, PAGE_SIZE)
+      .catch(() => ({ items: [], total: 0 })),
     brandsService.list().catch(() => []),
   ]);
 
@@ -122,7 +125,24 @@ export default async function CategoryPage({
         <SubcategoryNav chips={chips} />
 
         <ProductFilters brands={brands.map((b) => ({ name: b.name, slug: b.slug }))} />
-        <ProductResults products={items} listId={`category_${slug}`} listName={name} />
+        <InfiniteProducts
+          key={`${slug}|${str(sp.brand) ?? ''}|${sort}`}
+          initialProducts={items}
+          total={total}
+          pageSize={PAGE_SIZE}
+          query={{ category: slug, brand: str(sp.brand), sort }}
+          listId={`category_${slug}`}
+          listName={name}
+        />
+        <noscript>
+          <CatalogPagination
+            page={page}
+            pageSize={PAGE_SIZE}
+            total={total}
+            basePath={routes.category(slug)}
+            params={{ brand: str(sp.brand), sort: str(sp.sort) }}
+          />
+        </noscript>
 
         <JsonLd
           data={breadcrumbJsonLd([

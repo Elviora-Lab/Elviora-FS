@@ -9,8 +9,10 @@ import { buildMetadata } from '@/lib/seo/metadata';
 import { Breadcrumb } from '@/design-system/primitives/breadcrumb';
 import { Section } from '@/design-system/primitives/section';
 
+import { InfiniteProducts } from '@/features/products/components/infinite-products';
 import { ProductFilters } from '@/features/products/components/product-filters';
-import { ProductResults } from '@/features/products/components/product-results';
+
+import { CatalogPagination } from '../../_components/catalog-pagination';
 
 import { type ProductListSort } from '@/server/repositories/products.repo';
 import { brandsService } from '@/server/services/brands.service';
@@ -21,6 +23,7 @@ type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 const SORTS: ProductListSort[] = ['newest', 'popular', 'rating', 'price-asc', 'price-desc'];
 const str = (v: string | string[] | undefined) => (typeof v === 'string' ? v : undefined);
+const PAGE_SIZE = 24;
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { slug } = await params;
@@ -55,7 +58,7 @@ export default async function BrandPage({
     : 'newest';
   const page = Math.max(1, Number(str(sp.page)) || 1);
 
-  const { items } = await productsService.list({ brand: slug }, sort, page, 24);
+  const { items, total } = await productsService.list({ brand: slug }, sort, page, PAGE_SIZE);
 
   return (
     <Section>
@@ -79,7 +82,24 @@ export default async function BrandPage({
         </header>
 
         <ProductFilters />
-        <ProductResults products={items} listId={`brand_${slug}`} listName={brand.name} />
+        <InfiniteProducts
+          key={`${slug}|${sort}`}
+          initialProducts={items}
+          total={total}
+          pageSize={PAGE_SIZE}
+          query={{ brand: slug, sort }}
+          listId={`brand_${slug}`}
+          listName={brand.name}
+        />
+        <noscript>
+          <CatalogPagination
+            page={page}
+            pageSize={PAGE_SIZE}
+            total={total}
+            basePath={`/brands/${slug}`}
+            params={{ sort: str(sp.sort) }}
+          />
+        </noscript>
 
         <JsonLd
           data={breadcrumbJsonLd([

@@ -55,6 +55,33 @@ async function setProductImages(
   }
 }
 
+/**
+ * Keep `product_categories` in step with a change to the PRIMARY category.
+ *
+ * A product may be merchandised in several categories (importers write the
+ * full set), but this admin form edits only the primary slot. So we move just
+ * that slot — drop the previous primary's membership, add the new one — and
+ * leave any additional memberships alone. Rewriting the set to `{primary}`
+ * here would silently unmerchandise imported products on an unrelated edit.
+ */
+async function syncPrimaryCategory(
+  productId: string,
+  previousCategoryId: string | null,
+  nextCategoryId: string | null,
+  db: Prisma.TransactionClient = prisma,
+) {
+  if (previousCategoryId === nextCategoryId) return;
+  if (previousCategoryId) {
+    await db.productCategory.deleteMany({ where: { productId, categoryId: previousCategoryId } });
+  }
+  if (nextCategoryId) {
+    await db.productCategory.createMany({
+      data: [{ productId, categoryId: nextCategoryId }],
+      skipDuplicates: true,
+    });
+  }
+}
+
 export const createProduct = withAction(async (input: z.infer<typeof productBody>) => {
   await requireAdmin();
   const data = productBody.parse(input);
@@ -77,6 +104,7 @@ export const createProduct = withAction(async (input: z.infer<typeof productBody
         ...(data.brandId ? { brand: { connect: { id: data.brandId } } } : {}),
       },
     });
+    if (data.categoryId) await syncPrimaryCategory(created.id, null, data.categoryId, tx);
     if (data.images?.length) await setProductImages(created.id, data.images, tx);
     // A product needs at least one variant to be purchasable — start with a
     // default one mirroring the product SKU/price (stock 0 until set). Skipped
@@ -118,6 +146,12 @@ export const updateProduct = withAction(
     // Update + gallery replacement commit together — the delete-then-recreate
     // in setProductImages must never survive without the recreate.
     const product = await prisma.$transaction(async (tx) => {
+      // Read the outgoing primary before the write so the membership row it
+      // owns can be moved rather than orphaned.
+      const previous =
+        categoryId !== undefined
+          ? await tx.product.findUnique({ where: { id }, select: { categoryId: true } })
+          : null;
       const updated = await tx.product.update({
         where: { id },
         data: {
@@ -130,6 +164,9 @@ export const updateProduct = withAction(
             : {}),
         },
       });
+      if (categoryId !== undefined) {
+        await syncPrimaryCategory(id, previous?.categoryId ?? null, categoryId, tx);
+      }
       if (images) await setProductImages(id, images, tx);
       return updated;
     });
@@ -323,13 +360,19 @@ export const bulkImportProducts = withAction(async (input: { rows: unknown[] }) 
 
       if (existing) {
         // Don't touch sku on update (avoids unique collisions).
+        const before = await prisma.product.findUnique({
+          where: { id: existing.id },
+          select: { categoryId: true },
+        });
         await prisma.product.update({ where: { id: existing.id }, data: common });
         productId = existing.id;
+        await syncPrimaryCategory(productId, before?.categoryId ?? null, categoryId);
         updated++;
       } else {
         const sku = (row.sku?.trim() || `IMP-${slug}`).slice(0, 80);
         const product = await prisma.product.create({ data: { ...common, slug, sku } });
         productId = product.id;
+        await syncPrimaryCategory(productId, null, categoryId);
         // A default variant so the product is immediately sellable.
         await prisma.productVariant.create({
           data: {
@@ -493,13 +536,19 @@ export const importShopifyProducts = withAction(
 
           let productId: string;
           if (existing) {
+            const before = await tx.product.findUnique({
+              where: { id: existing.id },
+              select: { categoryId: true },
+            });
             await tx.product.update({ where: { id: existing.id }, data: common });
             productId = existing.id;
+            await syncPrimaryCategory(productId, before?.categoryId ?? null, categoryId, tx);
           } else {
             const rec = await tx.product.create({
               data: { ...common, slug, sku: (p.variants[0]?.sku || `SHP-${slug}`).slice(0, 80) },
             });
             productId = rec.id;
+            await syncPrimaryCategory(productId, null, categoryId, tx);
           }
 
           // Variants: upsert by SKU; deactivate the ones the file no longer has.

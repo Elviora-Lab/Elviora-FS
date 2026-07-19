@@ -291,13 +291,37 @@ model Category {
   sortOrder   Int      @default(0) @map("sort_order")
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  parent   Category?  @relation("CategoryParent", fields: [parentId], references: [id], onDelete: SetNull)
-  children Category[] @relation("CategoryParent")
-  products Product[]
+  parent          Category?         @relation("CategoryParent", fields: [parentId], references: [id], onDelete: SetNull)
+  children        Category[]        @relation("CategoryParent")
+  /// Products whose PRIMARY category this is (drives breadcrumbs, feeds).
+  products        Product[]
+  /// Full membership, primary included — see ProductCategory.
+  productMappings ProductCategory[]
 
   @@index([parentId])
   @@index([isActive, sortOrder])
   @@map("categories")
+}
+
+/// Many-to-many product↔category membership. A product can be merchandised in
+/// several categories at once (e.g. "Kitchen Accessories" AND "Random Gadgets"),
+/// which `Product.categoryId` alone cannot express.
+///
+/// `Product.categoryId` remains the PRIMARY category — the single one used for
+/// breadcrumbs, the product feed, and admin editing. This table holds the FULL
+/// set INCLUDING that primary, so category listing queries can filter on it
+/// alone without unioning the scalar column.
+model ProductCategory {
+  id         String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  productId  String @map("product_id") @db.Uuid
+  categoryId String @map("category_id") @db.Uuid
+
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, categoryId], map: "uq_product_category")
+  @@index([categoryId])
+  @@map("product_categories")
 }
 
 model Brand {
@@ -336,7 +360,9 @@ model Product {
   createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
+  /// Primary category — breadcrumbs, feeds, admin. Full set lives in `categories`.
   category           Category?               @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  categories         ProductCategory[]
   brand              Brand?                  @relation(fields: [brandId], references: [id], onDelete: SetNull)
   variants           ProductVariant[]
   images             ProductImage[]

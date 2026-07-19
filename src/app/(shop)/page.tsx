@@ -7,6 +7,7 @@ import { buildMetadata } from '@/lib/seo/metadata';
 
 import { ProductCard } from '@/design-system/patterns/product-card';
 import { CountUp } from '@/design-system/primitives/count-up';
+import { Rating } from '@/design-system/primitives/rating';
 import { Reveal } from '@/design-system/primitives/reveal';
 import { Section, SectionHeading } from '@/design-system/primitives/section';
 import { PromoCodeChip } from '@/components/commerce/promo-code-chip';
@@ -71,7 +72,11 @@ export default async function HomePage() {
     promotionsService.tiersForDisplay().catch(() => []),
   ]);
 
-  const merchandising = categoryTree.filter((c) => c.children.length > 0);
+  // Every top-level category is merchandisable. This used to require
+  // `children.length > 0`, which silently emptied the whole bento once the
+  // catalog moved to a flat one-level taxonomy — the guard below then hid the
+  // section with no error. Only the "uncategorized" holding pen is excluded.
+  const merchandising = categoryTree.filter((c) => c.slug !== 'uncategorized');
   const categoryImages = await Promise.all(
     merchandising.map((c) =>
       c.image
@@ -99,6 +104,10 @@ export default async function HomePage() {
       imageUrl: p.imageUrl,
       price: p.price,
       brandLine: p.brandLine,
+      // Commerce signal for the hero card — both already projected onto
+      // ProductCardData by the list mapper.
+      compareAt: p.compareAt,
+      isBestseller: p.isBestseller,
     }));
 
   // Social proof is only honest at volume — below 30 reviews the hero line
@@ -109,8 +118,12 @@ export default async function HomePage() {
 
   return (
     <>
-      {/* ——— Editorial hero + product spotlight ——— */}
-      <Section as="section" size="sm" className="surface-cloud relative overflow-hidden">
+      {/* ——— Hero — headline, offer, and the shoppable spotlight ——— */}
+      <Section
+        as="section"
+        size="sm"
+        className="surface-cloud relative overflow-hidden pb-20 pt-8 md:pb-28 md:pt-12"
+      >
         <div
           aria-hidden
           className="pointer-events-none absolute -left-24 top-1/4 size-[26rem] rounded-full bg-brand-mist/70 blur-3xl"
@@ -119,86 +132,131 @@ export default async function HomePage() {
           aria-hidden
           className="pointer-events-none absolute -right-16 -top-10 size-[20rem] rounded-full bg-brand-stone/40 blur-3xl"
         />
-        <div className="container relative grid items-center gap-10 py-6 md:py-10 lg:grid-cols-12">
-          <div className="flex flex-col gap-6 lg:col-span-5">
-            <span className="eyebrow">Kitchen · Home · Everyday</span>
-            <h1 className="editorial-heading text-display-lg md:text-display-xl">
-              Everything your home runs on.
+        <div className="container relative grid items-center gap-8 lg:grid-cols-12 lg:gap-10">
+          <div className="flex flex-col items-start gap-5 lg:col-span-5">
+            {/* Live-dot pill instead of a bare eyebrow — reads as an active shop,
+                not a lookbook chapter marker. */}
+            <span className="inline-flex items-center gap-2 rounded-full border border-brand-stone bg-white/70 py-1.5 pl-2.5 pr-3.5">
+              <span className="relative flex size-2">
+                <span className="absolute inline-flex size-full animate-ping rounded-full bg-brand-ember/70 motion-reduce:hidden" />
+                <span className="relative inline-flex size-2 rounded-full bg-brand-ember" />
+              </span>
+              <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-navy">
+                Kitchen · Home · Everyday
+              </span>
+            </span>
+
+            {/* Sans/serif contrast with an ember swash under the pivot word —
+                the headline has to land before the eye reaches the image. */}
+            <h1 className="text-balance text-display-xl leading-[1.02] md:text-display-2xl">
+              <span className="editorial-heading">Everything your</span>{' '}
+              <span className="relative inline-block font-sans font-extrabold tracking-[-0.035em] text-brand-navy">
+                home
+                <svg
+                  aria-hidden
+                  viewBox="0 0 200 14"
+                  preserveAspectRatio="none"
+                  className="absolute inset-x-0 -bottom-1 h-[0.28em] w-full text-brand-ember"
+                >
+                  <path
+                    d="M3 10C48 4 118 3 197 6"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="6"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </span>{' '}
+              <span className="editorial-heading">runs on.</span>
             </h1>
-            <p className="text-pretty text-base leading-relaxed text-muted-foreground md:text-lg">
-              Smart home &amp; kitchen essentials — chosen for build quality, delivered anywhere in
+
+            <p className="max-w-md text-pretty text-base leading-relaxed text-muted-foreground md:text-lg">
+              Smart kitchen &amp; home essentials — chosen for build quality, delivered anywhere in
               Pakistan, cash at your door.
             </p>
+
             <PromoCodeChip />
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Button asChild size="lg" variant="cta" uppercase>
-                <Link href="/products?sort=popular">Shop best sellers</Link>
+
+            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+              <Button asChild size="xl" variant="cta" uppercase className="w-full sm:w-auto">
+                <Link href="/products?sort=popular">
+                  Shop best sellers <ArrowRight className="size-4" />
+                </Link>
               </Button>
-              <Button asChild size="lg" variant="outline">
-                <Link href="/categories">Explore categories</Link>
+              <Button asChild size="xl" variant="outline" className="w-full sm:w-auto">
+                <Link href="/categories">Browse categories</Link>
               </Button>
             </div>
+
+            {/* Store-wide rating — the catalog carries no per-product rating, so
+                this stays framed as the shop's score, not the hero item's. */}
             {proofGate ? (
-              <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                <Star className="size-4 fill-brand-amber text-brand-amber" />
-                Rated {reviewSummary.average.toFixed(1)}/5 by{' '}
-                {reviewSummary.count.toLocaleString('en-US')} shoppers
+              <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+                <Rating value={reviewSummary.average} size={16} />
+                <span className="font-semibold text-foreground">
+                  {reviewSummary.average.toFixed(1)}/5
+                </span>
+                from {reviewSummary.count.toLocaleString('en-US')} verified shoppers
               </p>
             ) : null}
           </div>
+
           <div className="lg:col-span-7">
-            <HeroShowcase products={heroProducts} />
+            <HeroShowcase products={heroProducts} freeDeliveryAt={FREE_DELIVERY_AT} />
           </div>
         </div>
       </Section>
 
-      {/* ——— Trust ledger — all four claims visible at once ——— */}
-      <div className="border-y border-border/60 bg-card">
-        <div className="container grid grid-cols-2 divide-border/60 md:grid-cols-4 md:divide-x">
-          {[
-            { icon: ShieldCheck, title: 'Cash on delivery', sub: 'Nationwide' },
-            { icon: RotateCcw, title: 'Easy returns', sub: 'Within 2–3 days' },
-            { icon: Truck, title: 'Free delivery', sub: 'Over Rs 8,000' },
-          ].map((s, i) => (
-            <Reveal key={s.title} inView delay={i * 0.06}>
-              <div className="flex min-h-11 items-center gap-3 px-2 py-4 md:justify-center">
-                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand-mist text-brand-teal">
-                  <s.icon className="size-5" />
+      {/* ——— Trust ledger — all four claims at once, lifted onto the hero's
+          bottom edge so it reads as one deliberate card rather than a strip ——— */}
+      <div className="relative z-10 -mt-12 md:-mt-16">
+        <div className="container">
+          <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border/60 bg-border/60 shadow-pop md:grid-cols-4">
+            {[
+              { icon: ShieldCheck, title: 'Cash on delivery', sub: 'Nationwide' },
+              { icon: RotateCcw, title: 'Easy returns', sub: 'Within 2–3 days' },
+              { icon: Truck, title: 'Free delivery', sub: 'Over Rs 8,000' },
+            ].map((s, i) => (
+              <Reveal key={s.title} inView delay={i * 0.06} className="bg-card">
+                <div className="flex h-full min-h-11 items-center gap-3 px-4 py-5 transition-colors duration-300 ease-swift hover:bg-brand-mist/40 md:justify-center">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-mist text-brand-teal ring-1 ring-inset ring-brand-teal/15">
+                    <s.icon className="size-5" />
+                  </span>
+                  <span className="flex flex-col leading-tight">
+                    <span className="text-sm font-semibold">{s.title}</span>
+                    <span className="text-xs text-muted-foreground">{s.sub}</span>
+                  </span>
+                </div>
+              </Reveal>
+            ))}
+            <Reveal inView delay={0.18} className="bg-card">
+              <div className="flex h-full min-h-11 items-center gap-3 px-4 py-5 transition-colors duration-300 ease-swift hover:bg-brand-amber/5 md:justify-center">
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-amber/15 text-brand-amber ring-1 ring-inset ring-brand-amber/25">
+                  {proofGate ? (
+                    <Star className="size-5 fill-current" />
+                  ) : (
+                    <BadgeCheck className="size-5" />
+                  )}
                 </span>
                 <span className="flex flex-col leading-tight">
-                  <span className="text-sm font-semibold">{s.title}</span>
-                  <span className="text-xs text-muted-foreground">{s.sub}</span>
+                  {proofGate ? (
+                    <>
+                      <span className="text-sm font-semibold">
+                        {reviewSummary.average.toFixed(1)}★ from{' '}
+                        <CountUp value={reviewSummary.count} duration={1200} suffix="+" /> reviews
+                      </span>
+                      <span className="text-xs text-muted-foreground">Verified orders</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-sm font-semibold">Quality checked</span>
+                      <span className="text-xs text-muted-foreground">Before dispatch</span>
+                    </>
+                  )}
                 </span>
               </div>
             </Reveal>
-          ))}
-          <Reveal inView delay={0.18}>
-            <div className="flex min-h-11 items-center gap-3 px-2 py-4 md:justify-center">
-              <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand-amber/15 text-brand-amber">
-                {proofGate ? (
-                  <Star className="size-5 fill-current" />
-                ) : (
-                  <BadgeCheck className="size-5" />
-                )}
-              </span>
-              <span className="flex flex-col leading-tight">
-                {proofGate ? (
-                  <>
-                    <span className="text-sm font-semibold">
-                      {reviewSummary.average.toFixed(1)}★ from{' '}
-                      <CountUp value={reviewSummary.count} duration={1200} suffix="+" /> reviews
-                    </span>
-                    <span className="text-xs text-muted-foreground">Verified orders</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="text-sm font-semibold">Quality checked</span>
-                    <span className="text-xs text-muted-foreground">Before dispatch</span>
-                  </>
-                )}
-              </span>
-            </div>
-          </Reveal>
+          </div>
         </div>
       </div>
 

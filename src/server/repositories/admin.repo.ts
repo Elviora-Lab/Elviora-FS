@@ -265,7 +265,12 @@ export const adminCategoriesRepo = {
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
       include: {
         parent: { select: { name: true } },
-        _count: { select: { products: true } },
+        // Count MEMBERSHIPS, not just products holding this as their primary
+        // category. The admin page blocks deletion on this count, and deleting
+        // a category cascades its membership rows away — so counting primaries
+        // only would let an operator silently unmerchandise products that are
+        // in this category as a secondary.
+        _count: { select: { productMappings: true } },
       },
     });
   },

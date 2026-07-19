@@ -62,12 +62,12 @@ export default async function AdminCategoriesPage() {
                     <td className="px-4 py-3 font-medium">{c.name}</td>
                     <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{c.slug}</td>
                     <td className="px-4 py-3 text-muted-foreground">{c.parent?.name ?? '—'}</td>
-                    <td className="px-4 py-3">{c._count.products}</td>
+                    <td className="px-4 py-3">{c._count.productMappings}</td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {c.isActive ? 'Active' : 'Hidden'}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <CategoryActions id={c.id} disabled={c._count.products > 0} />
+                      <CategoryActions id={c.id} disabled={c._count.productMappings > 0} />
                     </td>
                   </tr>
                 ))

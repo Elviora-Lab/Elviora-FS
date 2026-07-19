@@ -1,15 +1,17 @@
 /**
- * Importer — loads the scraped catalog in `data/products.json` into Postgres.
+ * Importer — loads a scraped catalog's `products.json` into Postgres.
  *
- * Run with `npm run db:import`. Idempotent: products/categories/brand/reviews are
- * upserted; variants are inserted with skipDuplicates (unique SKU); a product's
- * images are replaced on each run.
+ * Run with `npm run db:import` (she-beauty, the default) or
+ * `npm run db:import:smtraders`. Pass `--dataset=<name>` to pick another.
+ * Idempotent: products/categories/brand/reviews are upserted; variants are
+ * inserted with skipDuplicates (unique SKU); a product's images are replaced
+ * on each run.
  *
- * `data/products.json` already contains only the 266 products that have images,
- * each with nested `variants`, `images`, and `reviews`. The source has no real
- * SKUs or stock counts, so we synthesize stable SKUs from the Shopify ids and
- * default stock from each variant's `available` flag. Scraped reviews have a
- * name but no account, so we create one synthetic user per reviewer.
+ * Each dataset's `products.json` holds one entry per product with nested
+ * `variants`, `images`, and `reviews`. The sources have no real SKUs or stock
+ * counts, so we synthesize stable SKUs from the Shopify ids and default stock
+ * from each variant's `available` flag. Scraped reviews have a name but no
+ * account, so we create one synthetic user per reviewer.
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -17,6 +19,67 @@ import { join } from 'node:path';
 import { Prisma, PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
+
+// ---------------------------------------------------------------------------
+// Datasets
+// ---------------------------------------------------------------------------
+/**
+ * Per-crawl settings. `dir` is relative to `data/`; every dataset ships the
+ * same scraper output shape (products.json + optional collections.csv).
+ * `skuPrefix` namespaces synthesized SKUs so two datasets can share a database
+ * without colliding on the unique SKU constraint.
+ */
+type Dataset = {
+  dir: string;
+  brandName: string;
+  brandSlug: string;
+  skuPrefix: string;
+  /** Preferred primary category when a product lists several. */
+  categoryPriority: string[];
+};
+
+const DATASETS: Record<string, Dataset> = {
+  'she-beauty': {
+    dir: '.',
+    brandName: 'She Beauty',
+    brandSlug: 'she-beauty',
+    skuPrefix: 'SB',
+    categoryPriority: ['Lips', 'Eyes', 'Face', 'Nails'],
+  },
+  smtraders: {
+    dir: 'smtraders',
+    brandName: 'Elviora Home',
+    brandSlug: 'elviora-home',
+    skuPrefix: 'SMT',
+    // Prefer a concrete product category over the catch-all buckets, so a
+    // product tagged "Kitchen Accessories|Random Gadgets" lands in the former.
+    categoryPriority: [
+      'Kitchen Accessories',
+      'Home & Living',
+      'Wardrobe & Organizers',
+      'Home & Wall Decor',
+      'Health & Beauty',
+      'Babies & Toys',
+      'Mobile Accessories',
+      'Random Gadgets',
+    ],
+  },
+};
+
+const datasetName =
+  process.argv.find((a) => a.startsWith('--dataset='))?.split('=')[1] ??
+  process.env.IMPORT_DATASET ??
+  'she-beauty';
+
+const dataset = DATASETS[datasetName];
+if (!dataset) {
+  console.error(
+    `[import] unknown dataset '${datasetName}'. Known: ${Object.keys(DATASETS).join(', ')}`,
+  );
+  process.exit(1);
+}
+
+const dataPath = (file: string) => join(process.cwd(), 'data', dataset.dir, file);
 
 // ---------------------------------------------------------------------------
 // Source types (only the fields we use)
@@ -80,6 +143,69 @@ const slugify = (s: string) =>
     .replace(/^-+|-+$/g, '')
     .slice(0, 80);
 
+// ---------------------------------------------------------------------------
+// Text sanitation
+// ---------------------------------------------------------------------------
+/**
+ * Scraped copy is written for the SOURCE shop: titles are suffixed with its
+ * name, and most descriptions open with an SEO template ("<shop> has the best
+ * prices of X in Pakistan … at the lowest price") followed by a city list.
+ * Some copy also name-drops rival marketplaces. None of that may reach our
+ * storefront, so every text field is run through `sanitize()` on import.
+ *
+ * Deliberately NOT a blanket sentence-drop: much of this copy has no sentence
+ * punctuation at all, so dropping any sentence containing the shop name emptied
+ * ~210 fields outright in testing. Instead the known template is removed as a
+ * unit, rival-marketplace sentences are dropped only when other sentences
+ * survive, and anything left is reduced to token removal plus tidy-up.
+ */
+const SHOP_PATTERN = String.raw`smtraders(?:\.pk)?|sm\s+traders`;
+const RIVAL_PATTERN = String.raw`daraz|aliexpress|alibaba|amazon|ebay`;
+// `\b` is useless here: the source glues names onto separator runs
+// ("Chopper_______smtraders.pk") and `_` is a word character, so \b never
+// matches at that seam. Explicit alphanumeric boundaries do.
+const L = String.raw`(?<![A-Za-z0-9])`;
+const R = String.raw`(?![A-Za-z0-9])`;
+const BANNED_RE = new RegExp(`${L}(?:${SHOP_PATTERN}|${RIVAL_PATTERN})${R}`, 'gi');
+const BOILERPLATE_RE = new RegExp(
+  `${L}(?:${SHOP_PATTERN})${R}` +
+    String.raw`\s*has\s+the\s+best\s+prices?\s+of\b[\s\S]*?` +
+    String.raw`(?:at\s+the\s+lowest\s+price\b\.?|and\s+many\s+more\s+cities\b[^.]*\.?|$)`,
+  'gi',
+);
+const RIVAL_SENTENCE_RE = new RegExp(`[^.!?]*${L}(?:${RIVAL_PATTERN})${R}[^.!?]*[.!?]`, 'gi');
+const SHOP_TITLE_SUFFIX_RE = new RegExp(String.raw`\s*[–—|-]\s*(?:${SHOP_PATTERN})\s*$`, 'i');
+
+function tidy(input: string): string {
+  return input
+    .replace(/_{2,}/g, ' ') // decorative underscore runs used as separators
+    .replace(/\s*\|\s*/g, ' ') // separators orphaned by a removed token
+    .replace(/\s*([,;])\s*(?=[,;.])/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/^\W+/, '')
+    .replace(/^[\s|–—-]+|[\s|–—-]+$/g, '')
+    .trim();
+}
+
+/** Strip source-shop and rival-marketplace references from scraped copy. */
+function sanitize(text: string | null | undefined): string | null {
+  if (!text) return null;
+  // \xa0 is rife in this source and breaks the \s+ boundaries below.
+  let t = text.replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+  t = t.replace(BOILERPLATE_RE, ' ');
+  const withoutRivals = t.replace(RIVAL_SENTENCE_RE, ' ');
+  if (tidy(withoutRivals)) t = withoutRivals; // never blank the field entirely
+  t = t.replace(BANNED_RE, '');
+  const out = tidy(t);
+  return out || null;
+}
+
+/** As `sanitize`, plus the trailing "– <Shop>" suffix scraped titles carry. */
+function sanitizeTitle(text: string | null | undefined): string | null {
+  if (!text) return null;
+  return sanitize(text.replace(/ /g, ' ').replace(SHOP_TITLE_SUFFIX_RE, ''));
+}
+
 const truncate = (s: string | null | undefined, max: number) => (s ? s.trim().slice(0, max) : null);
 
 const dec = (n: number | null | undefined) => (n == null ? null : new Prisma.Decimal(n.toFixed(2)));
@@ -88,10 +214,9 @@ const clampRating = (r: number | null | undefined) =>
   Math.min(5, Math.max(1, Math.round(r ?? 0))) || 1;
 
 // Prefer a real product-type category over merchandising collections.
-const CATEGORY_PRIORITY = ['Lips', 'Eyes', 'Face', 'Nails'];
 function pickCategory(categories: string[] | null): string | null {
   if (!categories?.length) return null;
-  return CATEGORY_PRIORITY.find((c) => categories.includes(c)) ?? categories[0] ?? null;
+  return dataset.categoryPriority.find((c) => categories.includes(c)) ?? categories[0] ?? null;
 }
 
 const parseDate = (s: string | null | undefined) => {
@@ -135,7 +260,7 @@ function loadCategoryImages(): Map<string, string> {
   const images = new Map<string, string>();
   let csv: string;
   try {
-    csv = readFileSync(join(process.cwd(), 'data', 'collections.csv'), 'utf8');
+    csv = readFileSync(dataPath('collections.csv'), 'utf8');
   } catch {
     return images; // optional file — categories just stay imageless
   }
@@ -157,15 +282,15 @@ function loadCategoryImages(): Map<string, string> {
 // Import
 // ---------------------------------------------------------------------------
 async function main() {
-  const raw = readFileSync(join(process.cwd(), 'data', 'products.json'), 'utf8');
+  const raw = readFileSync(dataPath('products.json'), 'utf8');
   const products = JSON.parse(raw) as SourceProduct[];
-  console.log(`Loaded ${products.length} products from data/products.json`);
+  console.log(`Loaded ${products.length} products from ${dataPath('products.json')}`);
 
   // 1. Brand — the dataset is a single house under varying name strings.
   const brand = await prisma.brand.upsert({
-    where: { slug: 'she-beauty' },
+    where: { slug: dataset.brandSlug },
     update: {},
-    create: { name: 'She Beauty', slug: 'she-beauty', isActive: true },
+    create: { name: dataset.brandName, slug: dataset.brandSlug, isActive: true },
   });
 
   // 2. Categories — one per distinct category string in the dataset, with the
@@ -208,6 +333,7 @@ async function main() {
   }
 
   let pCount = 0;
+  let cCount = 0;
   let vCount = 0;
   let iCount = 0;
   let rCount = 0;
@@ -228,13 +354,19 @@ async function main() {
 
     const productData = {
       name: truncate(p.product_name, 255) ?? p.handle,
-      shortDescription: truncate(p.meta_description ?? p.description_plain, 500),
-      fullDescription: p.description_plain?.trim() || null,
+      // Sanitized before the fallback, so a description that is nothing BUT
+      // source-shop boilerplate falls through to the long copy instead of
+      // landing as an empty blurb.
+      shortDescription: truncate(
+        sanitize(p.meta_description) ?? sanitize(p.description_plain),
+        500,
+      ),
+      fullDescription: sanitize(p.description_plain),
       price,
       comparePrice: compareAt,
       isFeatured: Boolean(p.bestseller || p.featured),
-      seoTitle: truncate(p.meta_title, 255),
-      seoDescription: truncate(p.meta_description, 500),
+      seoTitle: truncate(sanitizeTitle(p.meta_title), 255),
+      seoDescription: truncate(sanitize(p.meta_description), 500),
       brandId: brand.id,
       categoryId: categoryId ?? null,
       ...(publishedAt ? { createdAt: publishedAt } : {}),
@@ -245,16 +377,43 @@ async function main() {
       // `isActive` is admin-managed (operators hide products from the
       // storefront) — set it on create only so re-imports never unhide.
       update: productData,
-      create: { ...productData, isActive: true, slug, sku: `SB-P-${p.product_id}` },
+      create: {
+        ...productData,
+        isActive: true,
+        slug,
+        sku: `${dataset.skuPrefix}-P-${p.product_id}`,
+      },
     });
     pCount++;
+
+    // Full category membership — a product tagged "Kitchen Accessories|Random
+    // Gadgets" must surface on BOTH category pages, which the scalar
+    // categoryId can't express. Replaced each run so dropped source
+    // categories don't linger.
+    const memberIds = [
+      ...new Set(
+        (p.categories ?? [])
+          .map((name) => categoryIdBySlug.get(name))
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+    await prisma.productCategory.deleteMany({
+      where: { productId: product.id, categoryId: { notIn: memberIds } },
+    });
+    if (memberIds.length) {
+      const res = await prisma.productCategory.createMany({
+        data: memberIds.map((cid) => ({ productId: product.id, categoryId: cid })),
+        skipDuplicates: true,
+      });
+      cCount += res.count;
+    }
 
     // Variants — synthesize SKUs; default stock from availability.
     if (p.variants.length) {
       const res = await prisma.productVariant.createMany({
         data: p.variants.map((v) => ({
           productId: product.id,
-          sku: `SB-V-${v.variant_id}`,
+          sku: `${dataset.skuPrefix}-V-${v.variant_id}`,
           price: dec(v.price) ?? price,
           stockQuantity: v.available ? 100 : 0,
           size: truncate(v.size, 64),
@@ -282,7 +441,7 @@ async function main() {
         data: p.images.map((img, idx) => {
           const sourceVariantId = img.variant_ids?.[0];
           const variantId = sourceVariantId
-            ? (variantIdBySku.get(`SB-V-${sourceVariantId}`) ?? null)
+            ? (variantIdBySku.get(`${dataset.skuPrefix}-V-${sourceVariantId}`) ?? null)
             : null;
           return {
             productId: product.id,
@@ -320,8 +479,8 @@ async function main() {
   }
 
   console.log(
-    `Imported: ${pCount} products, ${vCount} variants, ${iCount} images, ${rCount} reviews ` +
-      `(across ${userIdByKey.size} synthetic reviewers)`,
+    `Imported: ${pCount} products, ${cCount} category links, ${vCount} variants, ` +
+      `${iCount} images, ${rCount} reviews (across ${userIdByKey.size} synthetic reviewers)`,
   );
   console.log(
     'Note: products are (re)assigned to top-level categories — run ' +

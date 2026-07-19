@@ -42,13 +42,21 @@ export const productsRepo = {
   async list(filters: ProductListFilters, sort: ProductListSort, skip: number, take: number) {
     const where: Prisma.ProductWhereInput = {
       isActive: true,
+      // Match against the full category membership (product_categories), not
+      // just the primary categoryId — a product merchandised in several
+      // categories must appear on each one's page.
+      //
       // Match the category itself OR its direct parent, so a top-level page
       // (e.g. /categories/lips) rolls up products assigned to subcategories
       // (lipstick, liquid-lipstick). The taxonomy is one level deep.
       ...(filters.category
         ? {
-            category: {
-              OR: [{ slug: filters.category }, { parent: { slug: filters.category } }],
+            categories: {
+              some: {
+                category: {
+                  OR: [{ slug: filters.category }, { parent: { slug: filters.category } }],
+                },
+              },
             },
           }
         : {}),

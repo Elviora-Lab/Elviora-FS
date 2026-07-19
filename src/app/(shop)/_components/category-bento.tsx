@@ -9,96 +9,174 @@ export type BentoCategory = {
   blurb?: string | null;
   img?: string | null;
   children?: string[];
+  /**
+   * Optional catalogue size for the "N items" affordance. The homepage does not
+   * currently pass it (the category tree carries no count), so the tile falls
+   * back to sub-collections and finally to a plain "Shop all" — never a zero.
+   */
+  count?: number | null;
 };
 
 /**
- * Asymmetric category bento — four data-driven "doors" so an intent-holding
- * shopper self-routes in one viewport. Server component, zero client JS:
- * every micro-interaction is CSS (lift, image zoom, teal underline sweep,
- * chip fade-in). Mobile collapses to a 2×2 grid — all doors visible at once,
- * which is the entire point of chunking.
+ * Asymmetric category bento — data-driven "doors" so an intent-holding shopper
+ * self-routes in one viewport. Server component, zero client JS: every
+ * micro-interaction is CSS (tile lift, image zoom, scrim deepen, arrow slide),
+ * and each one carries a `motion-reduce` escape hatch so a reduced-motion
+ * shopper gets the same layout with none of the movement.
+ *
+ * The shape is deliberately uneven — a hero tile carrying half the grid beside
+ * a wide tile and two squares — because four identical rectangles read as a
+ * spec sheet, not a storefront. Mobile stacks the hero full-bleed over a 2×2 of
+ * the rest, so all four doors still fit one thumb-scroll at 390px.
  */
 export function CategoryBento({ categories }: { categories: BentoCategory[] }) {
   const cats = categories.slice(0, 4);
   if (cats.length === 0) return null;
 
-  // Desktop shape: [0] tall feature spanning both rows, [1] and [2] as
-  // squares along the top, [3] wide across the bottom — an asymmetric bento
-  // rather than four identical tiles.
+  // Desktop shape on a 4×2 grid: [0] hero across cols 1–2 / both rows, [1] wide
+  // across the top right, [2] and [3] squares beneath it. Auto-placement lands
+  // these correctly in order, so no explicit column starts are needed.
   const areaClasses = [
-    'lg:col-span-2 lg:row-span-2', // tall feature
+    'col-span-2 lg:col-span-2 lg:row-span-2', // hero
+    'col-span-2 lg:col-span-2 lg:row-span-1', // wide
     'lg:col-span-1 lg:row-span-1',
     'lg:col-span-1 lg:row-span-1',
-    'lg:col-span-2 lg:row-span-1', // wide
   ];
 
+  // Each tile renders at a different width, so `sizes` is per-slot rather than
+  // one shared guess — the hero and the squares differ by ~2× on desktop.
+  const imageSizes = [
+    '(min-width:1024px) 46vw, 100vw',
+    '(min-width:1024px) 46vw, 100vw',
+    '(min-width:1024px) 23vw, 50vw',
+    '(min-width:1024px) 23vw, 50vw',
+  ];
+
+  // Tiles 2+ pair up two-across on mobile. An odd number of them would leave a
+  // half-width orphan on the last row, so that one is widened instead.
+  const squareCount = Math.max(cats.length - 2, 0);
+  const orphanIndex = squareCount % 2 === 1 ? cats.length - 1 : -1;
+
   return (
-    <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-flow-dense lg:grid-cols-4 lg:grid-rows-2">
-      {cats.map((c, i) => (
-        <Link
-          key={c.href}
-          href={c.href}
-          data-track="nav"
-          data-track-label={`bento:${c.name}`}
-          className={cn(
-            'group relative block overflow-hidden rounded-2xl border border-border bg-brand-sand',
-            'transition-all duration-300 ease-swift hover:-translate-y-1 hover:shadow-elevated active:scale-[0.98] motion-reduce:transition-none',
-            'aspect-square',
-            i === 0 && 'lg:aspect-auto',
-            i === 3 && 'lg:aspect-auto',
-            areaClasses[i],
-          )}
-        >
-          {c.img ? (
-            <Image
-              src={c.img}
-              alt={c.name}
-              fill
-              loading="lazy"
-              sizes="(min-width:1024px) 25vw, 50vw"
-              className="object-cover transition-transform duration-500 ease-swift group-hover:scale-[1.04] motion-reduce:transition-none"
-            />
-          ) : (
-            <div className="surface-cloud absolute inset-0" />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-brand-ink/80 via-brand-ink/20 to-transparent" />
+    <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4 lg:grid-rows-2">
+      {cats.map((c, i) => {
+        const isHero = i === 0;
+        const isWide = i <= 1;
+        // Count line, most specific signal first. Anything falsy collapses to
+        // the neutral "Shop all" rather than rendering "0 items".
+        const countLabel =
+          typeof c.count === 'number' && c.count > 0
+            ? `${c.count} item${c.count === 1 ? '' : 's'}`
+            : c.children && c.children.length > 0
+              ? `${c.children.length} collection${c.children.length === 1 ? '' : 's'}`
+              : 'Shop all';
 
-          <div className="absolute inset-x-4 bottom-4 flex flex-col gap-1 text-brand-cloud">
-            {c.blurb ? (
-              <span className="hidden truncate text-[11px] uppercase tracking-[0.12em] opacity-80 lg:block">
-                {c.blurb}
-              </span>
-            ) : null}
-            <span className="w-fit font-serif text-xl font-medium md:text-2xl">
-              {c.name}
-              {/* Teal underline sweep on hover. */}
-              <span
-                aria-hidden
-                className="block h-0.5 origin-left scale-x-0 rounded-full bg-accent transition-transform duration-300 ease-swift group-hover:scale-x-100 motion-reduce:transition-none"
-              />
-            </span>
-            {c.children?.length ? (
-              <span className="hidden flex-wrap gap-1.5 pt-1 opacity-0 transition-opacity duration-300 group-hover:opacity-100 lg:flex">
-                {c.children.slice(0, 3).map((child) => (
-                  <span
-                    key={child}
-                    className="rounded-full bg-brand-cloud/15 px-2.5 py-0.5 text-[11px] backdrop-blur-sm"
-                  >
-                    {child}
-                  </span>
-                ))}
-              </span>
-            ) : null}
-          </div>
-
-          <span
-            aria-hidden
-            className="absolute right-4 top-4 grid size-8 place-items-center rounded-full bg-brand-cloud/15 text-sm text-brand-cloud backdrop-blur-sm transition-all duration-300 group-hover:bg-brand-ember group-hover:text-white"
+        return (
+          <Link
+            key={c.href}
+            href={c.href}
+            data-track="nav"
+            data-track-label={`bento:${c.name}`}
+            className={cn(
+              'group relative isolate block overflow-hidden rounded-2xl border border-border bg-brand-sand',
+              'transition-all duration-300 ease-swift hover:-translate-y-1.5 hover:border-brand-ember/40 hover:shadow-pop',
+              'active:scale-[0.985] motion-reduce:transition-none motion-reduce:hover:translate-y-0',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ember focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+              // Mobile heights: full-width tiles get a landscape frame, the
+              // paired ones stay square. Desktop hands height to the grid rows.
+              isHero ? 'aspect-[16/11] sm:aspect-[2/1]' : isWide ? 'aspect-[2/1]' : 'aspect-square',
+              'lg:aspect-auto',
+              isHero ? 'lg:min-h-[27rem]' : 'lg:min-h-[13rem]',
+              areaClasses[i],
+              i === orphanIndex && 'col-span-2 aspect-[2/1] lg:aspect-auto',
+            )}
           >
-            →
-          </span>
-        </Link>
-      ))}
+            {c.img ? (
+              <Image
+                src={c.img}
+                alt={c.name}
+                fill
+                loading="lazy"
+                sizes={imageSizes[i]}
+                className="duration-[600ms] object-cover transition-transform ease-swift group-hover:scale-[1.07] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+              />
+            ) : (
+              // No image on file — a navy wash still reads as a real tile, and
+              // the scrim below keeps the label contrast identical either way.
+              <div className="absolute inset-0 bg-gradient-to-br from-brand-navy via-brand-slate to-brand-ink" />
+            )}
+
+            {/* Two-part scrim: a heavy ink foot for label contrast, plus a navy
+                wash that deepens on hover so the whole tile answers the cursor. */}
+            <div
+              aria-hidden
+              className="absolute inset-0 bg-gradient-to-t from-brand-ink via-brand-ink/45 to-transparent"
+            />
+            <div
+              aria-hidden
+              className="absolute inset-0 bg-brand-navy/0 transition-colors duration-300 ease-swift group-hover:bg-brand-navy/25 motion-reduce:transition-none"
+            />
+
+            <div
+              className={cn(
+                'absolute inset-x-4 bottom-4 flex flex-col text-brand-cloud md:inset-x-5 md:bottom-5',
+                isHero && 'lg:inset-x-7 lg:bottom-7',
+              )}
+            >
+              {c.blurb ? (
+                <span className="mb-1.5 hidden truncate text-[11px] font-medium uppercase tracking-[0.16em] text-brand-cloud/75 lg:block">
+                  {c.blurb}
+                </span>
+              ) : null}
+
+              <span
+                className={cn(
+                  'w-fit font-serif font-semibold leading-[1.05] tracking-tight drop-shadow-sm',
+                  isHero ? 'text-3xl md:text-4xl lg:text-5xl' : 'text-xl md:text-2xl',
+                )}
+              >
+                {c.name}
+                {/* Ember underline sweep — the tile's "this is a door" tell. */}
+                <span
+                  aria-hidden
+                  className="mt-1.5 block h-[3px] origin-left scale-x-0 rounded-full bg-brand-ember transition-transform duration-300 ease-swift group-hover:scale-x-100 motion-reduce:transition-none motion-reduce:group-hover:scale-x-100"
+                />
+              </span>
+
+              {/* Count + arrow share a baseline: the count states the payoff,
+                  the arrow states the action. */}
+              <span className="mt-2.5 flex items-center gap-2.5">
+                <span className="rounded-full bg-brand-cloud/15 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] backdrop-blur-sm">
+                  {countLabel}
+                </span>
+                <span
+                  aria-hidden
+                  className={cn(
+                    'grid size-8 shrink-0 place-items-center rounded-full bg-brand-cloud/15 text-sm text-brand-cloud backdrop-blur-sm',
+                    'transition-all duration-300 ease-snappy group-hover:translate-x-1 group-hover:bg-brand-ember group-hover:text-white group-hover:shadow-glow',
+                    'motion-reduce:transition-none motion-reduce:group-hover:translate-x-0',
+                  )}
+                >
+                  →
+                </span>
+              </span>
+
+              {c.children?.length ? (
+                <span className="mt-2.5 hidden flex-wrap gap-1.5 opacity-0 transition-opacity duration-300 ease-swift group-hover:opacity-100 motion-reduce:opacity-100 motion-reduce:transition-none lg:flex">
+                  {c.children.slice(0, isHero ? 4 : 2).map((child) => (
+                    <span
+                      key={child}
+                      className="rounded-full border border-brand-cloud/20 bg-brand-cloud/10 px-2.5 py-0.5 text-[11px] backdrop-blur-sm"
+                    >
+                      {child}
+                    </span>
+                  ))}
+                </span>
+              ) : null}
+            </div>
+          </Link>
+        );
+      })}
     </div>
   );
 }

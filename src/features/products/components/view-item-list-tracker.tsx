@@ -15,10 +15,17 @@ export function ViewItemListTracker({
   products,
   listId,
   listName,
+  indexOffset = 0,
 }: {
   products: ProductCardData[];
   listId?: string;
   listName?: string;
+  /**
+   * Rank of this batch's first item within the overall list. Infinite scroll
+   * mounts one tracker per appended batch (so each reports exactly once), and
+   * without an offset every batch would restart `index` at 0.
+   */
+  indexOffset?: number;
 }) {
   const tracked = useRef('');
 
@@ -37,10 +44,10 @@ export function ViewItemListTracker({
         item_list_id: listId,
         item_list_name: listName,
         price: p.price,
-        index: i,
+        index: indexOffset + i,
       })),
     });
-  }, [products, listId, listName]);
+  }, [products, listId, listName, indexOffset]);
 
   return null;
 }
