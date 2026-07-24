@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import { buildMetadata } from '@/lib/seo/metadata';
-import { formatDate, formatMoney } from '@/utils/format';
+import { formatDate, formatMoney, shadeLabel } from '@/utils/format';
 
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -64,8 +64,10 @@ export default async function AdminOrderDetailPage({
                     <tr key={item.id} className="border-t border-border/60">
                       <td className="py-3">
                         <div>{item.productName}</div>
-                        {item.variantName ? (
-                          <div className="text-xs text-muted-foreground">{item.variantName}</div>
+                        {shadeLabel(item.variantName) ? (
+                          <div className="text-xs text-muted-foreground">
+                            {shadeLabel(item.variantName)}
+                          </div>
                         ) : null}
                       </td>
                       <td className="py-3">{item.quantity}</td>

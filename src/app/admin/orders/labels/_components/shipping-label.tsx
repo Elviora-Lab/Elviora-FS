@@ -1,6 +1,6 @@
 import { siteConfig } from '@/config/site';
 
-import { formatDate, formatMoney } from '@/utils/format';
+import { formatDate, formatMoney, shadeLabel } from '@/utils/format';
 
 /**
  * Shipping label — designed for a standard 4×6 inch thermal label
@@ -109,7 +109,7 @@ export function ShippingLabel({ order }: { order: LabelOrder }) {
             {order.items.slice(0, 4).map((item) => (
               <li key={item.id}>
                 {item.quantity}× {item.productName}
-                {item.variantName ? ` · ${item.variantName}` : ''}
+                {shadeLabel(item.variantName) ? ` · ${shadeLabel(item.variantName)}` : ''}
               </li>
             ))}
             {order.items.length > 4 ? (

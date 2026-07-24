@@ -5,6 +5,7 @@ import { customAlphabet } from 'nanoid';
 
 import { prisma } from '@/lib/db';
 import { computeCheckoutTotals } from '@/lib/shipping';
+import { shadeLabel } from '@/utils/format';
 
 import { events } from '@/server/events';
 import { BadRequestError, NotFoundError } from '@/server/http/errors';
@@ -259,7 +260,8 @@ function variantLabel(
   v: { size: string | null; shade: string | null; fragrance: string | null } | null,
 ) {
   if (!v) return null;
-  return [v.size, v.shade, v.fragrance].filter(Boolean).join(' · ') || null;
+  // Strip the "@#hex" swatch code baked into shade labels → a clean "1-W".
+  return shadeLabel([v.size, v.shade, v.fragrance].filter(Boolean).join(' · '));
 }
 
 // Export cartRepo so checkout flows can pre-read cart (not used here directly).

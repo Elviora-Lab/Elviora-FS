@@ -12,6 +12,7 @@ import { cn } from '@/lib/cn';
 
 import { Price } from '@/design-system/primitives/price';
 import { Rating } from '@/design-system/primitives/rating';
+import { PromoBadge } from '@/components/promo/promo-badge';
 import { Badge } from '@/components/ui/badge';
 
 export type ProductCardData = {
@@ -112,7 +113,8 @@ export function ProductCard({
           />
         ) : null}
 
-        <div className="absolute left-3 top-3 flex flex-col gap-1.5">
+        <div className="absolute left-3 top-3 flex flex-col items-start gap-1.5">
+          <PromoBadge />
           {product.isNew ? <Badge variant="gold">New</Badge> : null}
           {product.isBestseller ? <Badge variant="muted">Bestseller</Badge> : null}
         </div>

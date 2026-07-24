@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { Menu, Search } from 'lucide-react';
 
-import { mainNav } from '@/config/navigation';
 import { siteConfig } from '@/config/site';
 
 import { useAppDispatch } from '@/store/hooks';
@@ -12,7 +11,7 @@ import { openMobileNav, openSearch } from '@/store/slices/ui-slice';
 import { cn } from '@/lib/cn';
 
 import { BrandLockup, BrandLogo } from '@/components/brand/brand-logo';
-import { NavItem } from '@/components/layout/nav-item';
+import { CategoryBar } from '@/components/layout/category-bar';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 
@@ -39,7 +38,11 @@ export function SiteHeader({ className }: { className?: string }) {
           <Menu className="size-5" />
         </button>
 
-        <Link href="/" aria-label={`${siteConfig.name} home`} className="inline-flex items-center">
+        <Link
+          href="/"
+          aria-label={`${siteConfig.name} home`}
+          className="inline-flex items-center lg:mr-2"
+        >
           {/* Mark only on mobile (save space next to the icon row);
               full mark + wordmark on lg+ where there's room. */}
           <span className="lg:hidden">
@@ -49,12 +52,6 @@ export function SiteHeader({ className }: { className?: string }) {
             <BrandLockup size={36} priority />
           </span>
         </Link>
-
-        <nav className="ml-8 hidden items-center gap-7 lg:flex">
-          {mainNav.map((item) => (
-            <NavItem key={item.href} item={item} />
-          ))}
-        </nav>
 
         <div className="ml-auto flex items-center gap-1">
           <Button
@@ -69,6 +66,9 @@ export function SiteHeader({ className }: { className?: string }) {
           <CartDrawerTrigger />
         </div>
       </div>
+
+      {/* Persistent category rail — every destination visible, no dropdown. */}
+      <CategoryBar />
     </header>
   );
 }

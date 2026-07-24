@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { Check } from 'lucide-react';
 
 import { buildMetadata } from '@/lib/seo/metadata';
-import { formatDate } from '@/utils/format';
+import { formatDate, shadeLabel } from '@/utils/format';
 
 import { Price } from '@/design-system/primitives/price';
 import { Section } from '@/design-system/primitives/section';
@@ -98,7 +98,9 @@ export default async function OrderSuccessPage({ params }: { params: Params }) {
                 <li key={item.id} className="flex justify-between gap-2">
                   <span className="text-muted-foreground">
                     {item.productName}
-                    {item.variantName ? ` — ${item.variantName}` : ''} × {item.quantity}
+                    {shadeLabel(item.variantName)
+                      ? ` — ${shadeLabel(item.variantName)}`
+                      : ''} × {item.quantity}
                   </span>
                   <Price amount={Number(item.totalPrice)} currency={order.currency} size="sm" />
                 </li>

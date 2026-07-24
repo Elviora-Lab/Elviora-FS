@@ -2,6 +2,8 @@ import 'server-only';
 
 import { type Coupon, Prisma } from '@prisma/client';
 
+import { exclusivePromotion } from '@/config/promotions';
+
 import { BadRequestError } from '@/server/http/errors';
 import { couponsRepo } from '@/server/repositories/coupons.repo';
 
@@ -45,6 +47,13 @@ export const couponsService = {
     const sub = new Prisma.Decimal(subtotal);
     const coupon = await couponsRepo.findActiveByCode(code, db);
     if (!coupon) throw new BadRequestError('Invalid or expired coupon');
+
+    // During an exclusive campaign (e.g. Azadi Sale) only that campaign's code
+    // applies — every other coupon is paused until the sale ends, then works again.
+    const exclusive = exclusivePromotion();
+    if (exclusive && coupon.code.toUpperCase() !== exclusive.code.toUpperCase()) {
+      throw new BadRequestError(`Only code ${exclusive.code} applies during the ${exclusive.name}`);
+    }
 
     const now = new Date();
     if (coupon.startsAt && coupon.startsAt > now) {

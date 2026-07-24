@@ -1,16 +1,24 @@
 import Image from 'next/image';
 import Link from 'next/link';
 
+import { currentPromotion } from '@/config/promotions';
 import { routes } from '@/config/routes';
 
 import { buildMetadata } from '@/lib/seo/metadata';
 
 import { ProductCard } from '@/design-system/patterns/product-card';
 import { CountUp } from '@/design-system/primitives/count-up';
+import { Magnetic } from '@/design-system/primitives/magnetic';
 import { Reveal } from '@/design-system/primitives/reveal';
 import { Section, SectionHeading } from '@/design-system/primitives/section';
+import { AzadiSaleBanner } from '@/components/promo/azadi-sale-banner';
+import { PromoPill } from '@/components/promo/promo-pill';
 import { Button } from '@/components/ui/button';
 
+import { HeroAtmosphere } from './_components/hero-atmosphere';
+import { HeroChips } from './_components/hero-chips';
+import { HeroHeading } from './_components/hero-heading';
+import { HeroSaleSparkle } from './_components/hero-sale-sparkle';
 import { HeroShowcase } from './_components/hero-showcase';
 import { getShadeSpotlight, getShowcaseReviews } from './_components/homepage-modules.data';
 import { ShadeSpotlight } from './_components/lazy-sections';
@@ -92,49 +100,44 @@ export default async function HomePage() {
       brandLine: p.brandLine,
     }));
 
+  // Active store campaign (Azadi Sale) — surfaces during build-up + sale window.
+  const promo = currentPromotion();
+
   return (
     <>
       {/* — Editorial hero — */}
       <Section as="section" size="lg" className="surface-pearl relative overflow-hidden">
-        {/* Soft blush halo behind the copy for a cosmetic glow. */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -left-24 top-1/4 size-[28rem] rounded-full bg-brand-blush/50 blur-3xl"
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-16 -top-10 size-[22rem] rounded-full bg-brand-rosegold/20 blur-3xl"
-        />
+        {/* Cursor-reactive blush + rosegold glow behind the copy. */}
+        <HeroAtmosphere />
+        {/* Festive gold sparkles — only while the sale campaign is running. */}
+        <HeroSaleSparkle />
         <div className="container relative grid items-center gap-12 lg:grid-cols-2">
           <Reveal className="flex max-w-xl flex-col gap-6">
+            {/* Campaign pill — brings the active sale into the hero. */}
+            <PromoPill />
             <span className="eyebrow">The Colour Edit · 2026</span>
-            <h1 className="editorial-heading text-display-xl md:text-display-2xl">
-              Colour, made luminous.
-            </h1>
+            <HeroHeading
+              text="Colour, made luminous."
+              className="editorial-heading text-display-xl md:text-display-2xl"
+            />
             <p className="text-pretty text-base leading-relaxed text-muted-foreground md:text-lg">
               High-pigment lips, second-skin foundation, and glass-finish nails — a curated edit of
               cosmetics designed to wear like light, made in small batches.
             </p>
             <div className="mt-2 flex flex-wrap gap-3">
-              <Button asChild size="lg" variant="gold" uppercase>
-                <Link href="/products">Shop the collection</Link>
-              </Button>
-              <Button asChild size="lg" variant="outline">
-                <Link href="/products?sort=popular">Bestsellers</Link>
-              </Button>
+              <Magnetic>
+                <Button asChild size="lg" variant="gold" uppercase>
+                  <Link href="/products">Shop the collection</Link>
+                </Button>
+              </Magnetic>
+              <Magnetic>
+                <Button asChild size="lg" variant="outline">
+                  <Link href="/products?sort=popular">Bestsellers</Link>
+                </Button>
+              </Magnetic>
             </div>
-            {/* Quick category jump-off */}
-            <div className="flex flex-wrap gap-2">
-              {categories.map((c) => (
-                <Link
-                  key={c.href}
-                  href={c.href}
-                  className="rounded-full border border-border/70 bg-background/40 px-4 py-1.5 text-xs uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground"
-                >
-                  {c.name}
-                </Link>
-              ))}
-            </div>
+            {/* Quick category jump-off — animated, hover-fill chips. */}
+            <HeroChips items={categories.map((c) => ({ name: c.name, href: c.href }))} />
             <dl className="mt-4 flex flex-wrap gap-x-8 gap-y-4 text-sm">
               <div>
                 <dt className="font-serif text-2xl font-light text-foreground">
@@ -174,6 +177,9 @@ export default async function HomePage() {
           </Reveal>
         </div>
       </Section>
+
+      {/* — Azadi Sale campaign band — */}
+      {promo ? <AzadiSaleBanner promo={promo.promo} phase={promo.phase} /> : null}
 
       {/* — Shop by category — */}
       {categories.length > 0 && (

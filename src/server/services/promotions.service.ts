@@ -2,6 +2,8 @@ import 'server-only';
 
 import { type Prisma } from '@prisma/client';
 
+import { exclusivePromotion } from '@/config/promotions';
+
 import { prisma } from '@/lib/db';
 import { computeSpendDiscount, type SpendTier } from '@/lib/promotions';
 
@@ -44,8 +46,10 @@ export const promotionsService = {
     }));
   },
 
-  /** Tiers to expose to the storefront — empty when the feature is off. */
+  /** Tiers to expose to the storefront — empty when the feature is off, or while
+   *  an exclusive campaign (e.g. Azadi Sale) is running. */
   async tiersForDisplay(): Promise<SpendTier[]> {
+    if (exclusivePromotion()) return [];
     if (!(await this.isEnabled())) return [];
     return this.activeTiers();
   },
@@ -56,6 +60,8 @@ export const promotionsService = {
    * `db` to read tier state through an open transaction (checkout).
    */
   async computeDiscount(subtotal: number, db?: Prisma.TransactionClient): Promise<number> {
+    // Paused for the duration of an exclusive campaign (e.g. Azadi Sale).
+    if (exclusivePromotion()) return 0;
     if (!(await this.isEnabled(db))) return 0;
     return computeSpendDiscount(subtotal, await this.activeTiers(db));
   },

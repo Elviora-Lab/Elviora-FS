@@ -28,6 +28,22 @@ export function pluralize(count: number, singular: string, plural?: string): str
   return count === 1 ? singular : (plural ?? `${singular}s`);
 }
 
+/**
+ * Clean a variant/shade label for display. Source shade labels bake the swatch
+ * colour into the string as "1-W @#FCD6C7"; this strips the "@#hex" so orders
+ * and fulfilment views read the shade name ("1-W") — matching how the product
+ * page renders it. Idempotent (a label with no hex is returned unchanged).
+ */
+export function shadeLabel(label: string | null | undefined): string | null {
+  if (!label) return null;
+  return (
+    label
+      .replace(/\s*@#?[0-9a-fA-F]{3,8}\b/i, '')
+      .replace(/[·\s]+$/, '')
+      .trim() || null
+  );
+}
+
 export function truncate(str: string, max = 80): string {
   if (str.length <= max) return str;
   return str.slice(0, max - 1).trimEnd() + '…';
