@@ -11,7 +11,13 @@ import { CapiParamInit } from '@/components/analytics/capi-param-init';
 import { Clarity } from '@/components/analytics/clarity';
 import { ClickTracker } from '@/components/analytics/click-tracker';
 import { GaIdentity } from '@/components/analytics/ga-identity';
-import { GoogleAnalytics } from '@/components/analytics/google-analytics';
+// Paused: GTM (GTM-NFSGW8RX) now manages GA4 client-side — loading gtag directly
+// too would double-count. Re-enable if you remove the GA4 tag from GTM.
+// import { GoogleAnalytics } from '@/components/analytics/google-analytics';
+import {
+  GoogleTagManager,
+  GoogleTagManagerNoScript,
+} from '@/components/analytics/google-tag-manager';
 import { MetaIdentity } from '@/components/analytics/meta-identity';
 import { MetaPixel } from '@/components/analytics/meta-pixel';
 import { UtmCapture } from '@/components/analytics/utm-capture';
@@ -46,12 +52,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning className={`${serif.variable} ${sans.variable}`}>
       <body className="min-h-screen bg-background text-foreground antialiased">
+        {/* GTM <noscript> must be the first thing inside <body>. */}
+        <GoogleTagManagerNoScript />
+        <GoogleTagManager />
         <MetaPixel />
         <Clarity />
         <CapiParamInit />
         <UtmCapture />
         <ClickTracker />
-        <GoogleAnalytics />
+        {/* Paused — GTM now owns GA4 (see google-tag-manager.tsx). Re-enable with the import above. */}
+        {/* <GoogleAnalytics /> */}
         <AppProviders>
           <GaIdentity />
           <MetaIdentity />
